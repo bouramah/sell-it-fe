@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import type { SuggestionAvecProduit } from '../types'
 
 export default function Previsions() {
@@ -10,6 +12,9 @@ export default function Previsions() {
   useEffect(() => {
     api.previsions().then(setSuggestions)
   }, [])
+
+  const getFields = useCallback((s: SuggestionAvecProduit) => [s.produit_nom, nomBoutique(s.boutique_id)], [nomBoutique])
+  const { query, setQuery, filtered } = useSearch(suggestions, getFields)
 
   return (
     <div className="space-y-6">
@@ -25,6 +30,8 @@ export default function Previsions() {
         </p>
       </section>
 
+      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un produit…" />
+
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -38,7 +45,7 @@ export default function Previsions() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {suggestions.map((s) => (
+            {filtered.map((s) => (
               <tr key={`${s.produit_id}-${s.boutique_id}`} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{s.produit_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(s.boutique_id)}</td>

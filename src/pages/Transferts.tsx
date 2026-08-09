@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { STATUT_TRANSFERT_LABELS, type Produit, type StatutTransfert, type TransfertStock } from '../types'
 
 const STATUT_TONE: Record<StatutTransfert, 'default' | 'warning' | 'success'> = {
@@ -21,7 +23,12 @@ export default function Transferts() {
     api.produits().then(setProduits)
   }, [])
 
-  const nomProduit = (id: string) => produits.find((p) => p.id === id)?.nom ?? id
+  const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
+  const getFields = useCallback(
+    (t: TransfertStock) => [nomProduit(t.produit_id), nomBoutique(t.boutique_source_id), nomBoutique(t.boutique_destination_id), t.demandeur],
+    [nomProduit, nomBoutique]
+  )
+  const { query, setQuery, filtered } = useSearch(transferts, getFields)
 
   return (
     <div className="space-y-6">
@@ -34,6 +41,8 @@ export default function Transferts() {
           + Nouveau transfert
         </button>
       </div>
+
+      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un transfert…" />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -48,7 +57,7 @@ export default function Transferts() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {transferts.map((t) => (
+            {filtered.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{nomProduit(t.produit_id)}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(t.boutique_source_id)}</td>

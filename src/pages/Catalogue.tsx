@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import SearchableSelect from '../components/SearchableSelect'
 import { formatGNF } from '../lib/format'
 import { SECTEUR_LABELS, type Produit, type Secteur } from '../types'
 import type { ProduitInput } from '../types/write'
@@ -154,17 +155,12 @@ export default function Catalogue() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Secteur</label>
-                <select
+                <SearchableSelect
                   value={form.secteur}
-                  onChange={(e) => setForm({ ...form, secteur: e.target.value as Secteur })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {SECTEURS.map((s) => (
-                    <option key={s} value={s}>
-                      {SECTEUR_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, secteur: v as Secteur })}
+                  options={SECTEURS.map((s) => ({ value: s, label: SECTEUR_LABELS[s] }))}
+                  required
+                />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Catégorie</label>

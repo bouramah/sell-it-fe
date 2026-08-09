@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchInput from '../components/SearchInput'
 import { formatGNF, formatTime } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { STATUT_CAISSE_LABELS, type Caisse as CaisseEntity, type LigneMouvementCaisse, type StatutCaisse } from '../types'
 
 const STATUT_TONE: Record<StatutCaisse, 'success' | 'default' | 'danger'> = {
@@ -20,6 +22,12 @@ export default function Caisse() {
     api.caisses().then(setCaisses)
     api.mouvementsCaisse().then(setMouvements)
   }, [])
+
+  const getFields = useCallback(
+    (m: LigneMouvementCaisse) => [nomBoutique(m.boutique_id), m.caisse_libelle, m.motif, m.operateur],
+    [nomBoutique]
+  )
+  const { query, setQuery, filtered } = useSearch(mouvements, getFields)
 
   return (
     <div className="space-y-8">
@@ -53,6 +61,9 @@ export default function Caisse() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">
           Journal des mouvements de caisse — aujourd'hui
         </h2>
+        <div className="mb-3">
+          <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un mouvement…" />
+        </div>
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -66,7 +77,7 @@ export default function Caisse() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {mouvements.map((m) => (
+              {filtered.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-500">{formatTime(m.horodatage)}</td>
                   <td className="px-4 py-3 text-slate-600">{nomBoutique(m.boutique_id)} — {m.caisse_libelle}</td>

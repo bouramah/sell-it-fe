@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchInput from '../components/SearchInput'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { SEGMENT_LABELS, type Client, type SegmentClient } from '../types'
 
 const SEGMENT_TONE: Record<SegmentClient, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -20,6 +22,9 @@ export default function Clients() {
     api.clients().then(setClients)
   }, [])
 
+  const getFields = useCallback((c: Client) => [c.nom, c.contact], [])
+  const { query, setQuery, filtered } = useSearch(clients, getFields)
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -31,6 +36,8 @@ export default function Clients() {
           + Ajouter un client
         </button>
       </div>
+
+      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un client…" />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -45,7 +52,7 @@ export default function Clients() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {clients.map((c) => (
+            {filtered.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{c.nom}</td>
                 <td className="px-4 py-3 text-slate-600">{c.contact}</td>

@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchableSelect from '../components/SearchableSelect'
+import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
 import Tabs from '../components/Tabs'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { STATUT_DETTE_LABELS, type LigneDette, type StatutDette, type TiersType } from '../types'
 
 const STATUT_TONE: Record<StatutDette, 'success' | 'warning' | 'danger'> = {
@@ -23,9 +26,11 @@ export default function Dettes() {
     api.dettes(tiers).then(setDettes)
   }, [tiers])
 
-  const filtrees = boutiqueId ? dettes.filter((d) => d.boutique_id === boutiqueId) : dettes
-  const totalRestant = filtrees.reduce((sum, d) => sum + d.solde_restant, 0)
-  const enRetard = filtrees.filter((d) => d.statut === 'en_retard').length
+  const preFiltrees = boutiqueId ? dettes.filter((d) => d.boutique_id === boutiqueId) : dettes
+  const getFields = useCallback((d: LigneDette) => [d.tiers_nom], [])
+  const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
+  const totalRestant = filtered.reduce((sum, d) => sum + d.solde_restant, 0)
+  const enRetard = filtered.filter((d) => d.statut === 'en_retard').length
 
   return (
     <div className="space-y-6">
@@ -41,7 +46,7 @@ export default function Dettes() {
         </button>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs
           tabs={[
             { key: 'client', label: 'Créances clients' },
@@ -50,24 +55,24 @@ export default function Dettes() {
           active={tiers}
           onChange={(k) => setTiers(k as TiersType)}
         />
-        <select
-          value={boutiqueId}
-          onChange={(e) => setBoutiqueId(e.target.value)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-        >
-          <option value="">Toutes les boutiques</option>
-          {boutiques.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.nom}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap gap-3">
+          <SearchInput value={query} onChange={setQuery} placeholder={tiers === 'client' ? 'Rechercher un client…' : 'Rechercher un fournisseur…'} />
+          <div className="w-56">
+            <SearchableSelect
+              value={boutiqueId}
+              onChange={setBoutiqueId}
+              options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+              allowEmpty="Toutes les boutiques"
+              placeholder="Toutes les boutiques"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label={tiers === 'client' ? 'Total créances en cours' : 'Total dû aux fournisseurs'} value={formatGNF(totalRestant)} />
         <StatCard label="Échéances dépassées" value={`${enRetard} ${tiers === 'client' ? 'clients' : 'fournisseurs'}`} />
-        <StatCard label={tiers === 'client' ? 'Comptes concernés' : 'Fournisseurs concernés'} value={String(new Set(filtrees.map((d) => d.tiers_nom)).size)} />
+        <StatCard label={tiers === 'client' ? 'Comptes concernés' : 'Fournisseurs concernés'} value={String(new Set(filtered.map((d) => d.tiers_nom)).size)} />
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -83,7 +88,7 @@ export default function Dettes() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtrees.map((d) => (
+            {filtered.map((d) => (
               <tr key={d.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{d.tiers_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(d.boutique_id)}</td>

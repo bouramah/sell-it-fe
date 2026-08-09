@@ -32,6 +32,10 @@ export interface ProduitInput {
   date_peremption: string | null
 }
 
+export interface ReferentielInput {
+  nom: string
+}
+
 export interface LoginRequest {
   contact: string
   mot_de_passe: string

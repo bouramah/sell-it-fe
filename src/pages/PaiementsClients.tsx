@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { MODE_PAIEMENT_LABELS, STATUT_PAIEMENT_LABELS, type PaiementClient, type StatutPaiement } from '../types'
 
 const TONE: Record<StatutPaiement, 'success' | 'warning' | 'default'> = {
@@ -20,6 +22,9 @@ export default function PaiementsClients() {
     api.paiementsClients().then(setPaiements)
   }, [])
 
+  const getFields = useCallback((p: PaiementClient) => [p.client_nom, p.reference], [])
+  const { query, setQuery, filtered } = useSearch(paiements, getFields)
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -31,6 +36,8 @@ export default function PaiementsClients() {
           + Enregistrer un paiement client
         </button>
       </div>
+
+      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -46,7 +53,7 @@ export default function PaiementsClients() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paiements.map((p) => (
+            {filtered.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{p.client_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{p.reference}</td>

@@ -33,6 +33,7 @@ import type {
   BoutiqueInput,
   LoginRequest,
   ProduitInput,
+  ReferentielInput,
   TokenResponse,
   UtilisateurConnecte,
   UtilisateurInput,
@@ -137,6 +138,12 @@ export const api = {
   parametresSecurite: () => getJson<ParametreSecurite[]>('/securite/parametres'),
 
   referentiels: () => getJson<Record<string, ReferentielItem[]>>('/parametres/referentiels'),
+  creerReferentiel: (categorie: string, payload: ReferentielInput) =>
+    sendJson<ReferentielItem>('POST', `/parametres/referentiels/${categorie}`, payload),
+  modifierReferentiel: (categorie: string, id: string, payload: ReferentielInput) =>
+    sendJson<ReferentielItem>('PUT', `/parametres/referentiels/${categorie}/${id}`, payload),
+  supprimerReferentiel: (categorie: string, id: string) =>
+    sendJson<void>('DELETE', `/parametres/referentiels/${categorie}/${id}`),
 
   dashboard: () => getJson<DashboardConsolide>('/dashboard'),
 }

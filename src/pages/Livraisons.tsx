@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchableSelect from '../components/SearchableSelect'
+import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { STATUT_LIVRAISON_LABELS, type Livraison, type StatutLivraison } from '../types'
 
 const STATUT_TONE: Record<StatutLivraison, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -20,7 +23,9 @@ export default function Livraisons() {
     api.livraisons().then(setLivraisons)
   }, [])
 
-  const filtrees = boutiqueId ? livraisons.filter((l) => l.boutique_id === boutiqueId) : livraisons
+  const preFiltrees = boutiqueId ? livraisons.filter((l) => l.boutique_id === boutiqueId) : livraisons
+  const getFields = useCallback((l: Livraison) => [l.commande_id, l.livreur, l.adresse], [])
+  const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
 
   return (
     <div className="space-y-6">
@@ -34,18 +39,18 @@ export default function Livraisons() {
         </button>
       </div>
 
-      <select
-        value={boutiqueId}
-        onChange={(e) => setBoutiqueId(e.target.value)}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-      >
-        <option value="">Toutes les boutiques</option>
-        {boutiques.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.nom}
-          </option>
-        ))}
-      </select>
+      <div className="flex flex-wrap gap-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une livraison…" />
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -61,7 +66,7 @@ export default function Livraisons() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtrees.map((l) => (
+            {filtered.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">#{l.commande_id}</td>
                 <td className="px-4 py-3 text-slate-600">{l.livreur}</td>

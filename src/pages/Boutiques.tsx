@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
-import { SECTEUR_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type Secteur, type StatutBoutique } from '../types'
+import SearchableSelect from '../components/SearchableSelect'
+import SearchInput from '../components/SearchInput'
+import { useSearch } from '../lib/useSearch'
+import { ROLE_LABELS, SECTEUR_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
 import type { BoutiqueInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
@@ -35,6 +38,10 @@ export function BoutiquesListe() {
   const [form, setForm] = useState<BoutiqueInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [villesRef, setVillesRef] = useState<ReferentielItem[]>([])
+  const [communesRef, setCommunesRef] = useState<ReferentielItem[]>([])
+  const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
+  const [responsables, setResponsables] = useState<Utilisateur[]>([])
 
   function refresh() {
     api.boutiques().then(setBoutiques)
@@ -42,11 +49,27 @@ export function BoutiquesListe() {
 
   useEffect(refresh, [])
 
+  useEffect(() => {
+    api.referentiels().then((r) => {
+      setVillesRef(r.villes ?? [])
+      setCommunesRef(r.communes ?? [])
+      setQuartiersRef(r.quartiers ?? [])
+    })
+    api.utilisateurs().then((users) =>
+      setResponsables(users.filter((u) => u.role === 'gerant' || u.role === 'administrateur'))
+    )
+  }, [])
+
   const villes = useMemo(() => Array.from(new Set(boutiques.map((b) => b.ville))).sort(), [boutiques])
 
-  const filtered = boutiques.filter(
+  const preFiltered = boutiques.filter(
     (b) => (!villeFiltre || b.ville === villeFiltre) && (!statutFiltre || b.statut === statutFiltre)
   )
+  const getFields = useCallback(
+    (b: Boutique) => [b.nom, b.quartier, b.commune, b.ville, b.responsable],
+    []
+  )
+  const { query, setQuery, filtered } = useSearch(preFiltered, getFields)
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -124,31 +147,26 @@ export function BoutiquesListe() {
         </button>
       </div>
 
-      <div className="flex gap-3">
-        <select
-          value={villeFiltre}
-          onChange={(e) => setVilleFiltre(e.target.value)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-        >
-          <option value="">Toutes les villes</option>
-          {villes.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <select
-          value={statutFiltre}
-          onChange={(e) => setStatutFiltre(e.target.value)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-        >
-          <option value="">Tous les statuts</option>
-          {Object.entries(STATUT_BOUTIQUE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-wrap gap-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une boutique…" />
+        <div className="w-48">
+          <SearchableSelect
+            value={villeFiltre}
+            onChange={setVilleFiltre}
+            options={villes.map((v) => ({ value: v, label: v }))}
+            allowEmpty="Toutes les villes"
+            placeholder="Toutes les villes"
+          />
+        </div>
+        <div className="w-48">
+          <SearchableSelect
+            value={statutFiltre}
+            onChange={setStatutFiltre}
+            options={Object.entries(STATUT_BOUTIQUE_LABELS).map(([value, label]) => ({ value, label }))}
+            allowEmpty="Tous les statuts"
+            placeholder="Tous les statuts"
+          />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -197,6 +215,13 @@ export function BoutiquesListe() {
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-400">
+                  Aucune boutique ne correspond à la recherche.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -235,40 +260,46 @@ export function BoutiquesListe() {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Quartier</label>
-                <input
+                <SearchableSelect
                   value={form.quartier}
-                  onChange={(e) => setForm({ ...form, quartier: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(v) => setForm({ ...form, quartier: v })}
+                  options={quartiersRef.map((q) => ({ value: q.nom, label: q.nom }))}
                   required
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Commune</label>
-                <input
+                <SearchableSelect
                   value={form.commune}
-                  onChange={(e) => setForm({ ...form, commune: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(v) => setForm({ ...form, commune: v })}
+                  options={communesRef.map((c) => ({ value: c.nom, label: c.nom }))}
                   required
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Ville</label>
-                <input
+                <SearchableSelect
                   value={form.ville}
-                  onChange={(e) => setForm({ ...form, ville: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(v) => setForm({ ...form, ville: v })}
+                  options={villesRef.map((v) => ({ value: v.nom, label: v.nom }))}
                   required
                 />
               </div>
             </div>
+            <p className="-mt-2 text-xs text-slate-400">
+              Ces listes se gèrent depuis Configuration → Paramètres.
+            </p>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Responsable</label>
-                <input
+                <SearchableSelect
                   value={form.responsable}
-                  onChange={(e) => setForm({ ...form, responsable: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(v) => setForm({ ...form, responsable: v })}
+                  options={responsables.map((u) => ({
+                    value: `${u.prenom} ${u.nom}`,
+                    label: `${u.prenom} ${u.nom} — ${ROLE_LABELS[u.role]}`,
+                  }))}
                   required
                 />
               </div>
@@ -295,17 +326,12 @@ export function BoutiquesListe() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Statut</label>
-                <select
+                <SearchableSelect
                   value={form.statut}
-                  onChange={(e) => setForm({ ...form, statut: e.target.value as StatutBoutique })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {Object.entries(STATUT_BOUTIQUE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, statut: v as StatutBoutique })}
+                  options={Object.entries(STATUT_BOUTIQUE_LABELS).map(([value, label]) => ({ value, label }))}
+                  required
+                />
               </div>
             </div>
 

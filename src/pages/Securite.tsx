@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import SearchInput from '../components/SearchInput'
 import { formatDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import type { JournalAuditEntry, ParametreSecurite } from '../types'
 
 export default function Securite() {
@@ -13,6 +15,12 @@ export default function Securite() {
     api.audit().then(setAudit)
     api.parametresSecurite().then(setParametres)
   }, [])
+
+  const getFields = useCallback(
+    (a: JournalAuditEntry) => [a.action, a.auteur, a.boutique_id ? nomBoutique(a.boutique_id) : 'Siège'],
+    [nomBoutique]
+  )
+  const { query, setQuery, filtered } = useSearch(audit, getFields)
 
   return (
     <div className="space-y-6">
@@ -27,8 +35,11 @@ export default function Securite() {
           <p className="mb-4 text-xs text-slate-400">
             Écriture seule — aucune suppression ni modification a posteriori possible, y compris par un administrateur.
           </p>
+          <div className="mb-3">
+            <SearchInput value={query} onChange={setQuery} placeholder="Rechercher dans le journal…" />
+          </div>
           <ul className="space-y-3">
-            {audit.map((a) => (
+            {filtered.map((a) => (
               <li key={a.id} className="border-l-2 border-slate-200 pl-3">
                 <div className="text-xs text-slate-400">{formatDate(a.horodatage)}</div>
                 <div className="text-sm font-medium text-slate-900">{a.action}</div>

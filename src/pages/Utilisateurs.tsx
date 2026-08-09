@@ -1,8 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import SearchableSelect from '../components/SearchableSelect'
+import SearchInput from '../components/SearchInput'
 import { formatDate } from '../lib/format'
+import { useSearch } from '../lib/useSearch'
 import { ROLE_LABELS, type Boutique, type DroitAcces, type PermissionLigne, type Role, type Utilisateur } from '../types'
 import type { UtilisateurInput } from '../types/write'
 
@@ -22,11 +25,14 @@ const DROIT_TONE: Record<DroitAcces, 'success' | 'default' | 'warning'> = {
 
 const ROLES: Role[] = ['vendeur', 'caissier', 'gerant', 'responsable_achats', 'administrateur']
 
+// Doit rester synchronisé avec DEFAULT_PASSWORD dans backend/app/core/security.py
+const DEFAULT_PASSWORD = 'kfstore2026'
+
 const EMPTY_FORM: UtilisateurInput = {
   nom: '',
   prenom: '',
   contact: '',
-  mot_de_passe: '',
+  mot_de_passe: DEFAULT_PASSWORD,
   role: 'vendeur',
   boutique_ids: [],
   statut: 'actif',
@@ -57,6 +63,15 @@ export default function Utilisateurs() {
     const names = u.boutique_ids.map((id) => boutiques.find((b) => b.id === id)?.nom).filter(Boolean)
     return names.join(', ') || '—'
   }
+
+  const getUserFields = useCallback(
+    (u: Utilisateur) => [u.nom, u.prenom, u.contact, ROLE_LABELS[u.role], rattachement(u)],
+    [boutiques]
+  )
+  const { query, setQuery, filtered } = useSearch(utilisateurs, getUserFields)
+
+  const getPermFields = useCallback((p: PermissionLigne) => [p.module_action], [])
+  const { query: permQuery, setQuery: setPermQuery, filtered: filteredPermissions } = useSearch(permissions, getPermFields)
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -136,6 +151,9 @@ export default function Utilisateurs() {
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Utilisateurs</h2>
+        <div className="mb-3">
+          <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un utilisateur…" />
+        </div>
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -150,7 +168,7 @@ export default function Utilisateurs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {utilisateurs.map((u) => (
+              {filtered.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {u.prenom} {u.nom}
@@ -176,6 +194,13 @@ export default function Utilisateurs() {
                   </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                    Aucun utilisateur ne correspond à la recherche.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -186,6 +211,9 @@ export default function Utilisateurs() {
           Matrice des droits par rôle
         </h2>
         <p className="mb-3 text-xs text-slate-400">Permissions granulaires par module et par action — modifiable sans développement</p>
+        <div className="mb-3">
+          <SearchInput value={permQuery} onChange={setPermQuery} placeholder="Rechercher un module/action…" />
+        </div>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-teal-800 text-xs uppercase tracking-wide text-white">
@@ -199,7 +227,7 @@ export default function Utilisateurs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {permissions.map((p) => (
+              {filteredPermissions.map((p) => (
                 <tr key={p.module_action} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-700">{p.module_action}</td>
                   {ROLES.map((r) => (
@@ -256,10 +284,15 @@ export default function Utilisateurs() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Mot de passe {editing && <span className="text-slate-400">(laisser vide pour ne pas changer)</span>}
+                  Mot de passe{' '}
+                  {editing ? (
+                    <span className="text-slate-400">(laisser vide pour ne pas changer)</span>
+                  ) : (
+                    <span className="text-slate-400">(valeur par défaut, modifiable)</span>
+                  )}
                 </label>
                 <input
-                  type="password"
+                  type="text"
                   value={form.mot_de_passe}
                   onChange={(e) => setForm({ ...form, mot_de_passe: e.target.value })}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -270,28 +303,24 @@ export default function Utilisateurs() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Rôle</label>
-                <select
+                <SearchableSelect
                   value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, role: v as Role })}
+                  options={ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+                  required
+                />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Statut</label>
-                <select
+                <SearchableSelect
                   value={form.statut}
-                  onChange={(e) => setForm({ ...form, statut: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                >
-                  <option value="actif">Actif</option>
-                  <option value="inactif">Inactif</option>
-                </select>
+                  onChange={(v) => setForm({ ...form, statut: v })}
+                  options={[
+                    { value: 'actif', label: 'Actif' },
+                    { value: 'inactif', label: 'Inactif' },
+                  ]}
+                  required
+                />
               </div>
             </div>
 

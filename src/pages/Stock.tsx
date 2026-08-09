@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchableSelect from '../components/SearchableSelect'
+import SearchInput from '../components/SearchInput'
 import Tabs from '../components/Tabs'
 import { formatDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import {
   MOTIF_MOUVEMENT_LABELS,
   type LigneEcartInventaire,
@@ -54,6 +57,18 @@ export default function Stock() {
     }
   }, [vue, boutiqueId])
 
+  const getLigneFields = useCallback((l: LigneStock) => [l.produit_nom, nomBoutique(l.boutique_id)], [nomBoutique])
+  const { query: ligneQuery, setQuery: setLigneQuery, filtered: filteredLignes } = useSearch(lignes, getLigneFields)
+
+  const getMouvementFields = useCallback(
+    (m: LigneMouvementStock) => [m.produit_nom, nomBoutique(m.boutique_id), m.operateur, MOTIF_MOUVEMENT_LABELS[m.motif]],
+    [nomBoutique]
+  )
+  const { query: mvtQuery, setQuery: setMvtQuery, filtered: filteredMouvements } = useSearch(mouvements, getMouvementFields)
+
+  const getEcartFields = useCallback((e: LigneEcartInventaire) => [e.produit_nom, nomBoutique(e.boutique_id)], [nomBoutique])
+  const { query: ecartQuery, setQuery: setEcartQuery, filtered: filteredEcarts } = useSearch(ecarts, getEcartFields)
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -75,21 +90,20 @@ export default function Stock() {
           active={vue}
           onChange={(k) => setVue(k as 'etat' | 'historique')}
         />
-        <select
-          value={boutiqueId}
-          onChange={(e) => setBoutiqueId(e.target.value)}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-        >
-          <option value="">Toutes les boutiques</option>
-          {boutiques.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.nom}
-            </option>
-          ))}
-        </select>
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
       </div>
 
       {vue === 'etat' ? (
+        <div className="space-y-3">
+        <SearchInput value={ligneQuery} onChange={setLigneQuery} placeholder="Rechercher un produit…" />
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -103,7 +117,7 @@ export default function Stock() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {lignes.map((l) => (
+              {filteredLignes.map((l) => (
                 <tr key={`${l.boutique_id}-${l.produit_id}`} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">{l.produit_nom}</td>
                   <td className="px-4 py-3 text-slate-600">{nomBoutique(l.boutique_id)}</td>
@@ -118,6 +132,7 @@ export default function Stock() {
             </tbody>
           </table>
         </div>
+        </div>
       ) : (
         <div className="space-y-6">
           <section>
@@ -127,6 +142,9 @@ export default function Stock() {
             <p className="mb-3 text-xs text-slate-400">
               Chaque mouvement est rattaché à un motif obligatoire, une boutique et un opérateur.
             </p>
+            <div className="mb-3">
+              <SearchInput value={mvtQuery} onChange={setMvtQuery} placeholder="Rechercher un mouvement…" />
+            </div>
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -140,7 +158,7 @@ export default function Stock() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {mouvements.map((m) => (
+                  {filteredMouvements.map((m) => (
                     <tr key={m.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 text-slate-500">{formatDate(m.horodatage)}</td>
                       <td className="px-4 py-3 font-medium text-slate-900">{m.produit_nom}</td>
@@ -161,6 +179,9 @@ export default function Stock() {
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">
               Rapprochement d'inventaire — stock théorique vs réel
             </h2>
+            <div className="mb-3">
+              <SearchInput value={ecartQuery} onChange={setEcartQuery} placeholder="Rechercher un produit…" />
+            </div>
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -174,7 +195,7 @@ export default function Stock() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {ecarts.map((e) => (
+                  {filteredEcarts.map((e) => (
                     <tr key={e.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-900">{e.produit_nom}</td>
                       <td className="px-4 py-3 text-slate-600">{nomBoutique(e.boutique_id)}</td>

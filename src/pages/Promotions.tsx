@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { ORIGINE_PROMOTION_LABELS, SECTEUR_LABELS, STATUT_PROMOTION_LABELS, type OriginePromotion, type Promotion, type StatutPromotion } from '../types'
 
 const STATUT_TONE: Record<StatutPromotion, 'warning' | 'success' | 'default'> = {
@@ -25,6 +27,12 @@ export default function Promotions() {
     api.promotions().then(setPromotions)
   }, [])
 
+  const getFields = useCallback(
+    (p: Promotion) => [p.nom, p.boutique_id ? nomBoutique(p.boutique_id) : 'Toutes boutiques'],
+    [nomBoutique]
+  )
+  const { query, setQuery, filtered } = useSearch(promotions, getFields)
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -36,6 +44,8 @@ export default function Promotions() {
           + Nouvelle promotion
         </button>
       </div>
+
+      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une promotion…" />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -49,7 +59,7 @@ export default function Promotions() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {promotions.map((p) => (
+            {filtered.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{p.nom}</td>
                 <td className="px-4 py-3 text-slate-600">

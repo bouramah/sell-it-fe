@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
-import type { ComptabiliteConsolidee } from '../types'
+import { useSearch } from '../lib/useSearch'
+import type { ComptabiliteConsolidee, CompteResultatBoutique } from '../types'
 
 export default function Comptabilite() {
   const [data, setData] = useState<ComptabiliteConsolidee | null>(null)
@@ -12,6 +14,9 @@ export default function Comptabilite() {
   useEffect(() => {
     api.comptabilite().then(setData)
   }, [])
+
+  const getFields = useCallback((c: CompteResultatBoutique) => [nomBoutique(c.boutique_id)], [nomBoutique])
+  const { query, setQuery, filtered } = useSearch(data?.comptes ?? [], getFields)
 
   if (!data) return <div className="text-slate-400">Chargement…</div>
 
@@ -39,6 +44,9 @@ export default function Comptabilite() {
           Compte de résultat par boutique — mois en cours
         </h2>
         <p className="mb-3 text-xs text-slate-400">Conforme SYSCOHADA — généré automatiquement, non modifiable</p>
+        <div className="mb-3">
+          <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une boutique…" />
+        </div>
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -51,7 +59,7 @@ export default function Comptabilite() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {data.comptes.map((c) => (
+              {filtered.map((c) => (
                 <tr key={c.boutique_id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">{nomBoutique(c.boutique_id)}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{formatGNF(c.chiffre_affaires)}</td>

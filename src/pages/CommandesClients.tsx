@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchableSelect from '../components/SearchableSelect'
+import SearchInput from '../components/SearchInput'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import {
   CANAL_LABELS,
   MODE_PAIEMENT_LABELS,
@@ -29,7 +32,9 @@ export default function CommandesClients() {
     api.commandesClients().then(setCommandes)
   }, [])
 
-  const filtrees = boutiqueId ? commandes.filter((c) => c.boutique_id === boutiqueId) : commandes
+  const preFiltrees = boutiqueId ? commandes.filter((c) => c.boutique_id === boutiqueId) : commandes
+  const getFields = useCallback((c: CommandeClient) => [c.id, c.client_nom], [])
+  const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
 
   return (
     <div className="space-y-6">
@@ -43,18 +48,18 @@ export default function CommandesClients() {
         </button>
       </div>
 
-      <select
-        value={boutiqueId}
-        onChange={(e) => setBoutiqueId(e.target.value)}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-      >
-        <option value="">Toutes les boutiques</option>
-        {boutiques.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.nom}
-          </option>
-        ))}
-      </select>
+      <div className="flex flex-wrap gap-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une commande…" />
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -70,7 +75,7 @@ export default function CommandesClients() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtrees.map((c) => (
+            {filtered.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">#{c.id}</td>
                 <td className="px-4 py-3 text-slate-600">{c.client_nom}</td>

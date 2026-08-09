@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import SearchableSelect from '../components/SearchableSelect'
+import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { useSearch } from '../lib/useSearch'
 import { STATUT_VALIDATION_DEPENSE_LABELS, type Depense, type StatutValidationDepense } from '../types'
 
 const STATUT_TONE: Record<StatutValidationDepense, 'success' | 'warning'> = {
@@ -20,7 +23,9 @@ export default function Depenses() {
     api.depenses().then(setDepenses)
   }, [])
 
-  const filtrees = boutiqueId ? depenses.filter((d) => d.boutique_id === boutiqueId) : depenses
+  const preFiltrees = boutiqueId ? depenses.filter((d) => d.boutique_id === boutiqueId) : depenses
+  const getFields = useCallback((d: Depense) => [d.categorie, d.auteur], [])
+  const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
 
   return (
     <div className="space-y-6">
@@ -34,18 +39,18 @@ export default function Depenses() {
         </button>
       </div>
 
-      <select
-        value={boutiqueId}
-        onChange={(e) => setBoutiqueId(e.target.value)}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-      >
-        <option value="">Toutes les boutiques</option>
-        {boutiques.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.nom}
-          </option>
-        ))}
-      </select>
+      <div className="flex flex-wrap gap-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une dépense…" />
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -61,7 +66,7 @@ export default function Depenses() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtrees.map((d) => (
+            {filtered.map((d) => (
               <tr key={d.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(d.boutique_id)}</td>
                 <td className="px-4 py-3 font-medium text-slate-900">{d.categorie}</td>
