@@ -1,74 +1,199 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import Tabs from '../components/Tabs'
 import { formatDate } from '../lib/format'
-import type { Boutique, LigneStock } from '../types'
+import { useBoutiques } from '../lib/useBoutiques'
+import {
+  MOTIF_MOUVEMENT_LABELS,
+  type LigneEcartInventaire,
+  type LigneMouvementStock,
+  type LigneStock,
+  type StatutEcartInventaire,
+  type StatutStock,
+} from '../types'
+
+const STATUT_STOCK_TONE: Record<StatutStock, 'danger' | 'warning' | 'success'> = {
+  critique: 'danger',
+  a_surveiller: 'warning',
+  correct: 'success',
+}
+const STATUT_STOCK_LABELS: Record<StatutStock, string> = {
+  critique: 'Critique',
+  a_surveiller: 'À surveiller',
+  correct: 'Correct',
+}
+
+const ECART_TONE: Record<StatutEcartInventaire, 'success' | 'warning' | 'danger'> = {
+  conforme: 'success',
+  corrige: 'warning',
+  a_investiguer: 'danger',
+}
+const ECART_LABELS: Record<StatutEcartInventaire, string> = {
+  conforme: 'Conforme',
+  corrige: 'Corrigé',
+  a_investiguer: 'Écart à investiguer',
+}
 
 export default function Stock() {
-  const [boutiques, setBoutiques] = useState<Boutique[]>([])
+  const [vue, setVue] = useState<'etat' | 'historique'>('etat')
   const [boutiqueId, setBoutiqueId] = useState('')
   const [lignes, setLignes] = useState<LigneStock[]>([])
-
-  useEffect(() => {
-    api.boutiques().then(setBoutiques)
-  }, [])
+  const [mouvements, setMouvements] = useState<LigneMouvementStock[]>([])
+  const [ecarts, setEcarts] = useState<LigneEcartInventaire[]>([])
+  const { boutiques, nomBoutique } = useBoutiques()
 
   useEffect(() => {
     api.stock(boutiqueId || undefined).then(setLignes)
   }, [boutiqueId])
 
-  const boutiquesById = Object.fromEntries(boutiques.map((b) => [b.id, b]))
+  useEffect(() => {
+    if (vue === 'historique') {
+      api.mouvementsStock(boutiqueId || undefined).then(setMouvements)
+      api.inventaire(boutiqueId || undefined).then(setEcarts)
+    }
+  }, [vue, boutiqueId])
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Stock par boutique</h1>
-        <p className="text-sm text-slate-500">Quantités disponibles, réservées et seuils d'alerte</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Gestion des stocks</h1>
+          <p className="text-sm text-slate-500">Suivi des quantités par boutique et par produit</p>
+        </div>
+        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+          + Ajouter un produit en stock
+        </button>
       </div>
 
-      <select
-        value={boutiqueId}
-        onChange={(e) => setBoutiqueId(e.target.value)}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
-      >
-        <option value="">Toutes les boutiques</option>
-        {boutiques.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.nom}
-          </option>
-        ))}
-      </select>
+      <div className="flex items-center justify-between">
+        <Tabs
+          tabs={[
+            { key: 'etat', label: 'État actuel' },
+            { key: 'historique', label: 'Historique & inventaire' },
+          ]}
+          active={vue}
+          onChange={(k) => setVue(k as 'etat' | 'historique')}
+        />
+        <select
+          value={boutiqueId}
+          onChange={(e) => setBoutiqueId(e.target.value)}
+          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+        >
+          <option value="">Toutes les boutiques</option>
+          {boutiques.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.nom}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Produit</th>
-              <th className="px-4 py-3">Boutique</th>
-              <th className="px-4 py-3">Disponible</th>
-              <th className="px-4 py-3">Réservé</th>
-              <th className="px-4 py-3">Seuil d'alerte</th>
-              <th className="px-4 py-3">Dernier mouvement</th>
-              <th className="px-4 py-3">Statut</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {lignes.map((l) => (
-              <tr key={`${l.boutique_id}-${l.produit_id}`} className={l.en_alerte ? 'bg-amber-50/60' : 'hover:bg-slate-50'}>
-                <td className="px-4 py-3 font-medium text-slate-900">{l.produit_nom}</td>
-                <td className="px-4 py-3 text-slate-600">{boutiquesById[l.boutique_id]?.nom ?? l.boutique_id}</td>
-                <td className="px-4 py-3">{l.quantite_disponible}</td>
-                <td className="px-4 py-3 text-slate-600">{l.quantite_reservee}</td>
-                <td className="px-4 py-3 text-slate-600">{l.seuil_alerte}</td>
-                <td className="px-4 py-3 text-slate-500">{formatDate(l.derniere_mouvement)}</td>
-                <td className="px-4 py-3">
-                  {l.en_alerte ? <Badge tone="warning">Alerte</Badge> : <Badge tone="success">OK</Badge>}
-                </td>
+      {vue === 'etat' ? (
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Produit</th>
+                <th className="px-4 py-3">Boutique</th>
+                <th className="px-4 py-3 text-right">Disponible</th>
+                <th className="px-4 py-3 text-right">Réservé</th>
+                <th className="px-4 py-3 text-right">Seuil d'alerte</th>
+                <th className="px-4 py-3">Statut</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {lignes.map((l) => (
+                <tr key={`${l.boutique_id}-${l.produit_id}`} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">{l.produit_nom}</td>
+                  <td className="px-4 py-3 text-slate-600">{nomBoutique(l.boutique_id)}</td>
+                  <td className="px-4 py-3 text-right">{l.quantite_disponible}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{l.quantite_reservee}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{l.seuil_alerte}</td>
+                  <td className="px-4 py-3">
+                    <Badge tone={STATUT_STOCK_TONE[l.statut]}>{STATUT_STOCK_LABELS[l.statut]}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <section>
+            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
+              Journal des mouvements de stock
+            </h2>
+            <p className="mb-3 text-xs text-slate-400">
+              Chaque mouvement est rattaché à un motif obligatoire, une boutique et un opérateur.
+            </p>
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Produit</th>
+                    <th className="px-4 py-3">Boutique</th>
+                    <th className="px-4 py-3">Motif</th>
+                    <th className="px-4 py-3">Opérateur</th>
+                    <th className="px-4 py-3 text-right">Quantité</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {mouvements.map((m) => (
+                    <tr key={m.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 text-slate-500">{formatDate(m.horodatage)}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{m.produit_nom}</td>
+                      <td className="px-4 py-3 text-slate-600">{nomBoutique(m.boutique_id)}</td>
+                      <td className="px-4 py-3 text-slate-600">{MOTIF_MOUVEMENT_LABELS[m.motif]}</td>
+                      <td className="px-4 py-3 text-slate-600">{m.operateur}</td>
+                      <td className={`px-4 py-3 text-right font-medium ${m.quantite >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {m.quantite >= 0 ? `+${m.quantite}` : m.quantite}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">
+              Rapprochement d'inventaire — stock théorique vs réel
+            </h2>
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Produit</th>
+                    <th className="px-4 py-3">Boutique</th>
+                    <th className="px-4 py-3 text-right">Théorique</th>
+                    <th className="px-4 py-3 text-right">Réel</th>
+                    <th className="px-4 py-3 text-right">Écart</th>
+                    <th className="px-4 py-3">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {ecarts.map((e) => (
+                    <tr key={e.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{e.produit_nom}</td>
+                      <td className="px-4 py-3 text-slate-600">{nomBoutique(e.boutique_id)}</td>
+                      <td className="px-4 py-3 text-right">{e.theorique}</td>
+                      <td className="px-4 py-3 text-right">{e.reel}</td>
+                      <td className={`px-4 py-3 text-right font-medium ${e.ecart === 0 ? 'text-slate-400' : 'text-red-600'}`}>
+                        {e.ecart}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge tone={ECART_TONE[e.statut]}>{ECART_LABELS[e.statut]}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }

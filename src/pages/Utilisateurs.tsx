@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import { formatDate } from '../lib/format'
-import { ROLE_LABELS, type DroitAcces, type PermissionLigne, type Role, type Utilisateur } from '../types'
+import { ROLE_LABELS, type Boutique, type DroitAcces, type PermissionLigne, type Role, type Utilisateur } from '../types'
 
 const DROIT_LABELS: Record<DroitAcces, string> = {
   complet: '✔',
@@ -23,17 +23,32 @@ const ROLES: Role[] = ['vendeur', 'caissier', 'gerant', 'responsable_achats', 'a
 export default function Utilisateurs() {
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const [permissions, setPermissions] = useState<PermissionLigne[]>([])
+  const [boutiques, setBoutiques] = useState<Boutique[]>([])
 
   useEffect(() => {
     api.utilisateurs().then(setUtilisateurs)
     api.permissions().then(setPermissions)
+    api.boutiques().then(setBoutiques)
   }, [])
+
+  function rattachement(u: Utilisateur): string {
+    if (u.boutique_ids.length === boutiques.length && boutiques.length > 0) return 'Toutes boutiques'
+    const names = u.boutique_ids
+      .map((id) => boutiques.find((b) => b.id === id)?.nom)
+      .filter(Boolean)
+    return names.join(', ') || '—'
+  }
 
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Utilisateurs & droits</h1>
-        <p className="text-sm text-slate-500">{utilisateurs.length} comptes actifs sur le réseau</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Utilisateurs & droits</h1>
+          <p className="text-sm text-slate-500">Comptes, rôles et matrice de permissions</p>
+        </div>
+        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+          + Ajouter un utilisateur
+        </button>
       </div>
 
       <section>
@@ -45,7 +60,7 @@ export default function Utilisateurs() {
                 <th className="px-4 py-3">Nom</th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Rôle</th>
-                <th className="px-4 py-3">Boutiques</th>
+                <th className="px-4 py-3">Boutique(s) de rattachement</th>
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3">Dernière connexion</th>
               </tr>
@@ -60,7 +75,7 @@ export default function Utilisateurs() {
                   <td className="px-4 py-3">
                     <Badge>{ROLE_LABELS[u.role]}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{u.boutique_ids.length}</td>
+                  <td className="px-4 py-3 text-slate-600">{rattachement(u)}</td>
                   <td className="px-4 py-3">
                     <Badge tone={u.statut === 'actif' ? 'success' : 'default'}>{u.statut}</Badge>
                   </td>
@@ -74,12 +89,12 @@ export default function Utilisateurs() {
 
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Matrice indicative des droits par rôle
+          Matrice des droits par rôle
         </h2>
-        <p className="mb-3 text-xs text-slate-400">À affiner en atelier de cadrage (CDC §3.3)</p>
+        <p className="mb-3 text-xs text-slate-400">Permissions granulaires par module et par action — modifiable sans développement</p>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-blue-900 text-xs uppercase tracking-wide text-white">
+            <thead className="border-b border-slate-200 bg-teal-800 text-xs uppercase tracking-wide text-white">
               <tr>
                 <th className="px-4 py-3">Module / Action</th>
                 {ROLES.map((r) => (

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
-import { SECTEUR_LABELS, STATUT_LABELS, type Boutique, type StatutBoutique } from '../types'
+import { SECTEUR_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type StatutBoutique } from '../types'
 
 const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
   active: 'success',
@@ -27,9 +27,14 @@ export function BoutiquesListe() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Boutiques</h1>
-        <p className="text-sm text-slate-500">{boutiques.length} boutiques dans le réseau</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Boutiques</h1>
+          <p className="text-sm text-slate-500">Réseau de points de vente — identité, localisation, statut</p>
+        </div>
+        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+          + Ajouter une boutique
+        </button>
       </div>
 
       <div className="flex gap-3">
@@ -51,7 +56,7 @@ export function BoutiquesListe() {
           className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
         >
           <option value="">Tous les statuts</option>
-          {Object.entries(STATUT_LABELS).map(([value, label]) => (
+          {Object.entries(STATUT_BOUTIQUE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
@@ -65,7 +70,7 @@ export function BoutiquesListe() {
             <tr>
               <th className="px-4 py-3">Boutique</th>
               <th className="px-4 py-3">Localisation</th>
-              <th className="px-4 py-3">Secteurs</th>
+              <th className="px-4 py-3">Secteur(s)</th>
               <th className="px-4 py-3">Responsable</th>
               <th className="px-4 py-3">Statut</th>
             </tr>
@@ -74,7 +79,7 @@ export function BoutiquesListe() {
             {filtered.map((b) => (
               <tr key={b.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3">
-                  <Link to={`/boutiques/${b.id}`} className="font-medium text-blue-900 hover:underline">
+                  <Link to={`/boutiques/${b.id}`} className="font-medium text-teal-800 hover:underline">
                     {b.nom}
                   </Link>
                 </td>
@@ -90,7 +95,7 @@ export function BoutiquesListe() {
                 </td>
                 <td className="px-4 py-3 text-slate-600">{b.responsable}</td>
                 <td className="px-4 py-3">
-                  <Badge tone={STATUT_TONE[b.statut]}>{STATUT_LABELS[b.statut]}</Badge>
+                  <Badge tone={STATUT_TONE[b.statut]}>{STATUT_BOUTIQUE_LABELS[b.statut]}</Badge>
                 </td>
               </tr>
             ))}
@@ -114,23 +119,27 @@ export function BoutiqueFiche() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/boutiques" className="text-sm text-blue-900 hover:underline">
+        <Link to="/boutiques" className="text-sm text-teal-800 hover:underline">
           ← Retour aux boutiques
         </Link>
         <div className="mt-2 flex items-center gap-3">
           <h1 className="text-2xl font-bold text-slate-900">{boutique.nom}</h1>
-          <Badge tone={STATUT_TONE[boutique.statut]}>{STATUT_LABELS[boutique.statut]}</Badge>
+          <Badge tone={STATUT_TONE[boutique.statut]}>{STATUT_BOUTIQUE_LABELS[boutique.statut]}</Badge>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {boutique.secteurs.map((s) => (
+            <Badge key={s}>{SECTEUR_LABELS[s]}</Badge>
+          ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Identité</h2>
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Localisation</h2>
           <dl className="space-y-2 text-sm">
-            <Field label="Adresse" value={boutique.adresse} />
             <Field label="Quartier" value={boutique.quartier} />
             <Field label="Commune" value={boutique.commune} />
-            <Field label="Ville / Région" value={boutique.ville} />
+            <Field label="Ville / région" value={boutique.ville} />
             <Field label="Téléphone" value={boutique.telephone} />
           </dl>
         </section>
@@ -140,14 +149,6 @@ export function BoutiqueFiche() {
           <dl className="space-y-2 text-sm">
             <Field label="Responsable" value={boutique.responsable} />
             <Field label="Horaires" value={boutique.horaires} />
-            <div>
-              <dt className="text-slate-500">Secteurs exploités</dt>
-              <dd className="mt-1 flex flex-wrap gap-1">
-                {boutique.secteurs.map((s) => (
-                  <Badge key={s}>{SECTEUR_LABELS[s]}</Badge>
-                ))}
-              </dd>
-            </div>
           </dl>
         </section>
       </div>
