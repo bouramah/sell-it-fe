@@ -18,7 +18,7 @@ export default function Transferts() {
 
   useEffect(() => {
     api.transferts().then(setTransferts)
-    api.catalogue().then(setProduits)
+    api.produits().then(setProduits)
   }, [])
 
   const nomProduit = (id: string) => produits.find((p) => p.id === id)?.nom ?? id

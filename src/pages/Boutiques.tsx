@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
-import { SECTEUR_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type StatutBoutique } from '../types'
+import Modal from '../components/Modal'
+import { SECTEUR_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type Secteur, type StatutBoutique } from '../types'
+import type { BoutiqueInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
   active: 'success',
@@ -10,20 +12,102 @@ const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
   en_creation: 'warning',
 }
 
+const SECTEURS: Secteur[] = ['habillement', 'alimentation_generale', 'electronique_electromenager']
+
+const EMPTY_FORM: BoutiqueInput = {
+  nom: '',
+  secteurs: [],
+  quartier: '',
+  commune: '',
+  ville: '',
+  horaires: '',
+  responsable: '',
+  statut: 'en_creation',
+  telephone: '',
+}
+
 export function BoutiquesListe() {
   const [boutiques, setBoutiques] = useState<Boutique[]>([])
   const [villeFiltre, setVilleFiltre] = useState('')
   const [statutFiltre, setStatutFiltre] = useState('')
+  const [editing, setEditing] = useState<Boutique | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState<BoutiqueInput>(EMPTY_FORM)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  function refresh() {
     api.boutiques().then(setBoutiques)
-  }, [])
+  }
+
+  useEffect(refresh, [])
 
   const villes = useMemo(() => Array.from(new Set(boutiques.map((b) => b.ville))).sort(), [boutiques])
 
   const filtered = boutiques.filter(
     (b) => (!villeFiltre || b.ville === villeFiltre) && (!statutFiltre || b.statut === statutFiltre)
   )
+
+  function openCreate() {
+    setForm(EMPTY_FORM)
+    setError(null)
+    setCreating(true)
+  }
+
+  function openEdit(b: Boutique) {
+    setForm({
+      nom: b.nom,
+      secteurs: b.secteurs,
+      quartier: b.quartier,
+      commune: b.commune,
+      ville: b.ville,
+      horaires: b.horaires,
+      responsable: b.responsable,
+      statut: b.statut,
+      telephone: b.telephone,
+    })
+    setError(null)
+    setEditing(b)
+  }
+
+  function toggleSecteur(s: Secteur) {
+    setForm((f) => ({
+      ...f,
+      secteurs: f.secteurs.includes(s) ? f.secteurs.filter((x) => x !== s) : [...f.secteurs, s],
+    }))
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (form.secteurs.length === 0) {
+      setError('Sélectionnez au moins un secteur.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      if (editing) {
+        await api.modifierBoutique(editing.id, form)
+      } else {
+        await api.creerBoutique(form)
+      }
+      setEditing(null)
+      setCreating(false)
+      refresh()
+    } catch {
+      setError("Échec de l'enregistrement — vérifiez les champs.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(b: Boutique) {
+    if (!confirm(`Supprimer la boutique "${b.nom}" ?`)) return
+    await api.supprimerBoutique(b.id)
+    refresh()
+  }
+
+  const showModal = creating || editing !== null
 
   return (
     <div className="space-y-6">
@@ -32,7 +116,10 @@ export function BoutiquesListe() {
           <h1 className="text-2xl font-bold text-slate-900">Boutiques</h1>
           <p className="text-sm text-slate-500">Réseau de points de vente — identité, localisation, statut</p>
         </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+        <button
+          onClick={openCreate}
+          className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+        >
           + Ajouter une boutique
         </button>
       </div>
@@ -73,6 +160,7 @@ export function BoutiquesListe() {
               <th className="px-4 py-3">Secteur(s)</th>
               <th className="px-4 py-3">Responsable</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -97,11 +185,154 @@ export function BoutiquesListe() {
                 <td className="px-4 py-3">
                   <Badge tone={STATUT_TONE[b.statut]}>{STATUT_BOUTIQUE_LABELS[b.statut]}</Badge>
                 </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-3">
+                    <button onClick={() => openEdit(b)} className="font-medium text-teal-700 hover:underline">
+                      Modifier
+                    </button>
+                    <button onClick={() => handleDelete(b)} className="font-medium text-red-600 hover:underline">
+                      Suppr.
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {showModal && (
+        <Modal
+          title={editing ? `Modifier ${editing.nom}` : 'Ajouter une boutique'}
+          onClose={() => {
+            setCreating(false)
+            setEditing(null)
+          }}
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Nom</label>
+              <input
+                value={form.nom}
+                onChange={(e) => setForm({ ...form, nom: e.target.value })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Secteur(s) exploité(s)</label>
+              <div className="flex flex-wrap gap-3">
+                {SECTEURS.map((s) => (
+                  <label key={s} className="flex items-center gap-1.5 text-sm text-slate-700">
+                    <input type="checkbox" checked={form.secteurs.includes(s)} onChange={() => toggleSecteur(s)} />
+                    {SECTEUR_LABELS[s]}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Quartier</label>
+                <input
+                  value={form.quartier}
+                  onChange={(e) => setForm({ ...form, quartier: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Commune</label>
+                <input
+                  value={form.commune}
+                  onChange={(e) => setForm({ ...form, commune: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Ville</label>
+                <input
+                  value={form.ville}
+                  onChange={(e) => setForm({ ...form, ville: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Responsable</label>
+                <input
+                  value={form.responsable}
+                  onChange={(e) => setForm({ ...form, responsable: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Téléphone</label>
+                <input
+                  value={form.telephone}
+                  onChange={(e) => setForm({ ...form, telephone: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Horaires</label>
+                <input
+                  value={form.horaires}
+                  onChange={(e) => setForm({ ...form, horaires: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Statut</label>
+                <select
+                  value={form.statut}
+                  onChange={(e) => setForm({ ...form, statut: e.target.value as StatutBoutique })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  {Object.entries(STATUT_BOUTIQUE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreating(false)
+                  setEditing(null)
+                }}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+              >
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

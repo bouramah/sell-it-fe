@@ -28,23 +28,82 @@ import type {
   TransfertStock,
   Utilisateur,
 } from '../types'
+import { getToken } from '../lib/auth'
+import type {
+  BoutiqueInput,
+  LoginRequest,
+  ProduitInput,
+  TokenResponse,
+  UtilisateurConnecte,
+  UtilisateurInput,
+} from '../types/write'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`)
-  if (!res.ok) {
-    throw new Error(`Erreur API ${res.status} sur ${path}`)
+class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
   }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function handle<T>(res: Response, path: string): Promise<T> {
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const body = await res.json()
+      detail = body.detail ?? ''
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, detail || `Erreur API ${res.status} sur ${path}`)
+  }
+  if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }
 
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() })
+  return handle<T>(res, path)
+}
+
+async function sendJson<T>(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  return handle<T>(res, path)
+}
+
 export const api = {
+  login: (payload: LoginRequest) => sendJson<TokenResponse>('POST', '/auth/login', payload),
+  moi: () => getJson<UtilisateurConnecte>('/auth/moi'),
+
   boutiques: () => getJson<Boutique[]>('/boutiques'),
   boutique: (id: string) => getJson<Boutique>(`/boutiques/${id}`),
+  creerBoutique: (payload: BoutiqueInput) => sendJson<Boutique>('POST', '/boutiques', payload),
+  modifierBoutique: (id: string, payload: Partial<BoutiqueInput>) => sendJson<Boutique>('PUT', `/boutiques/${id}`, payload),
+  supprimerBoutique: (id: string) => sendJson<void>('DELETE', `/boutiques/${id}`),
+
   fournisseurs: () => getJson<Fournisseur[]>('/fournisseurs'),
+
   utilisateurs: () => getJson<Utilisateur[]>('/utilisateurs'),
+  creerUtilisateur: (payload: UtilisateurInput) => sendJson<Utilisateur>('POST', '/utilisateurs', payload),
+  modifierUtilisateur: (id: string, payload: Partial<UtilisateurInput>) => sendJson<Utilisateur>('PUT', `/utilisateurs/${id}`, payload),
+  supprimerUtilisateur: (id: string) => sendJson<void>('DELETE', `/utilisateurs/${id}`),
   permissions: () => getJson<PermissionLigne[]>('/permissions'),
+
+  produits: (q?: string) => getJson<Produit[]>(`/produits${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  creerProduit: (payload: ProduitInput) => sendJson<Produit>('POST', '/produits', payload),
+  modifierProduit: (id: string, payload: Partial<ProduitInput>) => sendJson<Produit>('PUT', `/produits/${id}`, payload),
+  supprimerProduit: (id: string) => sendJson<void>('DELETE', `/produits/${id}`),
 
   clients: () => getJson<ClientEntity[]>('/clients'),
   paiementsClients: () => getJson<PaiementClient[]>('/paiements-clients'),
@@ -69,7 +128,6 @@ export const api = {
   comptabilite: () => getJson<ComptabiliteConsolidee>('/comptabilite'),
   promotions: () => getJson<Promotion[]>('/promotions'),
 
-  catalogue: (q?: string) => getJson<Produit[]>(`/ia/catalogue${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   previsions: () => getJson<SuggestionAvecProduit[]>('/ia/previsions'),
   reporting: () => getJson<ReportingIntelligent>('/ia/reporting'),
   chatbotConfig: () => getJson<Record<string, boolean>>('/ia/chatbot/config'),

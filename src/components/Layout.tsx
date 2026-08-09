@@ -1,4 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useAuth } from '../lib/AuthContext'
+import { ROLE_LABELS } from '../types'
 
 interface NavItem {
   to: string
@@ -63,6 +65,14 @@ const sections: NavSection[] = [
 ]
 
 export default function Layout() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    logout()
+    navigate('/login')
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex">
@@ -104,8 +114,16 @@ export default function Layout() {
             ))}
           </nav>
           <div className="mt-6 border-t border-slate-100 pt-4 px-2">
-            <div className="text-sm font-semibold text-slate-900">Sékou Condé</div>
-            <div className="text-xs text-slate-500">Administrateur — Siège</div>
+            <div className="text-sm font-semibold text-slate-900">
+              {user ? `${user.prenom} ${user.nom}` : '—'}
+            </div>
+            <div className="text-xs text-slate-500">{user ? ROLE_LABELS[user.role] : ''}</div>
+            <button
+              onClick={handleLogout}
+              className="mt-2 text-xs font-medium text-slate-500 hover:text-red-600"
+            >
+              Déconnexion
+            </button>
           </div>
         </aside>
         <main className="flex-1 p-8">
