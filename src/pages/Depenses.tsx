@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_VALIDATION_DEPENSE_LABELS, type Depense, type StatutValidationDepense } from '../types'
+import type { DepenseInput } from '../types/write'
+import { useAuth } from '../lib/AuthContext'
 
 const STATUT_TONE: Record<StatutValidationDepense, 'success' | 'warning'> = {
   auto_validee: 'success',
@@ -14,18 +17,70 @@ const STATUT_TONE: Record<StatutValidationDepense, 'success' | 'warning'> = {
   validee_siege: 'success',
 }
 
+function todayIso() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function emptyForm(auteur: string): DepenseInput {
+  return { boutique_id: '', categorie: '', auteur, date: todayIso(), montant: 0, justificatif_disponible: false }
+}
+
 export default function Depenses() {
+  const { user } = useAuth()
   const [depenses, setDepenses] = useState<Depense[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
 
-  useEffect(() => {
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState<DepenseInput>(emptyForm(''))
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [validatingId, setValidatingId] = useState<string | null>(null)
+
+  function refresh() {
     api.depenses().then(setDepenses)
-  }, [])
+  }
+
+  useEffect(refresh, [])
 
   const preFiltrees = boutiqueId ? depenses.filter((d) => d.boutique_id === boutiqueId) : depenses
   const getFields = useCallback((d: Depense) => [d.categorie, d.auteur], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
+
+  function openCreate() {
+    setForm(emptyForm(user ? `${user.prenom} ${user.nom}` : ''))
+    setError(null)
+    setCreating(true)
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (form.montant <= 0) {
+      setError('Le montant doit être positif.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await api.creerDepense(form)
+      setCreating(false)
+      refresh()
+    } catch {
+      setError("Échec de l'enregistrement de la dépense.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleValider(d: Depense) {
+    setValidatingId(d.id)
+    try {
+      await api.validerDepense(d.id)
+      refresh()
+    } finally {
+      setValidatingId(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -34,7 +89,7 @@ export default function Depenses() {
           <h1 className="text-2xl font-bold text-slate-900">Dépenses</h1>
           <p className="text-sm text-slate-500">Dépenses de boutique et circuit de validation</p>
         </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
           + Enregistrer une dépense
         </button>
       </div>
@@ -75,6 +130,15 @@ export default function Depenses() {
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(d.montant)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={STATUT_TONE[d.statut_validation]}>{STATUT_VALIDATION_DEPENSE_LABELS[d.statut_validation]}</Badge>
+                  {d.statut_validation === 'en_attente' && (
+                    <button
+                      onClick={() => handleValider(d)}
+                      disabled={validatingId === d.id}
+                      className="ml-2 text-xs font-medium text-teal-700 hover:underline disabled:opacity-50"
+                    >
+                      {validatingId === d.id ? 'Validation…' : 'Valider'}
+                    </button>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {d.justificatif_disponible ? (
@@ -85,9 +149,97 @@ export default function Depenses() {
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                  Aucune dépense.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {creating && (
+        <Modal title="Enregistrer une dépense" onClose={() => setCreating(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
+              <SearchableSelect
+                value={form.boutique_id}
+                onChange={(v) => setForm({ ...form, boutique_id: v })}
+                options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Catégorie</label>
+                <input
+                  value={form.categorie}
+                  onChange={(e) => setForm({ ...form, categorie: e.target.value })}
+                  placeholder="Ex : Transport, Électricité…"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Montant</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.montant}
+                  onChange={(e) => setForm({ ...form, montant: Number(e.target.value) })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Auteur</label>
+                <input
+                  value={form.auteur}
+                  onChange={(e) => setForm({ ...form, auteur: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Date</label>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={form.justificatif_disponible ?? false}
+                onChange={(e) => setForm({ ...form, justificatif_disponible: e.target.checked })}
+                className="rounded border-slate-300"
+              />
+              Justificatif disponible
+            </label>
+            <p className="text-xs text-slate-400">
+              Au-delà de 500 000 GNF, la dépense passera automatiquement « en attente » de validation par le siège.
+            </p>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }
