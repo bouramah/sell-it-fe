@@ -17,6 +17,7 @@ import {
   type Produit,
   type StatutEcartInventaire,
   type StatutStock,
+  type Utilisateur,
 } from '../types'
 import type { MouvementStockInput, StockLigneInput } from '../types/write'
 
@@ -58,6 +59,7 @@ export default function Stock() {
   const [mouvements, setMouvements] = useState<LigneMouvementStock[]>([])
   const [ecarts, setEcarts] = useState<LigneEcartInventaire[]>([])
   const [produits, setProduits] = useState<Produit[]>([])
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [creatingLigne, setCreatingLigne] = useState(false)
@@ -67,6 +69,7 @@ export default function Stock() {
 
   const [creatingMvt, setCreatingMvt] = useState(false)
   const [mvtForm, setMvtForm] = useState<MouvementStockInput>(EMPTY_MVT_FORM)
+  const [operateurManuel, setOperateurManuel] = useState(false)
   const [mvtError, setMvtError] = useState<string | null>(null)
   const [savingMvt, setSavingMvt] = useState(false)
 
@@ -84,6 +87,7 @@ export default function Stock() {
   }, [vue, boutiqueId])
   useEffect(() => {
     api.produits().then(setProduits)
+    api.utilisateurs().then(setUtilisateurs)
   }, [])
 
   const getLigneFields = useCallback((l: LigneStock) => [l.produit_nom, nomBoutique(l.boutique_id)], [nomBoutique])
@@ -121,6 +125,7 @@ export default function Stock() {
 
   function openCreateMvt() {
     setMvtForm(EMPTY_MVT_FORM)
+    setOperateurManuel(false)
     setMvtError(null)
     setCreatingMvt(true)
   }
@@ -246,7 +251,7 @@ export default function Stock() {
                       <td className="px-4 py-3 font-medium text-slate-900">{m.produit_nom}</td>
                       <td className="px-4 py-3 text-slate-600">{nomBoutique(m.boutique_id)}</td>
                       <td className="px-4 py-3 text-slate-600">{MOTIF_MOUVEMENT_LABELS[m.motif]}</td>
-                      <td className="px-4 py-3 text-slate-600">{m.operateur}</td>
+                      <td className="px-4 py-3 text-slate-600">{m.operateur || <span className="text-slate-400">—</span>}</td>
                       <td className={`px-4 py-3 text-right font-medium ${m.quantite >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                         {m.quantite >= 0 ? `+${m.quantite}` : m.quantite}
                       </td>
@@ -374,8 +379,34 @@ export default function Stock() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Opérateur</label>
-                <input value={mvtForm.operateur} onChange={(e) => setMvtForm({ ...mvtForm, operateur: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" required />
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">Opérateur (optionnel)</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOperateurManuel((m) => !m)
+                      setMvtForm({ ...mvtForm, operateur: '' })
+                    }}
+                    className="text-xs font-medium text-teal-700 hover:underline"
+                  >
+                    {operateurManuel ? 'Liste' : 'Manuel'}
+                  </button>
+                </div>
+                {operateurManuel ? (
+                  <input
+                    value={mvtForm.operateur}
+                    onChange={(e) => setMvtForm({ ...mvtForm, operateur: e.target.value })}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                ) : (
+                  <SearchableSelect
+                    value={mvtForm.operateur}
+                    onChange={(v) => setMvtForm({ ...mvtForm, operateur: v })}
+                    options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom}` }))}
+                    allowEmpty="Non renseigné"
+                    placeholder="Non renseigné"
+                  />
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
