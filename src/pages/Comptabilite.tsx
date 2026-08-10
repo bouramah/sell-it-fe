@@ -33,7 +33,7 @@ export default function Comptabilite() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="CA consolidé — mois" value={formatGNF(data.ca_consolide)} />
+        <StatCard label="CA consolidé — cumulé" value={formatGNF(data.ca_consolide)} />
         <StatCard label="Marge nette consolidée" value={formatGNF(data.marge_nette_consolidee)} />
         <StatCard label="Dépenses consolidées" value={formatGNF(data.depenses_consolidees)} />
         <StatCard label="Marge nette moyenne" value={`${data.marge_nette_moyenne_pct} %`} />
@@ -41,9 +41,11 @@ export default function Comptabilite() {
 
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Compte de résultat par boutique — mois en cours
+          Compte de résultat par boutique — cumulé depuis le début
         </h2>
-        <p className="mb-3 text-xs text-slate-400">Conforme SYSCOHADA — généré automatiquement, non modifiable</p>
+        <p className="mb-3 text-xs text-slate-400">
+          Calculé en temps réel à partir des commandes, réceptions fournisseurs et dépenses enregistrées — non modifiable
+        </p>
         <div className="mb-3">
           <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une boutique…" />
         </div>
