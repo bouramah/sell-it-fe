@@ -207,6 +207,11 @@ export const api = {
   comptabilite: () => getJson<ComptabiliteConsolidee>('/comptabilite'),
   promotions: () => getJson<Promotion[]>('/promotions'),
 
+  urlBonCommande: (commandeId: string) => `${API_BASE}/commandes-fournisseurs/${commandeId}/bon-commande.pdf`,
+  urlBonReception: (commandeId: string) => `${API_BASE}/commandes-fournisseurs/${commandeId}/bon-reception.pdf`,
+  urlFacture: (commandeId: string) => `${API_BASE}/commandes-clients/${commandeId}/facture.pdf`,
+  urlRecu: (paiementId: string) => `${API_BASE}/paiements-clients/${paiementId}/recu.pdf`,
+
   previsions: () => getJson<SuggestionAvecProduit[]>('/ia/previsions'),
   reporting: () => getJson<ReportingIntelligent>('/ia/reporting'),
   chatbotConfig: () => getJson<Record<string, boolean>>('/ia/chatbot/config'),

@@ -45,6 +45,7 @@ export default function PaiementsClients() {
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3 text-right">Montant</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -58,6 +59,11 @@ export default function PaiementsClients() {
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(p.montant)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={TONE[p.statut]}>{STATUT_PAIEMENT_LABELS[p.statut]}</Badge>
+                </td>
+                <td className="px-4 py-3">
+                  <a href={api.urlRecu(p.id)} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                    Reçu
+                  </a>
                 </td>
               </tr>
             ))}

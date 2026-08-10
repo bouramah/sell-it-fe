@@ -239,6 +239,9 @@ export default function CommandesClients() {
                         Modifier
                       </button>
                     )}
+                    <a href={api.urlFacture(c.id)} target="_blank" rel="noreferrer" className="font-medium text-slate-500 hover:underline">
+                      Facture
+                    </a>
                   </div>
                 </td>
               </tr>
