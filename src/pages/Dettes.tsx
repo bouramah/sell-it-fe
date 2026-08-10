@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
@@ -8,7 +9,17 @@ import Tabs from '../components/Tabs'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_DETTE_LABELS, type LigneDette, type StatutDette, type TiersType } from '../types'
+import {
+  MODE_PAIEMENT_LABELS,
+  STATUT_DETTE_LABELS,
+  type Client,
+  type Fournisseur,
+  type LigneDette,
+  type ModePaiement,
+  type StatutDette,
+  type TiersType,
+} from '../types'
+import type { DetteInput, RemboursementInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutDette, 'success' | 'warning' | 'danger'> = {
   en_cours: 'warning',
@@ -16,21 +27,90 @@ const STATUT_TONE: Record<StatutDette, 'success' | 'warning' | 'danger'> = {
   soldee: 'success',
 }
 
+function todayIso() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export default function Dettes() {
   const [tiers, setTiers] = useState<TiersType>('client')
   const [dettes, setDettes] = useState<LigneDette[]>([])
+  const [clients, setClients] = useState<Client[]>([])
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
 
-  useEffect(() => {
+  function refresh() {
     api.dettes(tiers).then(setDettes)
-  }, [tiers])
+  }
+
+  useEffect(refresh, [tiers])
+  useEffect(() => {
+    api.clients().then(setClients)
+    api.fournisseurs().then(setFournisseurs)
+  }, [])
 
   const preFiltrees = boutiqueId ? dettes.filter((d) => d.boutique_id === boutiqueId) : dettes
   const getFields = useCallback((d: LigneDette) => [d.tiers_nom], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
   const totalRestant = filtered.reduce((sum, d) => sum + d.solde_restant, 0)
   const enRetard = filtered.filter((d) => d.statut === 'en_retard').length
+
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState<DetteInput>({ tiers_type: tiers, tiers_nom: '', boutique_id: '', montant_initial: 0, echeance: todayIso() })
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  function openCreate() {
+    setForm({ tiers_type: tiers, tiers_nom: '', boutique_id: '', montant_initial: 0, echeance: todayIso() })
+    setError(null)
+    setCreating(true)
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      await api.creerDette(form)
+      setCreating(false)
+      refresh()
+    } catch {
+      setError('Échec de l\'enregistrement de la dette.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const [encaissant, setEncaissant] = useState<LigneDette | null>(null)
+  const [remb, setRemb] = useState<RemboursementInput>({ montant: 0, mode_paiement: 'especes', operateur: '' })
+  const [rembError, setRembError] = useState<string | null>(null)
+  const [rembSaving, setRembSaving] = useState(false)
+
+  function openEncaisser(d: LigneDette) {
+    setRemb({ montant: d.solde_restant, mode_paiement: 'especes', operateur: '' })
+    setRembError(null)
+    setEncaissant(d)
+  }
+
+  async function handleSubmitRemb(e: FormEvent) {
+    e.preventDefault()
+    if (!encaissant) return
+    if (remb.montant <= 0 || remb.montant > encaissant.solde_restant) {
+      setRembError('Le montant doit être positif et ne pas dépasser le solde restant.')
+      return
+    }
+    setRembSaving(true)
+    setRembError(null)
+    try {
+      await api.encaisserRemboursement(encaissant.id, remb)
+      setEncaissant(null)
+      refresh()
+    } catch {
+      setRembError('Échec de l\'encaissement.')
+    } finally {
+      setRembSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -41,7 +121,7 @@ export default function Dettes() {
             {tiers === 'client' ? 'Suivi des impayés clients par boutique' : 'Suivi des dettes envers les fournisseurs'}
           </p>
         </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
           + Enregistrer une dette
         </button>
       </div>
@@ -85,6 +165,7 @@ export default function Dettes() {
               <th className="px-4 py-3 text-right">Solde restant</th>
               <th className="px-4 py-3">Échéance</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -98,11 +179,149 @@ export default function Dettes() {
                 <td className="px-4 py-3">
                   <Badge tone={STATUT_TONE[d.statut]}>{STATUT_DETTE_LABELS[d.statut]}</Badge>
                 </td>
+                <td className="px-4 py-3 text-right">
+                  {d.statut !== 'soldee' && (
+                    <button
+                      onClick={() => openEncaisser(d)}
+                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Encaisser
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                  Aucune dette.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {creating && (
+        <Modal title="Enregistrer une dette" onClose={() => setCreating(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Type</label>
+              <SearchableSelect
+                value={form.tiers_type}
+                onChange={(v) => setForm({ ...form, tiers_type: v as TiersType, tiers_nom: '' })}
+                options={[
+                  { value: 'client', label: 'Client (créance)' },
+                  { value: 'fournisseur', label: 'Fournisseur (dette)' },
+                ]}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">{form.tiers_type === 'client' ? 'Client' : 'Fournisseur'}</label>
+              <SearchableSelect
+                value={form.tiers_nom}
+                onChange={(v) => setForm({ ...form, tiers_nom: v })}
+                options={(form.tiers_type === 'client' ? clients.map((c) => c.nom) : fournisseurs.map((f) => f.nom)).map((nom) => ({
+                  value: nom,
+                  label: nom,
+                }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
+              <SearchableSelect
+                value={form.boutique_id}
+                onChange={(v) => setForm({ ...form, boutique_id: v })}
+                options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Montant initial (GNF)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.montant_initial}
+                  onChange={(e) => setForm({ ...form, montant_initial: Number(e.target.value) })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Échéance</label>
+                <input
+                  type="date"
+                  value={form.echeance}
+                  onChange={(e) => setForm({ ...form, echeance: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {encaissant && (
+        <Modal title={`Encaisser — ${encaissant.tiers_nom}`} onClose={() => setEncaissant(null)}>
+          <form onSubmit={handleSubmitRemb} className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Solde restant : <span className="font-semibold text-slate-900">{formatGNF(encaissant.solde_restant)}</span>
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Montant encaissé (GNF)</label>
+              <input
+                type="number"
+                min={0}
+                max={encaissant.solde_restant}
+                value={remb.montant}
+                onChange={(e) => setRemb({ ...remb, montant: Number(e.target.value) })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Mode de paiement</label>
+              <SearchableSelect
+                value={remb.mode_paiement}
+                onChange={(v) => setRemb({ ...remb, mode_paiement: v as ModePaiement })}
+                options={(Object.keys(MODE_PAIEMENT_LABELS) as ModePaiement[]).map((m) => ({ value: m, label: MODE_PAIEMENT_LABELS[m] }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Opérateur</label>
+              <input
+                value={remb.operateur}
+                onChange={(e) => setRemb({ ...remb, operateur: e.target.value })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            {rembError && <p className="text-sm text-red-600">{rembError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setEncaissant(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={rembSaving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {rembSaving ? 'Encaissement…' : 'Encaisser'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }
