@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
@@ -18,6 +18,9 @@ export default function PaiementsFournisseurs() {
   const [paiements, setPaiements] = useState<PaiementFournisseur[]>([])
   const { nomBoutique } = useBoutiques()
   const [payingId, setPayingId] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadTargetRef = useRef<string | null>(null)
 
   function refresh() {
     api.paiementsFournisseurs().then(setPaiements)
@@ -38,6 +41,35 @@ export default function PaiementsFournisseurs() {
     }
   }
 
+  function openFilePicker(p: PaiementFournisseur) {
+    uploadTargetRef.current = p.id
+    fileInputRef.current?.click()
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const targetId = uploadTargetRef.current
+    e.target.value = ''
+    if (!file || !targetId) return
+    setUploadingId(targetId)
+    try {
+      await api.uploaderDocumentPaiementFournisseur(targetId, file)
+      refresh()
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
+  async function handleRemoveDocument(p: PaiementFournisseur) {
+    setUploadingId(p.id)
+    try {
+      await api.supprimerDocumentPaiementFournisseur(p.id)
+      refresh()
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -46,6 +78,8 @@ export default function PaiementsFournisseurs() {
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
+
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -58,6 +92,7 @@ export default function PaiementsFournisseurs() {
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3 text-right">Montant</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3">Facture / reçu</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -81,6 +116,30 @@ export default function PaiementsFournisseurs() {
                     </button>
                   )}
                 </td>
+                <td className="px-4 py-3">
+                  {p.document_url ? (
+                    <div className="flex items-center gap-2">
+                      <a href={`${SERVER_BASE}${p.document_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                        Voir
+                      </a>
+                      <button
+                        onClick={() => handleRemoveDocument(p)}
+                        disabled={uploadingId === p.id}
+                        className="text-slate-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => openFilePicker(p)}
+                      disabled={uploadingId === p.id}
+                      className="font-medium text-teal-700 hover:underline disabled:opacity-50"
+                    >
+                      {uploadingId === p.id ? 'Envoi…' : 'Joindre'}
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -88,7 +147,8 @@ export default function PaiementsFournisseurs() {
       </div>
       <p className="text-xs text-slate-400">
         Cette liste est générée automatiquement : un paiement « en attente » apparaît dès qu'une commande fournisseur
-        est intégralement réceptionnée, ou lors de l'encaissement d'un remboursement de dette fournisseur.
+        est intégralement réceptionnée, ou lors de l'encaissement d'un remboursement de dette fournisseur. Joignez la
+        facture ou le reçu remis par le fournisseur dès que vous l'avez.
       </p>
     </div>
   )

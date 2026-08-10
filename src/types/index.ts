@@ -91,6 +91,7 @@ export interface PaiementFournisseur {
   date: string
   montant: number
   statut: StatutPaiement
+  document_url: string | null
 }
 
 export interface Produit {

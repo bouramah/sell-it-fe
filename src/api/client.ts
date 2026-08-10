@@ -149,6 +149,8 @@ export const api = {
   paiementsClients: () => getJson<PaiementClient[]>('/paiements-clients'),
   paiementsFournisseurs: () => getJson<PaiementFournisseur[]>('/paiements-fournisseurs'),
   payerPaiementFournisseur: (id: string) => sendJson<PaiementFournisseur>('POST', `/paiements-fournisseurs/${id}/payer`),
+  uploaderDocumentPaiementFournisseur: (id: string, file: File) => sendFile<PaiementFournisseur>(`/paiements-fournisseurs/${id}/document`, file),
+  supprimerDocumentPaiementFournisseur: (id: string) => sendJson<PaiementFournisseur>('DELETE', `/paiements-fournisseurs/${id}/document`),
 
   stock: (boutiqueId?: string) => getJson<LigneStock[]>(`/stock${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
   creerLigneStock: (payload: StockLigneInput) => sendJson<LigneStock>('POST', '/stock', payload),
