@@ -190,6 +190,8 @@ export const api = {
   livraisons: () => getJson<Livraison[]>('/livraisons'),
   creerLivraison: (payload: LivraisonInput) => sendJson<Livraison>('POST', '/livraisons', payload),
   modifierStatutLivraison: (id: string, statut: string) => sendJson<Livraison>('PUT', `/livraisons/${id}/statut`, { statut }),
+  uploaderPreuveLivraison: (id: string, file: File) => sendFile<Livraison>(`/livraisons/${id}/preuve`, file),
+  supprimerPreuveLivraison: (id: string) => sendJson<Livraison>('DELETE', `/livraisons/${id}/preuve`),
 
   depenses: () => getJson<Depense[]>('/depenses'),
   creerDepense: (payload: DepenseInput) => sendJson<Depense>('POST', '/depenses', payload),

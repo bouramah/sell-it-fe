@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { api } from '../api/client'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
@@ -35,6 +35,9 @@ export default function Livraisons() {
   const [details, setDetails] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadTargetRef = useRef<string | null>(null)
 
   function refresh() {
     api.livraisons().then(setLivraisons)
@@ -94,6 +97,35 @@ export default function Livraisons() {
     refresh()
   }
 
+  function openFilePicker(l: Livraison) {
+    uploadTargetRef.current = l.id
+    fileInputRef.current?.click()
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const targetId = uploadTargetRef.current
+    e.target.value = ''
+    if (!file || !targetId) return
+    setUploadingId(targetId)
+    try {
+      await api.uploaderPreuveLivraison(targetId, file)
+      refresh()
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
+  async function handleRemovePreuve(l: Livraison) {
+    setUploadingId(l.id)
+    try {
+      await api.supprimerPreuveLivraison(l.id)
+      refresh()
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -118,6 +150,8 @@ export default function Livraisons() {
           />
         </div>
       </div>
+
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -153,10 +187,34 @@ export default function Livraisons() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  {l.preuve_disponible ? (
-                    <span className="text-teal-700 font-medium">Voir preuve</span>
+                  {l.preuve_url ? (
+                    <div className="flex items-center gap-2">
+                      <a href={`${SERVER_BASE}${l.preuve_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                        Voir
+                      </a>
+                      <button
+                        onClick={() => openFilePicker(l)}
+                        disabled={uploadingId === l.id}
+                        className="text-xs font-medium text-slate-500 hover:underline disabled:opacity-50"
+                      >
+                        Remplacer
+                      </button>
+                      <button
+                        onClick={() => handleRemovePreuve(l)}
+                        disabled={uploadingId === l.id}
+                        className="text-slate-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   ) : (
-                    <span className="text-slate-400">Aucune preuve</span>
+                    <button
+                      onClick={() => openFilePicker(l)}
+                      disabled={uploadingId === l.id}
+                      className="font-medium text-teal-700 hover:underline disabled:opacity-50"
+                    >
+                      {uploadingId === l.id ? 'Envoi…' : 'Ajouter'}
+                    </button>
                   )}
                 </td>
               </tr>

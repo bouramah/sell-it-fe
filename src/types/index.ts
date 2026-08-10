@@ -214,7 +214,7 @@ export interface Livraison {
   adresse: string
   creneau: string
   statut: StatutLivraison
-  preuve_disponible: boolean
+  preuve_url: string | null
 }
 
 export interface Depense {
