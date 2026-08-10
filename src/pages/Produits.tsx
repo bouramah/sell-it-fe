@@ -9,7 +9,7 @@ import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
-import type { Produit } from '../types'
+import type { Produit, ReferentielItem } from '../types'
 import type { ProduitInput } from '../types/write'
 
 const EMPTY_FORM: ProduitInput = {
@@ -34,6 +34,7 @@ export function ProduitsListe() {
   const [form, setForm] = useState<ProduitInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [categoriesRef, setCategoriesRef] = useState<ReferentielItem[]>([])
   const { secteurs, nomSecteur } = useSecteurs()
 
   function refresh() {
@@ -41,6 +42,9 @@ export function ProduitsListe() {
   }
 
   useEffect(refresh, [])
+  useEffect(() => {
+    api.referentiels().then((r) => setCategoriesRef(r.categories_produits ?? []))
+  }, [])
 
   const preFiltres = secteurFiltre ? produits.filter((p) => p.secteur === secteurFiltre) : produits
   const getFields = useCallback((p: Produit) => [p.nom, p.categorie, p.code_barres], [])
@@ -197,10 +201,10 @@ export function ProduitsListe() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Catégorie</label>
-                <input
+                <SearchableSelect
                   value={form.categorie}
-                  onChange={(e) => setForm({ ...form, categorie: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(v) => setForm({ ...form, categorie: v })}
+                  options={categoriesRef.map((c) => ({ value: c.nom, label: c.nom }))}
                   required
                 />
               </div>

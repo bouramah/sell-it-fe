@@ -12,6 +12,7 @@ const CATEGORIE_LABELS: Record<string, string> = {
   canaux_vente: 'Canaux de vente',
   modes_paiement: 'Modes de paiement',
   categories_depenses: 'Catégories de dépenses',
+  categories_produits: 'Catégories de produits',
   caisses_comptes: 'Caisses & comptes',
   livreurs: 'Livreurs',
 }
@@ -24,6 +25,7 @@ const CATEGORIE_ORDER = [
   'canaux_vente',
   'modes_paiement',
   'categories_depenses',
+  'categories_produits',
   'caisses_comptes',
   'livreurs',
 ]
