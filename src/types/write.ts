@@ -142,6 +142,24 @@ export interface CorrectionReceptionInput {
   lignes: CorrectionReceptionLigneInput[]
 }
 
+export interface PaiementClientInput {
+  client_nom: string
+  commande_id?: string | null
+  boutique_id: string
+  mode_paiement: ModePaiement
+  montant: number
+  date_paiement?: string | null
+}
+
+export interface PaiementFournisseurInput {
+  fournisseur_nom: string
+  commande_id?: string | null
+  boutique_id: string
+  mode_paiement: ModePaiement
+  montant: number
+  date_paiement?: string | null
+}
+
 export interface LivraisonInput {
   commande_id: string
   livreur: string
