@@ -42,8 +42,8 @@ export default function Catalogue() {
             className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-teal-300"
           >
             <div className="mb-3 flex h-24 items-center justify-center overflow-hidden rounded-md bg-slate-100">
-              {p.image_url ? (
-                <img src={`${SERVER_BASE}${p.image_url}`} alt={p.nom} className="h-full w-full object-cover" />
+              {p.images[0]?.url ? (
+                <img src={`${SERVER_BASE}${p.images[0].url}`} alt={p.nom} className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xs text-slate-400">photo produit</span>
               )}

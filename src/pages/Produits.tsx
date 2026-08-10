@@ -22,7 +22,7 @@ const EMPTY_FORM: ProduitInput = {
   date_peremption: null,
 }
 
-function imageSrc(url: string | null): string | null {
+function imageSrc(url: string | null | undefined): string | null {
   return url ? `${SERVER_BASE}${url}` : null
 }
 
@@ -130,8 +130,8 @@ export function ProduitsListe() {
             className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-teal-300"
           >
             <div className="mb-3 flex h-24 items-center justify-center overflow-hidden rounded-md bg-slate-100">
-              {imageSrc(p.image_url) ? (
-                <img src={imageSrc(p.image_url)!} alt={p.nom} className="h-full w-full object-cover" />
+              {imageSrc(p.images[0]?.url) ? (
+                <img src={imageSrc(p.images[0]?.url)!} alt={p.nom} className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xs text-slate-400">photo produit</span>
               )}
@@ -285,6 +285,8 @@ export function ProduitFiche() {
   const [produit, setProduit] = useState<Produit | null>(null)
   const [stock, setStock] = useState<{ boutique_id: string; produit_nom: string; quantite_disponible: number; quantite_reservee: number; seuil_alerte: number; statut: string }[]>([])
   const [uploading, setUploading] = useState(false)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [current, setCurrent] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { nomBoutique } = useBoutiques()
   const { nomSecteur } = useSecteurs()
@@ -297,13 +299,22 @@ export function ProduitFiche() {
 
   useEffect(refresh, [id])
 
+  const images = produit?.images ?? []
+  const activeImage = images[current]
+
+  function goTo(index: number) {
+    if (images.length === 0) return
+    setCurrent((index + images.length) % images.length)
+  }
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !id) return
     setUploading(true)
     try {
-      const updated = await api.uploaderImageProduit(id, file)
+      const updated = await api.ajouterImageProduit(id, file)
       setProduit(updated)
+      setCurrent(updated.images.length - 1)
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -311,9 +322,15 @@ export function ProduitFiche() {
   }
 
   async function handleRemoveImage() {
-    if (!id) return
-    const updated = await api.supprimerImageProduit(id)
-    setProduit(updated)
+    if (!id || !activeImage) return
+    setRemovingId(activeImage.id)
+    try {
+      const updated = await api.supprimerImageProduit(id, activeImage.id)
+      setProduit(updated)
+      setCurrent((c) => Math.min(c, Math.max(updated.images.length - 1, 0)))
+    } finally {
+      setRemovingId(null)
+    }
   }
 
   if (!produit) return <div className="text-slate-400">Chargement…</div>
@@ -332,24 +349,60 @@ export function ProduitFiche() {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:col-span-1">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Image</h2>
-          <div className="mb-3 flex h-48 items-center justify-center overflow-hidden rounded-md bg-slate-100">
-            {imageSrc(produit.image_url) ? (
-              <img src={imageSrc(produit.image_url)!} alt={produit.nom} className="h-full w-full object-cover" />
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">
+            Images {images.length > 0 && <span className="text-slate-400">({current + 1}/{images.length})</span>}
+          </h2>
+          <div className="relative mb-3 flex h-48 items-center justify-center overflow-hidden rounded-md bg-slate-100">
+            {imageSrc(activeImage?.url) ? (
+              <img src={imageSrc(activeImage?.url)!} alt={produit.nom} className="h-full w-full object-cover" />
             ) : (
               <span className="text-sm text-slate-400">Aucune image</span>
             )}
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={() => goTo(current - 1)}
+                  className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-1 text-slate-700 shadow hover:bg-white"
+                  aria-label="Image précédente"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={() => goTo(current + 1)}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-1 text-slate-700 shadow hover:bg-white"
+                  aria-label="Image suivante"
+                >
+                  ›
+                </button>
+              </>
+            )}
           </div>
+          {images.length > 1 && (
+            <div className="mb-3 flex justify-center gap-1.5">
+              {images.map((img, i) => (
+                <button
+                  key={img.id}
+                  onClick={() => setCurrent(i)}
+                  className={`h-1.5 w-1.5 rounded-full ${i === current ? 'bg-teal-700' : 'bg-slate-300'}`}
+                  aria-label={`Voir l'image ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
           <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="hidden" id="produit-image-input" />
           <div className="flex gap-2">
             <label
               htmlFor="produit-image-input"
               className="flex-1 cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-center text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              {uploading ? 'Envoi…' : produit.image_url ? "Changer l'image" : 'Ajouter une image'}
+              {uploading ? 'Envoi…' : 'Ajouter une image'}
             </label>
-            {produit.image_url && (
-              <button onClick={handleRemoveImage} className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
+            {activeImage && (
+              <button
+                onClick={handleRemoveImage}
+                disabled={removingId === activeImage.id}
+                className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+              >
                 Retirer
               </button>
             )}

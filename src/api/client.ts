@@ -142,8 +142,8 @@ export const api = {
   creerProduit: (payload: ProduitInput) => sendJson<Produit>('POST', '/produits', payload),
   modifierProduit: (id: string, payload: Partial<ProduitInput>) => sendJson<Produit>('PUT', `/produits/${id}`, payload),
   supprimerProduit: (id: string) => sendJson<void>('DELETE', `/produits/${id}`),
-  uploaderImageProduit: (id: string, file: File) => sendFile<Produit>(`/produits/${id}/image`, file),
-  supprimerImageProduit: (id: string) => sendJson<Produit>('DELETE', `/produits/${id}/image`),
+  ajouterImageProduit: (id: string, file: File) => sendFile<Produit>(`/produits/${id}/images`, file),
+  supprimerImageProduit: (produitId: string, imageId: string) => sendJson<Produit>('DELETE', `/produits/${produitId}/images/${imageId}`),
 
   clients: () => getJson<ClientEntity[]>('/clients'),
   creerClient: (payload: ClientInput) => sendJson<ClientEntity>('POST', '/clients', payload),

@@ -99,6 +99,12 @@ export interface PaiementFournisseur {
   document_url: string | null
 }
 
+export interface ProduitImage {
+  id: string
+  url: string
+  position: number
+}
+
 export interface Produit {
   id: string
   nom: string
@@ -108,7 +114,7 @@ export interface Produit {
   unite: string
   code_barres: string
   date_peremption: string | null
-  image_url: string | null
+  images: ProduitImage[]
 }
 
 export interface LigneStock {
