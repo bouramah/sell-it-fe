@@ -3,6 +3,8 @@ import type {
   Caisse,
   Client as ClientEntity,
   CommandeClient,
+  CommandeClientDetail,
+  CommandeFournisseurDetail,
   ComptabiliteConsolidee,
   ConversationMessage,
   DashboardConsolide,
@@ -42,6 +44,7 @@ import type {
   MouvementCaisseInput,
   MouvementStockInput,
   ProduitInput,
+  ReceptionInput,
   ReferentielInput,
   RemboursementInput,
   StockLigneInput,
@@ -160,12 +163,16 @@ export const api = {
   creerMouvementCaisse: (payload: MouvementCaisseInput) => sendJson<LigneMouvementCaisse>('POST', '/caisse/mouvements', payload),
 
   commandesClients: () => getJson<CommandeClient[]>('/commandes-clients'),
-  creerCommandeClient: (payload: CommandeClientInput) => sendJson<CommandeClient>('POST', '/commandes-clients', payload),
+  commandeClient: (id: string) => getJson<CommandeClientDetail>(`/commandes-clients/${id}`),
+  creerCommandeClient: (payload: CommandeClientInput) => sendJson<CommandeClientDetail>('POST', '/commandes-clients', payload),
   modifierCommandeClient: (id: string, statut: string) => sendJson<CommandeClient>('PUT', `/commandes-clients/${id}`, { statut }),
 
   commandesFournisseurs: () => getJson<LigneCommandeFournisseur[]>('/commandes-fournisseurs'),
-  creerCommandeFournisseur: (payload: CommandeFournisseurInput) => sendJson<LigneCommandeFournisseur>('POST', '/commandes-fournisseurs', payload),
+  commandeFournisseur: (id: string) => getJson<CommandeFournisseurDetail>(`/commandes-fournisseurs/${id}`),
+  creerCommandeFournisseur: (payload: CommandeFournisseurInput) => sendJson<CommandeFournisseurDetail>('POST', '/commandes-fournisseurs', payload),
   modifierCommandeFournisseur: (id: string, statut: string) => sendJson<LigneCommandeFournisseur>('PUT', `/commandes-fournisseurs/${id}`, { statut }),
+  receptionnerCommandeFournisseur: (id: string, payload: ReceptionInput) =>
+    sendJson<CommandeFournisseurDetail>('POST', `/commandes-fournisseurs/${id}/reception`, payload),
 
   livraisons: () => getJson<Livraison[]>('/livraisons'),
   depenses: () => getJson<Depense[]>('/depenses'),

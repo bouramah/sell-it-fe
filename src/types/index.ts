@@ -171,6 +171,18 @@ export interface CommandeClient {
   statut: StatutCommandeClient
 }
 
+export interface ArticleCommande {
+  id: string
+  produit_id: string
+  produit_nom: string
+  quantite: number
+  prix_unitaire: number
+}
+
+export interface CommandeClientDetail extends CommandeClient {
+  articles: ArticleCommande[]
+}
+
 export interface LigneCommandeFournisseur {
   id: string
   fournisseur_id: string
@@ -178,6 +190,14 @@ export interface LigneCommandeFournisseur {
   date_attendue: string
   montant: number
   statut: StatutCommandeFournisseur
+}
+
+export interface ArticleCommandeFournisseur extends ArticleCommande {
+  quantite_recue: number
+}
+
+export interface CommandeFournisseurDetail extends LigneCommandeFournisseur {
+  articles: ArticleCommandeFournisseur[]
 }
 
 export interface Livraison {

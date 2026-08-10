@@ -11,11 +11,13 @@ import {
   CANAL_LABELS,
   MODE_PAIEMENT_LABELS,
   STATUT_COMMANDE_CLIENT_LABELS,
+  type ArticleCommande,
   type Client,
   type CommandeClient,
+  type Produit,
   type StatutCommandeClient,
 } from '../types'
-import type { CommandeClientInput } from '../types/write'
+import type { ArticleCommandeInput, CommandeClientInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutCommandeClient, 'default' | 'success' | 'warning' | 'danger'> = {
   en_attente: 'default',
@@ -28,29 +30,52 @@ const STATUT_TONE: Record<StatutCommandeClient, 'default' | 'success' | 'warning
 
 const STATUTS: StatutCommandeClient[] = ['en_attente', 'confirmee', 'en_preparation', 'en_livraison', 'livree', 'annulee']
 
-const EMPTY_FORM: CommandeClientInput = {
+interface ArticleFormLigne {
+  key: number
+  produit_id: string
+  quantite: number
+  prix_unitaire: number
+}
+
+let ligneKeySeq = 0
+function nouvelleLigne(): ArticleFormLigne {
+  return { key: ++ligneKeySeq, produit_id: '', quantite: 1, prix_unitaire: 0 }
+}
+
+interface FormEnTete {
+  client_nom: string
+  boutique_id: string
+  canal: CommandeClientInput['canal']
+  mode_paiement: CommandeClientInput['mode_paiement']
+}
+
+const EMPTY_FORM: FormEnTete = {
   client_nom: '',
   boutique_id: '',
   canal: 'boutique',
   mode_paiement: 'especes',
-  montant: 0,
-  statut: 'en_attente',
 }
 
 export default function CommandesClients() {
   const [commandes, setCommandes] = useState<CommandeClient[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [produits, setProduits] = useState<Produit[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState<CommandeClientInput>(EMPTY_FORM)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [lignes, setLignes] = useState<ArticleFormLigne[]>([nouvelleLigne()])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const [viewing, setViewing] = useState<{ commande: CommandeClient; articles: ArticleCommande[] } | null>(null)
+  const [viewLoading, setViewLoading] = useState(false)
 
   function refresh() {
     api.commandesClients().then(setCommandes)
     api.clients().then(setClients)
+    api.produits().then(setProduits)
   }
 
   useEffect(refresh, [])
@@ -59,22 +84,50 @@ export default function CommandesClients() {
   const getFields = useCallback((c: CommandeClient) => [c.id, c.client_nom], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
 
+  const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
+
   function openCreate() {
     setForm(EMPTY_FORM)
+    setLignes([nouvelleLigne()])
     setError(null)
     setCreating(true)
   }
 
+  function updateLigne(key: number, patch: Partial<ArticleFormLigne>) {
+    setLignes((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
+  }
+
+  function selectProduitForLigne(key: number, produitId: string) {
+    const p = produits.find((x) => x.id === produitId)
+    updateLigne(key, { produit_id: produitId, prix_unitaire: p ? p.prix : 0 })
+  }
+
+  function addLigne() {
+    setLignes((ls) => [...ls, nouvelleLigne()])
+  }
+
+  function removeLigne(key: number) {
+    setLignes((ls) => (ls.length > 1 ? ls.filter((l) => l.key !== key) : ls))
+  }
+
+  const totalForm = lignes.reduce((sum, l) => sum + l.quantite * l.prix_unitaire, 0)
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (lignes.some((l) => !l.produit_id || l.quantite <= 0)) {
+      setError('Chaque article doit avoir un produit et une quantité positive.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
-      await api.creerCommandeClient(form)
+      const articles: ArticleCommandeInput[] = lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite, prix_unitaire: l.prix_unitaire }))
+      const payload: CommandeClientInput = { ...form, statut: 'en_attente', articles }
+      await api.creerCommandeClient(payload)
       setCreating(false)
       refresh()
     } catch {
-      setError("Échec de la création de la commande.")
+      setError('Échec de la création de la commande.')
     } finally {
       setSaving(false)
     }
@@ -83,6 +136,17 @@ export default function CommandesClients() {
   async function handleStatutChange(c: CommandeClient, statut: StatutCommandeClient) {
     await api.modifierCommandeClient(c.id, statut)
     refresh()
+  }
+
+  async function openView(c: CommandeClient) {
+    setViewLoading(true)
+    setViewing({ commande: c, articles: [] })
+    try {
+      const detail = await api.commandeClient(c.id)
+      setViewing({ commande: c, articles: detail.articles })
+    } finally {
+      setViewLoading(false)
+    }
   }
 
   return (
@@ -121,6 +185,7 @@ export default function CommandesClients() {
               <th className="px-4 py-3">Paiement</th>
               <th className="px-4 py-3 text-right">Montant</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -144,11 +209,16 @@ export default function CommandesClients() {
                     <Badge tone={STATUT_TONE[c.statut]}>{STATUT_COMMANDE_CLIENT_LABELS[c.statut]}</Badge>
                   </div>
                 </td>
+                <td className="px-4 py-3">
+                  <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
+                    Voir
+                  </button>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
                   Aucune commande.
                 </td>
               </tr>
@@ -201,17 +271,62 @@ export default function CommandesClients() {
                 />
               </div>
             </div>
+
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Montant (GNF)</label>
-              <input
-                type="number"
-                min={0}
-                value={form.montant}
-                onChange={(e) => setForm({ ...form, montant: Number(e.target.value) })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Articles commandés</label>
+                <button type="button" onClick={addLigne} className="text-xs font-medium text-teal-700 hover:underline">
+                  + Ajouter un article
+                </button>
+              </div>
+              <div className="space-y-2">
+                {lignes.map((l) => (
+                  <div key={l.key} className="flex items-end gap-2 rounded-md border border-slate-200 p-2">
+                    <div className="flex-1">
+                      <SearchableSelect
+                        value={l.produit_id}
+                        onChange={(v) => selectProduitForLigne(l.key, v)}
+                        options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                        placeholder="Produit…"
+                        required
+                      />
+                    </div>
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        min={1}
+                        value={l.quantite}
+                        onChange={(e) => updateLigne(l.key, { quantite: Number(e.target.value) })}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm"
+                        placeholder="Qté"
+                        required
+                      />
+                    </div>
+                    <div className="w-28">
+                      <input
+                        type="number"
+                        min={0}
+                        value={l.prix_unitaire}
+                        onChange={(e) => updateLigne(l.key, { prix_unitaire: Number(e.target.value) })}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm"
+                        placeholder="Prix unit."
+                        required
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeLigne(l.key)}
+                      disabled={lignes.length === 1}
+                      className="px-2 py-2 text-sm text-red-600 hover:underline disabled:opacity-30"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-right text-sm font-semibold text-slate-900">Total : {formatGNF(totalForm)}</p>
             </div>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
@@ -222,6 +337,45 @@ export default function CommandesClients() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {viewing && (
+        <Modal title={`Commande #${viewing.commande.id} — ${viewing.commande.client_nom}`} onClose={() => setViewing(null)}>
+          {viewLoading ? (
+            <p className="text-sm text-slate-500">Chargement…</p>
+          ) : viewing.articles.length === 0 ? (
+            <p className="text-sm text-slate-400">Aucun article enregistré pour cette commande.</p>
+          ) : (
+            <div className="overflow-hidden rounded-md border border-slate-200">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2">Produit</th>
+                    <th className="px-3 py-2 text-right">Qté</th>
+                    <th className="px-3 py-2 text-right">Prix unit.</th>
+                    <th className="px-3 py-2 text-right">Sous-total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {viewing.articles.map((a) => (
+                    <tr key={a.id}>
+                      <td className="px-3 py-2">{a.produit_nom || nomProduit(a.produit_id)}</td>
+                      <td className="px-3 py-2 text-right">{a.quantite}</td>
+                      <td className="px-3 py-2 text-right">{formatGNF(a.prix_unitaire)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatGNF(a.quantite * a.prix_unitaire)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200 bg-slate-50">
+                    <td colSpan={3} className="px-3 py-2 text-right font-semibold">Total</td>
+                    <td className="px-3 py-2 text-right font-semibold">{formatGNF(viewing.commande.montant)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </Modal>
       )}
     </div>

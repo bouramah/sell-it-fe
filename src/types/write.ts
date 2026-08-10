@@ -94,21 +94,37 @@ export interface MouvementCaisseInput {
   montant: number
 }
 
+export interface ArticleCommandeInput {
+  produit_id: string
+  quantite: number
+  prix_unitaire?: number | null
+}
+
 export interface CommandeClientInput {
   client_nom: string
   boutique_id: string
   canal: CanalCommande
   mode_paiement: ModePaiement
-  montant: number
   statut: StatutCommandeClient
+  articles: ArticleCommandeInput[]
 }
 
 export interface CommandeFournisseurInput {
   fournisseur_id: string
   boutique_id: string
   date_attendue: string
-  montant: number
   statut: StatutCommandeFournisseur
+  articles: ArticleCommandeInput[]
+}
+
+export interface ReceptionLigneInput {
+  produit_id: string
+  quantite: number
+}
+
+export interface ReceptionInput {
+  operateur: string
+  lignes: ReceptionLigneInput[]
 }
 
 export interface DetteInput {

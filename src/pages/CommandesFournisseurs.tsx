@@ -9,13 +9,16 @@ import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
 import {
   STATUT_COMMANDE_FOURNISSEUR_LABELS,
+  type ArticleCommandeFournisseur,
   type Fournisseur,
   type LigneCommandeFournisseur,
+  type Produit,
   type StatutCommandeFournisseur,
 } from '../types'
-import type { CommandeFournisseurInput } from '../types/write'
+import type { ArticleCommandeInput, CommandeFournisseurInput, ReceptionLigneInput } from '../types/write'
+import { useAuth } from '../lib/AuthContext'
 
-const STATUT_TONE: Record<StatutCommandeFournisseur, 'default' | 'success' | 'warning'> = {
+const STATUT_TONE: Record<StatutCommandeFournisseur, 'default' | 'warning' | 'success'> = {
   brouillon: 'warning',
   validee: 'default',
   envoyee: 'default',
@@ -33,37 +36,60 @@ const STATUTS: StatutCommandeFournisseur[] = [
   'cloturee',
 ]
 
+interface ArticleFormLigne {
+  key: number
+  produit_id: string
+  quantite: number
+  prix_unitaire: number
+}
+
+let ligneKeySeq = 0
+function nouvelleLigne(): ArticleFormLigne {
+  return { key: ++ligneKeySeq, produit_id: '', quantite: 1, prix_unitaire: 0 }
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
-const EMPTY_FORM: CommandeFournisseurInput = {
+const EMPTY_FORM = {
   fournisseur_id: '',
   boutique_id: '',
   date_attendue: todayIso(),
-  montant: 0,
-  statut: 'brouillon',
 }
 
 export default function CommandesFournisseurs() {
+  const { user } = useAuth()
   const [commandes, setCommandes] = useState<LigneCommandeFournisseur[]>([])
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
+  const [produits, setProduits] = useState<Produit[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState<CommandeFournisseurInput>(EMPTY_FORM)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [lignes, setLignes] = useState<ArticleFormLigne[]>([nouvelleLigne()])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const [viewing, setViewing] = useState<{ commande: LigneCommandeFournisseur; articles: ArticleCommandeFournisseur[] } | null>(null)
+  const [viewLoading, setViewLoading] = useState(false)
+
+  const [receiving, setReceiving] = useState<{ commande: LigneCommandeFournisseur; articles: ArticleCommandeFournisseur[] } | null>(null)
+  const [receptionQtes, setReceptionQtes] = useState<Record<string, number>>({})
+  const [receptionError, setReceptionError] = useState<string | null>(null)
+  const [receptionSaving, setReceptionSaving] = useState(false)
 
   function refresh() {
     api.commandesFournisseurs().then(setCommandes)
     api.fournisseurs().then(setFournisseurs)
+    api.produits().then(setProduits)
   }
 
   useEffect(refresh, [])
 
   const nomFournisseur = useCallback((id: string) => fournisseurs.find((f) => f.id === id)?.nom ?? id, [fournisseurs])
+  const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
   const preFiltrees = boutiqueId ? commandes.filter((c) => c.boutique_id === boutiqueId) : commandes
   const getFields = useCallback(
     (c: LigneCommandeFournisseur) => [c.id, nomFournisseur(c.fournisseur_id)],
@@ -73,16 +99,42 @@ export default function CommandesFournisseurs() {
 
   function openCreate() {
     setForm(EMPTY_FORM)
+    setLignes([nouvelleLigne()])
     setError(null)
     setCreating(true)
   }
 
+  function updateLigne(key: number, patch: Partial<ArticleFormLigne>) {
+    setLignes((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
+  }
+
+  function selectProduitForLigne(key: number, produitId: string) {
+    const p = produits.find((x) => x.id === produitId)
+    updateLigne(key, { produit_id: produitId, prix_unitaire: p ? p.prix : 0 })
+  }
+
+  function addLigne() {
+    setLignes((ls) => [...ls, nouvelleLigne()])
+  }
+
+  function removeLigne(key: number) {
+    setLignes((ls) => (ls.length > 1 ? ls.filter((l) => l.key !== key) : ls))
+  }
+
+  const totalForm = lignes.reduce((sum, l) => sum + l.quantite * l.prix_unitaire, 0)
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (lignes.some((l) => !l.produit_id || l.quantite <= 0)) {
+      setError('Chaque article doit avoir un produit et une quantité positive.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
-      await api.creerCommandeFournisseur(form)
+      const articles: ArticleCommandeInput[] = lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite, prix_unitaire: l.prix_unitaire }))
+      const payload: CommandeFournisseurInput = { ...form, statut: 'brouillon', articles }
+      await api.creerCommandeFournisseur(payload)
       setCreating(false)
       refresh()
     } catch {
@@ -95,6 +147,53 @@ export default function CommandesFournisseurs() {
   async function handleStatutChange(c: LigneCommandeFournisseur, statut: StatutCommandeFournisseur) {
     await api.modifierCommandeFournisseur(c.id, statut)
     refresh()
+  }
+
+  async function openView(c: LigneCommandeFournisseur) {
+    setViewLoading(true)
+    setViewing({ commande: c, articles: [] })
+    try {
+      const detail = await api.commandeFournisseur(c.id)
+      setViewing({ commande: c, articles: detail.articles })
+    } finally {
+      setViewLoading(false)
+    }
+  }
+
+  async function openReceive(c: LigneCommandeFournisseur) {
+    setReceptionError(null)
+    setReceiving({ commande: c, articles: [] })
+    const detail = await api.commandeFournisseur(c.id)
+    setReceiving({ commande: c, articles: detail.articles })
+    const initial: Record<string, number> = {}
+    for (const a of detail.articles) {
+      const restant = a.quantite - a.quantite_recue
+      if (restant > 0) initial[a.produit_id] = restant
+    }
+    setReceptionQtes(initial)
+  }
+
+  async function handleSubmitReception(e: FormEvent) {
+    e.preventDefault()
+    if (!receiving) return
+    const lignes: ReceptionLigneInput[] = Object.entries(receptionQtes)
+      .filter(([, qte]) => qte > 0)
+      .map(([produit_id, quantite]) => ({ produit_id, quantite }))
+    if (lignes.length === 0) {
+      setReceptionError('Indiquez au moins une quantité reçue.')
+      return
+    }
+    setReceptionSaving(true)
+    setReceptionError(null)
+    try {
+      await api.receptionnerCommandeFournisseur(receiving.commande.id, { operateur: user ? `${user.prenom} ${user.nom}` : 'Opérateur', lignes })
+      setReceiving(null)
+      refresh()
+    } catch {
+      setReceptionError('Échec de la réception — vérifiez les quantités saisies.')
+    } finally {
+      setReceptionSaving(false)
+    }
   }
 
   return (
@@ -132,6 +231,7 @@ export default function CommandesFournisseurs() {
               <th className="px-4 py-3">Date attendue</th>
               <th className="px-4 py-3 text-right">Montant</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -154,11 +254,23 @@ export default function CommandesFournisseurs() {
                     <Badge tone={STATUT_TONE[c.statut]}>{STATUT_COMMANDE_FOURNISSEUR_LABELS[c.statut]}</Badge>
                   </div>
                 </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col items-start gap-1">
+                    <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
+                      Voir
+                    </button>
+                    {c.statut !== 'receptionnee' && c.statut !== 'cloturee' && (
+                      <button onClick={() => openReceive(c)} className="font-medium text-teal-700 hover:underline">
+                        Réceptionner
+                      </button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-400">
+                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
                   Aucune commande.
                 </td>
               </tr>
@@ -188,29 +300,72 @@ export default function CommandesFournisseurs() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Date attendue</label>
-                <input
-                  type="date"
-                  value={form.date_attendue}
-                  onChange={(e) => setForm({ ...form, date_attendue: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Montant (GNF)</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.montant}
-                  onChange={(e) => setForm({ ...form, montant: Number(e.target.value) })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
-                />
-              </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Date attendue</label>
+              <input
+                type="date"
+                value={form.date_attendue}
+                onChange={(e) => setForm({ ...form, date_attendue: e.target.value })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
             </div>
+
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Articles commandés</label>
+                <button type="button" onClick={addLigne} className="text-xs font-medium text-teal-700 hover:underline">
+                  + Ajouter un article
+                </button>
+              </div>
+              <div className="space-y-2">
+                {lignes.map((l) => (
+                  <div key={l.key} className="flex items-end gap-2 rounded-md border border-slate-200 p-2">
+                    <div className="flex-1">
+                      <SearchableSelect
+                        value={l.produit_id}
+                        onChange={(v) => selectProduitForLigne(l.key, v)}
+                        options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                        placeholder="Produit…"
+                        required
+                      />
+                    </div>
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        min={1}
+                        value={l.quantite}
+                        onChange={(e) => updateLigne(l.key, { quantite: Number(e.target.value) })}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm"
+                        placeholder="Qté"
+                        required
+                      />
+                    </div>
+                    <div className="w-28">
+                      <input
+                        type="number"
+                        min={0}
+                        value={l.prix_unitaire}
+                        onChange={(e) => updateLigne(l.key, { prix_unitaire: Number(e.target.value) })}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm"
+                        placeholder="Prix unit."
+                        required
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeLigne(l.key)}
+                      disabled={lignes.length === 1}
+                      className="px-2 py-2 text-sm text-red-600 hover:underline disabled:opacity-30"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-right text-sm font-semibold text-slate-900">Total : {formatGNF(totalForm)}</p>
+            </div>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
@@ -218,6 +373,98 @@ export default function CommandesFournisseurs() {
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
                 {saving ? 'Création…' : 'Créer la commande'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {viewing && (
+        <Modal title={`Commande #${viewing.commande.id} — ${nomFournisseur(viewing.commande.fournisseur_id)}`} onClose={() => setViewing(null)}>
+          {viewLoading ? (
+            <p className="text-sm text-slate-500">Chargement…</p>
+          ) : viewing.articles.length === 0 ? (
+            <p className="text-sm text-slate-400">Aucun article enregistré pour cette commande.</p>
+          ) : (
+            <div className="overflow-hidden rounded-md border border-slate-200">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2">Produit</th>
+                    <th className="px-3 py-2 text-right">Commandé</th>
+                    <th className="px-3 py-2 text-right">Reçu</th>
+                    <th className="px-3 py-2 text-right">Prix unit.</th>
+                    <th className="px-3 py-2 text-right">Sous-total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {viewing.articles.map((a) => (
+                    <tr key={a.id}>
+                      <td className="px-3 py-2">{a.produit_nom || nomProduit(a.produit_id)}</td>
+                      <td className="px-3 py-2 text-right">{a.quantite}</td>
+                      <td className="px-3 py-2 text-right">
+                        <span className={a.quantite_recue >= a.quantite ? 'text-emerald-700' : 'text-slate-600'}>{a.quantite_recue}</span>
+                      </td>
+                      <td className="px-3 py-2 text-right">{formatGNF(a.prix_unitaire)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatGNF(a.quantite * a.prix_unitaire)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200 bg-slate-50">
+                    <td colSpan={4} className="px-3 py-2 text-right font-semibold">Total</td>
+                    <td className="px-3 py-2 text-right font-semibold">{formatGNF(viewing.commande.montant)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {receiving && (
+        <Modal title={`Réceptionner — Commande #${receiving.commande.id}`} onClose={() => setReceiving(null)}>
+          <form onSubmit={handleSubmitReception} className="space-y-4">
+            {receiving.articles.length === 0 ? (
+              <p className="text-sm text-slate-500">Chargement…</p>
+            ) : (
+              <div className="space-y-2">
+                {receiving.articles.map((a) => {
+                  const restant = a.quantite - a.quantite_recue
+                  return (
+                    <div key={a.id} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 p-2">
+                      <div>
+                        <div className="text-sm font-medium text-slate-900">{a.produit_nom || nomProduit(a.produit_id)}</div>
+                        <div className="text-xs text-slate-500">
+                          {a.quantite_recue} / {a.quantite} déjà reçu
+                          {restant <= 0 && <span className="ml-1 text-emerald-700">— complet</span>}
+                        </div>
+                      </div>
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          min={0}
+                          max={restant}
+                          disabled={restant <= 0}
+                          value={receptionQtes[a.produit_id] ?? 0}
+                          onChange={(e) =>
+                            setReceptionQtes((qs) => ({ ...qs, [a.produit_id]: Number(e.target.value) }))
+                          }
+                          className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-50"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {receptionError && <p className="text-sm text-red-600">{receptionError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setReceiving(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={receptionSaving || receiving.articles.length === 0} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {receptionSaving ? 'Réception…' : 'Confirmer la réception'}
               </button>
             </div>
           </form>
