@@ -6,7 +6,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type StatutLivraison } from '../types'
+import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type ReferentielItem, type StatutLivraison } from '../types'
 import type { LivraisonInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutLivraison, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -25,9 +25,14 @@ export default function Livraisons() {
   const [commandes, setCommandes] = useState<CommandeClient[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const [livreursRef, setLivreursRef] = useState<ReferentielItem[]>([])
+  const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<LivraisonInput>(EMPTY_FORM)
+  const [livreurManuel, setLivreurManuel] = useState(false)
+  const [quartier, setQuartier] = useState('')
+  const [details, setDetails] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -37,6 +42,12 @@ export default function Livraisons() {
   }
 
   useEffect(refresh, [])
+  useEffect(() => {
+    api.referentiels().then((r) => {
+      setLivreursRef(r.livreurs ?? [])
+      setQuartiersRef(r.quartiers ?? [])
+    })
+  }, [])
 
   const preFiltrees = boutiqueId ? livraisons.filter((l) => l.boutique_id === boutiqueId) : livraisons
   const getFields = useCallback((l: Livraison) => [l.commande_id, l.livreur, l.adresse], [])
@@ -46,6 +57,9 @@ export default function Livraisons() {
 
   function openCreate() {
     setForm(EMPTY_FORM)
+    setLivreurManuel(false)
+    setQuartier('')
+    setDetails('')
     setError(null)
     setCreating(true)
   }
@@ -57,10 +71,15 @@ export default function Livraisons() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!quartier) {
+      setError('Le quartier est obligatoire.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
-      await api.creerLivraison(form)
+      const adresse = details ? `${quartier} — ${details}` : quartier
+      await api.creerLivraison({ ...form, adresse })
       setCreating(false)
       refresh()
     } catch {
@@ -117,7 +136,7 @@ export default function Livraisons() {
             {filtered.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">#{l.commande_id}</td>
-                <td className="px-4 py-3 text-slate-600">{l.livreur}</td>
+                <td className="px-4 py-3 text-slate-600">{l.livreur || <span className="text-slate-400">Non affecté</span>}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(l.boutique_id)}</td>
                 <td className="px-4 py-3 text-slate-600">{l.adresse}</td>
                 <td className="px-4 py-3 text-slate-500">{l.creneau}</td>
@@ -175,22 +194,55 @@ export default function Livraisons() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Livreur</label>
-              <input
-                value={form.livreur}
-                onChange={(e) => setForm({ ...form, livreur: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Livreur (optionnel)</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLivreurManuel((m) => !m)
+                    setForm({ ...form, livreur: '' })
+                  }}
+                  className="text-xs font-medium text-teal-700 hover:underline"
+                >
+                  {livreurManuel ? 'Choisir dans la liste' : 'Saisir manuellement'}
+                </button>
+              </div>
+              {livreurManuel ? (
+                <input
+                  value={form.livreur}
+                  onChange={(e) => setForm({ ...form, livreur: e.target.value })}
+                  placeholder="Nom du livreur"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              ) : (
+                <SearchableSelect
+                  value={form.livreur}
+                  onChange={(v) => setForm({ ...form, livreur: v })}
+                  options={livreursRef.map((l) => ({ value: l.nom, label: l.nom }))}
+                  allowEmpty="Non affecté"
+                  placeholder="Non affecté"
+                />
+              )}
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Adresse / quartier</label>
-              <input
-                value={form.adresse}
-                onChange={(e) => setForm({ ...form, adresse: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Quartier</label>
+                <SearchableSelect
+                  value={quartier}
+                  onChange={setQuartier}
+                  options={quartiersRef.map((q) => ({ value: q.nom, label: q.nom }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Détails (repère, numéro…)</label>
+                <input
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder="Ex : près du marché, maison bleue"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Créneau</label>

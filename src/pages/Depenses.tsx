@@ -7,7 +7,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_VALIDATION_DEPENSE_LABELS, type Depense, type StatutValidationDepense } from '../types'
+import { STATUT_VALIDATION_DEPENSE_LABELS, type Depense, type ReferentielItem, type StatutValidationDepense } from '../types'
 import type { DepenseInput } from '../types/write'
 import { useAuth } from '../lib/AuthContext'
 
@@ -30,6 +30,7 @@ export default function Depenses() {
   const [depenses, setDepenses] = useState<Depense[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const [categories, setCategories] = useState<ReferentielItem[]>([])
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<DepenseInput>(emptyForm(''))
@@ -42,6 +43,9 @@ export default function Depenses() {
   }
 
   useEffect(refresh, [])
+  useEffect(() => {
+    api.referentiels().then((r) => setCategories(r.categories_depenses ?? []))
+  }, [])
 
   const preFiltrees = boutiqueId ? depenses.filter((d) => d.boutique_id === boutiqueId) : depenses
   const getFields = useCallback((d: Depense) => [d.categorie, d.auteur], [])
@@ -175,13 +179,13 @@ export default function Depenses() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Catégorie</label>
-                <input
+                <SearchableSelect
                   value={form.categorie}
-                  onChange={(e) => setForm({ ...form, categorie: e.target.value })}
-                  placeholder="Ex : Transport, Électricité…"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  onChange={(v) => setForm({ ...form, categorie: v })}
+                  options={categories.map((c) => ({ value: c.nom, label: c.nom }))}
                   required
                 />
+                <p className="mt-1 text-xs text-slate-400">Gérées dans Paramètres → Référentiels</p>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Montant</label>

@@ -13,6 +13,7 @@ const CATEGORIE_LABELS: Record<string, string> = {
   modes_paiement: 'Modes de paiement',
   categories_depenses: 'Catégories de dépenses',
   caisses_comptes: 'Caisses & comptes',
+  livreurs: 'Livreurs',
 }
 
 const CATEGORIE_ORDER = [
@@ -24,6 +25,7 @@ const CATEGORIE_ORDER = [
   'modes_paiement',
   'categories_depenses',
   'caisses_comptes',
+  'livreurs',
 ]
 
 export default function Parametres() {
