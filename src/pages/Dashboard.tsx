@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import StatCard from '../components/StatCard'
 import { formatGNF } from '../lib/format'
-import { SECTEUR_LABELS, type DashboardConsolide, type Secteur } from '../types'
+import { useSecteurs } from '../lib/useSecteurs'
+import type { DashboardConsolide } from '../types'
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardConsolide | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { nomSecteur } = useSecteurs()
 
   useEffect(() => {
     api.dashboard().then(setData).catch((e) => setError(String(e)))
@@ -54,7 +56,7 @@ export default function Dashboard() {
               {data.comparatif_boutiques.map((b) => (
                 <tr key={b.boutique_id}>
                   <td className="py-2 font-medium text-slate-900">{b.nom}</td>
-                  <td className="py-2 text-slate-500">{b.secteurs.map((s) => SECTEUR_LABELS[s as Secteur]).join(', ')}</td>
+                  <td className="py-2 text-slate-500">{b.secteurs.map((s) => nomSecteur(s)).join(', ')}</td>
                   <td className="py-2 text-right text-slate-900">{formatGNF(b.ca_jour)}</td>
                   <td className={`py-2 text-right font-medium ${b.stock_en_alerte > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
                     {b.stock_en_alerte}

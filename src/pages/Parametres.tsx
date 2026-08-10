@@ -45,7 +45,6 @@ export default function Parametres() {
 
   const categories = CATEGORIE_ORDER.filter((c) => c in referentiels)
   const items = referentiels[categorie] ?? []
-  const isFixed = categorie === 'secteurs'
 
   function openCreate() {
     setNom('')
@@ -94,14 +93,12 @@ export default function Parametres() {
           <h1 className="text-2xl font-bold text-slate-900">Paramètres</h1>
           <p className="text-sm text-slate-500">Référentiels : secteurs, zones, canaux, paiements, dépenses, caisses</p>
         </div>
-        {!isFixed && (
-          <button
-            onClick={openCreate}
-            className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
-          >
-            + Ajouter
-          </button>
-        )}
+        <button
+          onClick={openCreate}
+          className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+        >
+          + Ajouter
+        </button>
       </div>
 
       <Tabs
@@ -110,9 +107,9 @@ export default function Parametres() {
         onChange={setCategorie}
       />
 
-      {isFixed && (
+      {categorie === 'secteurs' && (
         <p className="text-xs text-slate-400">
-          Les secteurs sont fixes (utilisés dans tout le système) et ne sont pas modifiables ici.
+          Les secteurs déterminent la classification des produits, boutiques et fournisseurs dans toute l'application.
         </p>
       )}
 
@@ -123,16 +120,14 @@ export default function Parametres() {
               <div className="text-xs uppercase tracking-wide text-slate-400">Nom</div>
               <div className="font-medium text-slate-900">{item.nom}</div>
             </div>
-            {!isFixed && (
-              <div className="flex gap-4 text-sm">
-                <button onClick={() => openEdit(item)} className="font-medium text-teal-700 hover:underline">
-                  Modifier
-                </button>
-                <button onClick={() => handleDelete(item)} className="font-medium text-red-600 hover:underline">
-                  Suppr.
-                </button>
-              </div>
-            )}
+            <div className="flex gap-4 text-sm">
+              <button onClick={() => openEdit(item)} className="font-medium text-teal-700 hover:underline">
+                Modifier
+              </button>
+              <button onClick={() => handleDelete(item)} className="font-medium text-red-600 hover:underline">
+                Suppr.
+              </button>
+            </div>
           </div>
         ))}
         {items.length === 0 && <p className="text-sm text-slate-400">Aucun élément dans ce référentiel.</p>}

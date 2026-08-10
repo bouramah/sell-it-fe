@@ -8,14 +8,13 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { SECTEUR_LABELS, type Produit, type Secteur } from '../types'
+import { useSecteurs } from '../lib/useSecteurs'
+import type { Produit } from '../types'
 import type { ProduitInput } from '../types/write'
-
-const SECTEURS: Secteur[] = ['habillement', 'alimentation_generale', 'electronique_electromenager']
 
 const EMPTY_FORM: ProduitInput = {
   nom: '',
-  secteur: 'habillement',
+  secteur: '',
   categorie: '',
   prix: 0,
   unite: 'pièce',
@@ -35,6 +34,7 @@ export function ProduitsListe() {
   const [form, setForm] = useState<ProduitInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const { secteurs, nomSecteur } = useSecteurs()
 
   function refresh() {
     api.produits().then(setProduits)
@@ -115,7 +115,7 @@ export function ProduitsListe() {
           <SearchableSelect
             value={secteurFiltre}
             onChange={setSecteurFiltre}
-            options={SECTEURS.map((s) => ({ value: s, label: SECTEUR_LABELS[s] }))}
+            options={secteurs.map((s) => ({ value: s.id, label: s.nom }))}
             allowEmpty="Tous les secteurs"
             placeholder="Tous les secteurs"
           />
@@ -138,7 +138,7 @@ export function ProduitsListe() {
             </div>
             <div className="text-sm font-medium text-slate-900">{p.nom}</div>
             <div className="text-xs text-slate-500">
-              <Badge>{SECTEUR_LABELS[p.secteur]}</Badge>
+              <Badge>{nomSecteur(p.secteur)}</Badge>
             </div>
             <div className="mt-2 text-sm font-semibold text-slate-900">{formatGNF(p.prix)}</div>
             <div className="mt-2 flex gap-3 text-xs">
@@ -190,8 +190,8 @@ export function ProduitsListe() {
                 <label className="mb-1 block text-sm font-medium text-slate-700">Secteur</label>
                 <SearchableSelect
                   value={form.secteur}
-                  onChange={(v) => setForm({ ...form, secteur: v as Secteur })}
-                  options={SECTEURS.map((s) => ({ value: s, label: SECTEUR_LABELS[s] }))}
+                  onChange={(v) => setForm({ ...form, secteur: v })}
+                  options={secteurs.map((s) => ({ value: s.id, label: s.nom }))}
                   required
                 />
               </div>
@@ -287,6 +287,7 @@ export function ProduitFiche() {
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { nomBoutique } = useBoutiques()
+  const { nomSecteur } = useSecteurs()
 
   function refresh() {
     if (!id) return
@@ -325,7 +326,7 @@ export function ProduitFiche() {
         </Link>
         <div className="mt-2 flex items-center gap-3">
           <h1 className="text-2xl font-bold text-slate-900">{produit.nom}</h1>
-          <Badge>{SECTEUR_LABELS[produit.secteur]}</Badge>
+          <Badge>{nomSecteur(produit.secteur)}</Badge>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-export type Secteur = 'habillement' | 'alimentation_generale' | 'electronique_electromenager'
+export type Secteur = string
 export type StatutBoutique = 'active' | 'fermee' | 'en_creation'
 export type Role = 'vendeur' | 'caissier' | 'gerant' | 'responsable_achats' | 'administrateur'
 export type DroitAcces = 'complet' | 'lecture_seule' | 'partiel' | 'aucun'
@@ -346,12 +346,6 @@ export interface DashboardConsolide {
   transferts_en_transit: number
   comparatif_boutiques: LigneComparatifBoutique[]
   alertes: AlerteReseau[]
-}
-
-export const SECTEUR_LABELS: Record<Secteur, string> = {
-  habillement: 'Habillement',
-  alimentation_generale: 'Alimentation générale',
-  electronique_electromenager: 'Électronique/Électroménager',
 }
 
 export const STATUT_BOUTIQUE_LABELS: Record<StatutBoutique, string> = {

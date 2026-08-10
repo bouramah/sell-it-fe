@@ -5,12 +5,11 @@ import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useSearch } from '../lib/useSearch'
-import { SECTEUR_LABELS, type Fournisseur, type Secteur } from '../types'
+import { useSecteurs } from '../lib/useSecteurs'
+import type { Fournisseur } from '../types'
 import type { FournisseurInput } from '../types/write'
 
-const SECTEURS: Secteur[] = ['habillement', 'alimentation_generale', 'electronique_electromenager']
-
-const EMPTY_FORM: FournisseurInput = { nom: '', secteur: 'habillement', conditions_paiement: '', contact: '' }
+const EMPTY_FORM: FournisseurInput = { nom: '', secteur: '', conditions_paiement: '', contact: '' }
 
 export default function Fournisseurs() {
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
@@ -19,6 +18,7 @@ export default function Fournisseurs() {
   const [form, setForm] = useState<FournisseurInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const { secteurs, nomSecteur } = useSecteurs()
 
   function refresh() {
     api.fournisseurs().then(setFournisseurs)
@@ -99,7 +99,7 @@ export default function Fournisseurs() {
               <tr key={f.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{f.nom}</td>
                 <td className="px-4 py-3">
-                  <Badge>{SECTEUR_LABELS[f.secteur]}</Badge>
+                  <Badge>{nomSecteur(f.secteur)}</Badge>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{f.conditions_paiement}</td>
                 <td className="px-4 py-3 text-slate-600">{f.contact}</td>
@@ -142,8 +142,8 @@ export default function Fournisseurs() {
               <label className="mb-1 block text-sm font-medium text-slate-700">Secteur fourni</label>
               <SearchableSelect
                 value={form.secteur}
-                onChange={(v) => setForm({ ...form, secteur: v as Secteur })}
-                options={SECTEURS.map((s) => ({ value: s, label: SECTEUR_LABELS[s] }))}
+                onChange={(v) => setForm({ ...form, secteur: v })}
+                options={secteurs.map((s) => ({ value: s.id, label: s.nom }))}
                 required
               />
             </div>

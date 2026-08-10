@@ -6,7 +6,8 @@ import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useSearch } from '../lib/useSearch'
-import { ROLE_LABELS, SECTEUR_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
+import { useSecteurs } from '../lib/useSecteurs'
+import { ROLE_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
 import type { BoutiqueInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
@@ -14,8 +15,6 @@ const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
   fermee: 'default',
   en_creation: 'warning',
 }
-
-const SECTEURS: Secteur[] = ['habillement', 'alimentation_generale', 'electronique_electromenager']
 
 const EMPTY_FORM: BoutiqueInput = {
   nom: '',
@@ -42,6 +41,7 @@ export function BoutiquesListe() {
   const [communesRef, setCommunesRef] = useState<ReferentielItem[]>([])
   const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
   const [responsables, setResponsables] = useState<Utilisateur[]>([])
+  const { secteurs, nomSecteur } = useSecteurs()
 
   function refresh() {
     api.boutiques().then(setBoutiques)
@@ -195,7 +195,7 @@ export function BoutiquesListe() {
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
                     {b.secteurs.map((s) => (
-                      <Badge key={s}>{SECTEUR_LABELS[s]}</Badge>
+                      <Badge key={s}>{nomSecteur(s)}</Badge>
                     ))}
                   </div>
                 </td>
@@ -248,10 +248,10 @@ export function BoutiquesListe() {
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Secteur(s) exploité(s)</label>
               <div className="flex flex-wrap gap-3">
-                {SECTEURS.map((s) => (
-                  <label key={s} className="flex items-center gap-1.5 text-sm text-slate-700">
-                    <input type="checkbox" checked={form.secteurs.includes(s)} onChange={() => toggleSecteur(s)} />
-                    {SECTEUR_LABELS[s]}
+                {secteurs.map((s) => (
+                  <label key={s.id} className="flex items-center gap-1.5 text-sm text-slate-700">
+                    <input type="checkbox" checked={form.secteurs.includes(s.id)} onChange={() => toggleSecteur(s.id)} />
+                    {s.nom}
                   </label>
                 ))}
               </div>
@@ -366,6 +366,7 @@ export function BoutiquesListe() {
 export function BoutiqueFiche() {
   const { id } = useParams<{ id: string }>()
   const [boutique, setBoutique] = useState<Boutique | null>(null)
+  const { nomSecteur } = useSecteurs()
 
   useEffect(() => {
     if (id) api.boutique(id).then(setBoutique)
@@ -385,7 +386,7 @@ export function BoutiqueFiche() {
         </div>
         <div className="mt-2 flex flex-wrap gap-1">
           {boutique.secteurs.map((s) => (
-            <Badge key={s}>{SECTEUR_LABELS[s]}</Badge>
+            <Badge key={s}>{nomSecteur(s)}</Badge>
           ))}
         </div>
       </div>

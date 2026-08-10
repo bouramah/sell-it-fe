@@ -6,13 +6,12 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
+import { useSecteurs } from '../lib/useSecteurs'
 import {
   ORIGINE_PROMOTION_LABELS,
-  SECTEUR_LABELS,
   STATUT_PROMOTION_LABELS,
   type OriginePromotion,
   type Promotion,
-  type Secteur,
   type StatutPromotion,
 } from '../types'
 import type { PromotionInput } from '../types/write'
@@ -32,13 +31,12 @@ const ORIGINE_TONE: Record<OriginePromotion, 'default' | 'success'> = {
 
 const STATUTS: StatutPromotion[] = ['en_attente_validation', 'validee', 'active', 'terminee']
 
-const SECTEURS: Secteur[] = ['habillement', 'alimentation_generale', 'electronique_electromenager']
-
 const EMPTY_FORM: PromotionInput = { nom: '', boutique_id: null, secteur: null, impact_estime: '' }
 
 export default function Promotions() {
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
+  const { secteurs, nomSecteur } = useSecteurs()
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<PromotionInput>(EMPTY_FORM)
@@ -118,7 +116,7 @@ export default function Promotions() {
                 <td className="px-4 py-3 font-medium text-slate-900">{p.nom}</td>
                 <td className="px-4 py-3 text-slate-600">
                   {p.boutique_id ? nomBoutique(p.boutique_id) : 'Toutes boutiques'}
-                  {p.secteur ? ` · ${SECTEUR_LABELS[p.secteur]}` : ''}
+                  {p.secteur ? ` · ${nomSecteur(p.secteur)}` : ''}
                 </td>
                 <td className="px-4 py-3">
                   <Badge tone={ORIGINE_TONE[p.origine]}>{ORIGINE_PROMOTION_LABELS[p.origine]}</Badge>
@@ -177,8 +175,8 @@ export default function Promotions() {
                 <label className="mb-1 block text-sm font-medium text-slate-700">Secteur</label>
                 <SearchableSelect
                   value={form.secteur ?? ''}
-                  onChange={(v) => setForm({ ...form, secteur: (v as Secteur) || null })}
-                  options={SECTEURS.map((s) => ({ value: s, label: SECTEUR_LABELS[s] }))}
+                  onChange={(v) => setForm({ ...form, secteur: v || null })}
+                  options={secteurs.map((s) => ({ value: s.id, label: s.nom }))}
                   allowEmpty="Tous secteurs"
                   placeholder="Tous secteurs"
                 />

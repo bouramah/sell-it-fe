@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import { formatGNF } from '../lib/format'
-import { SECTEUR_LABELS, type Produit } from '../types'
+import { useSecteurs } from '../lib/useSecteurs'
+import type { Produit } from '../types'
 
 export default function Catalogue() {
   const [q, setQ] = useState('')
   const [produits, setProduits] = useState<Produit[]>([])
+  const { nomSecteur } = useSecteurs()
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -48,7 +50,7 @@ export default function Catalogue() {
             </div>
             <div className="text-sm font-medium text-slate-900">{p.nom}</div>
             <div className="text-xs text-slate-500">
-              <Badge>{SECTEUR_LABELS[p.secteur]}</Badge>
+              <Badge>{nomSecteur(p.secteur)}</Badge>
             </div>
             <div className="mt-2 text-sm font-semibold text-slate-900">{formatGNF(p.prix)}</div>
           </Link>
