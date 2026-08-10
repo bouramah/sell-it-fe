@@ -38,6 +38,7 @@ import type {
   ClientInput,
   CommandeClientInput,
   CommandeFournisseurInput,
+  CorrectionReceptionInput,
   DepenseInput,
   DetteInput,
   FournisseurInput,
@@ -169,13 +170,19 @@ export const api = {
   commandeClient: (id: string) => getJson<CommandeClientDetail>(`/commandes-clients/${id}`),
   creerCommandeClient: (payload: CommandeClientInput) => sendJson<CommandeClientDetail>('POST', '/commandes-clients', payload),
   modifierCommandeClient: (id: string, statut: string) => sendJson<CommandeClient>('PUT', `/commandes-clients/${id}`, { statut }),
+  modifierArticlesCommandeClient: (id: string, payload: Omit<CommandeClientInput, 'statut'>) =>
+    sendJson<CommandeClientDetail>('PUT', `/commandes-clients/${id}`, payload),
 
   commandesFournisseurs: () => getJson<LigneCommandeFournisseur[]>('/commandes-fournisseurs'),
   commandeFournisseur: (id: string) => getJson<CommandeFournisseurDetail>(`/commandes-fournisseurs/${id}`),
   creerCommandeFournisseur: (payload: CommandeFournisseurInput) => sendJson<CommandeFournisseurDetail>('POST', '/commandes-fournisseurs', payload),
   modifierCommandeFournisseur: (id: string, statut: string) => sendJson<LigneCommandeFournisseur>('PUT', `/commandes-fournisseurs/${id}`, { statut }),
+  modifierArticlesCommandeFournisseur: (id: string, payload: Omit<CommandeFournisseurInput, 'statut'>) =>
+    sendJson<CommandeFournisseurDetail>('PUT', `/commandes-fournisseurs/${id}`, payload),
   receptionnerCommandeFournisseur: (id: string, payload: ReceptionInput) =>
     sendJson<CommandeFournisseurDetail>('POST', `/commandes-fournisseurs/${id}/reception`, payload),
+  corrigerReceptionCommandeFournisseur: (id: string, payload: CorrectionReceptionInput) =>
+    sendJson<CommandeFournisseurDetail>('PUT', `/commandes-fournisseurs/${id}/reception`, payload),
 
   livraisons: () => getJson<Livraison[]>('/livraisons'),
   creerLivraison: (payload: LivraisonInput) => sendJson<Livraison>('POST', '/livraisons', payload),

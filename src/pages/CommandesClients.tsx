@@ -64,6 +64,7 @@ export default function CommandesClients() {
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [lignes, setLignes] = useState<ArticleFormLigne[]>([nouvelleLigne()])
   const [error, setError] = useState<string | null>(null)
@@ -87,10 +88,25 @@ export default function CommandesClients() {
   const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
 
   function openCreate() {
+    setEditingId(null)
     setForm(EMPTY_FORM)
     setLignes([nouvelleLigne()])
     setError(null)
     setCreating(true)
+  }
+
+  async function openEdit(c: CommandeClient) {
+    setError(null)
+    setEditingId(c.id)
+    setForm({ client_nom: c.client_nom, boutique_id: c.boutique_id, canal: c.canal, mode_paiement: c.mode_paiement })
+    setLignes([nouvelleLigne()])
+    setCreating(true)
+    const detail = await api.commandeClient(c.id)
+    setLignes(
+      detail.articles.length > 0
+        ? detail.articles.map((a) => ({ key: ++ligneKeySeq, produit_id: a.produit_id, quantite: a.quantite, prix_unitaire: a.prix_unitaire }))
+        : [nouvelleLigne()]
+    )
   }
 
   function updateLigne(key: number, patch: Partial<ArticleFormLigne>) {
@@ -122,12 +138,16 @@ export default function CommandesClients() {
     setError(null)
     try {
       const articles: ArticleCommandeInput[] = lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite, prix_unitaire: l.prix_unitaire }))
-      const payload: CommandeClientInput = { ...form, statut: 'en_attente', articles }
-      await api.creerCommandeClient(payload)
+      if (editingId) {
+        await api.modifierArticlesCommandeClient(editingId, { ...form, articles })
+      } else {
+        await api.creerCommandeClient({ ...form, statut: 'en_attente', articles })
+      }
       setCreating(false)
+      setEditingId(null)
       refresh()
     } catch {
-      setError('Échec de la création de la commande.')
+      setError(editingId ? 'Échec de la modification de la commande.' : 'Échec de la création de la commande.')
     } finally {
       setSaving(false)
     }
@@ -210,9 +230,16 @@ export default function CommandesClients() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
-                    Voir
-                  </button>
+                  <div className="flex flex-col items-start gap-1">
+                    <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
+                      Voir
+                    </button>
+                    {c.statut === 'en_attente' && (
+                      <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -228,7 +255,7 @@ export default function CommandesClients() {
       </div>
 
       {creating && (
-        <Modal title="Nouvelle commande client" onClose={() => setCreating(false)}>
+        <Modal title={editingId ? `Modifier la commande #${editingId}` : 'Nouvelle commande client'} onClose={() => { setCreating(false); setEditingId(null) }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Client</label>
@@ -329,11 +356,11 @@ export default function CommandesClients() {
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => { setCreating(false); setEditingId(null) }} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
-                {saving ? 'Création…' : 'Créer la commande'}
+                {saving ? 'Enregistrement…' : editingId ? 'Enregistrer les modifications' : 'Créer la commande'}
               </button>
             </div>
           </form>

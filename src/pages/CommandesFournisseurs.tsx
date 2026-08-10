@@ -15,7 +15,7 @@ import {
   type Produit,
   type StatutCommandeFournisseur,
 } from '../types'
-import type { ArticleCommandeInput, CommandeFournisseurInput, ReceptionLigneInput } from '../types/write'
+import type { ArticleCommandeInput, CorrectionReceptionLigneInput, ReceptionLigneInput } from '../types/write'
 import { useAuth } from '../lib/AuthContext'
 
 const STATUT_TONE: Record<StatutCommandeFournisseur, 'default' | 'warning' | 'success'> = {
@@ -67,6 +67,7 @@ export default function CommandesFournisseurs() {
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [lignes, setLignes] = useState<ArticleFormLigne[]>([nouvelleLigne()])
   const [error, setError] = useState<string | null>(null)
@@ -79,6 +80,11 @@ export default function CommandesFournisseurs() {
   const [receptionQtes, setReceptionQtes] = useState<Record<string, number>>({})
   const [receptionError, setReceptionError] = useState<string | null>(null)
   const [receptionSaving, setReceptionSaving] = useState(false)
+
+  const [correcting, setCorrecting] = useState<{ commande: LigneCommandeFournisseur; articles: ArticleCommandeFournisseur[] } | null>(null)
+  const [correctionQtes, setCorrectionQtes] = useState<Record<string, number>>({})
+  const [correctionError, setCorrectionError] = useState<string | null>(null)
+  const [correctionSaving, setCorrectionSaving] = useState(false)
 
   function refresh() {
     api.commandesFournisseurs().then(setCommandes)
@@ -98,10 +104,25 @@ export default function CommandesFournisseurs() {
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
 
   function openCreate() {
+    setEditingId(null)
     setForm(EMPTY_FORM)
     setLignes([nouvelleLigne()])
     setError(null)
     setCreating(true)
+  }
+
+  async function openEdit(c: LigneCommandeFournisseur) {
+    setError(null)
+    setEditingId(c.id)
+    setForm({ fournisseur_id: c.fournisseur_id, boutique_id: c.boutique_id, date_attendue: c.date_attendue })
+    setLignes([nouvelleLigne()])
+    setCreating(true)
+    const detail = await api.commandeFournisseur(c.id)
+    setLignes(
+      detail.articles.length > 0
+        ? detail.articles.map((a) => ({ key: ++ligneKeySeq, produit_id: a.produit_id, quantite: a.quantite, prix_unitaire: a.prix_unitaire }))
+        : [nouvelleLigne()]
+    )
   }
 
   function updateLigne(key: number, patch: Partial<ArticleFormLigne>) {
@@ -133,12 +154,16 @@ export default function CommandesFournisseurs() {
     setError(null)
     try {
       const articles: ArticleCommandeInput[] = lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite, prix_unitaire: l.prix_unitaire }))
-      const payload: CommandeFournisseurInput = { ...form, statut: 'brouillon', articles }
-      await api.creerCommandeFournisseur(payload)
+      if (editingId) {
+        await api.modifierArticlesCommandeFournisseur(editingId, { ...form, articles })
+      } else {
+        await api.creerCommandeFournisseur({ ...form, statut: 'brouillon', articles })
+      }
       setCreating(false)
+      setEditingId(null)
       refresh()
     } catch {
-      setError('Échec de la création de la commande.')
+      setError(editingId ? 'Échec de la modification de la commande.' : 'Échec de la création de la commande.')
     } finally {
       setSaving(false)
     }
@@ -193,6 +218,41 @@ export default function CommandesFournisseurs() {
       setReceptionError('Échec de la réception — vérifiez les quantités saisies.')
     } finally {
       setReceptionSaving(false)
+    }
+  }
+
+  async function openCorrect(c: LigneCommandeFournisseur) {
+    setCorrectionError(null)
+    setCorrecting({ commande: c, articles: [] })
+    const detail = await api.commandeFournisseur(c.id)
+    setCorrecting({ commande: c, articles: detail.articles })
+    const initial: Record<string, number> = {}
+    for (const a of detail.articles) {
+      initial[a.produit_id] = a.quantite_recue
+    }
+    setCorrectionQtes(initial)
+  }
+
+  async function handleSubmitCorrection(e: FormEvent) {
+    e.preventDefault()
+    if (!correcting) return
+    const lignes: CorrectionReceptionLigneInput[] = correcting.articles.map((a) => ({
+      produit_id: a.produit_id,
+      quantite_recue: correctionQtes[a.produit_id] ?? a.quantite_recue,
+    }))
+    setCorrectionSaving(true)
+    setCorrectionError(null)
+    try {
+      await api.corrigerReceptionCommandeFournisseur(correcting.commande.id, {
+        operateur: user ? `${user.prenom} ${user.nom}` : 'Opérateur',
+        lignes,
+      })
+      setCorrecting(null)
+      refresh()
+    } catch {
+      setCorrectionError('Échec de la correction — vérifiez les quantités saisies.')
+    } finally {
+      setCorrectionSaving(false)
     }
   }
 
@@ -259,9 +319,19 @@ export default function CommandesFournisseurs() {
                     <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
                       Voir
                     </button>
+                    {c.statut === 'brouillon' && (
+                      <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                    )}
                     {c.statut !== 'receptionnee' && c.statut !== 'cloturee' && (
                       <button onClick={() => openReceive(c)} className="font-medium text-teal-700 hover:underline">
                         Réceptionner
+                      </button>
+                    )}
+                    {(c.statut === 'receptionnee_partielle' || c.statut === 'receptionnee') && (
+                      <button onClick={() => openCorrect(c)} className="font-medium text-amber-700 hover:underline">
+                        Corriger la réception
                       </button>
                     )}
                   </div>
@@ -280,7 +350,7 @@ export default function CommandesFournisseurs() {
       </div>
 
       {creating && (
-        <Modal title="Nouvelle commande fournisseur" onClose={() => setCreating(false)}>
+        <Modal title={editingId ? `Modifier la commande #${editingId}` : 'Nouvelle commande fournisseur'} onClose={() => { setCreating(false); setEditingId(null) }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Fournisseur</label>
@@ -368,11 +438,11 @@ export default function CommandesFournisseurs() {
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => { setCreating(false); setEditingId(null) }} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
-                {saving ? 'Création…' : 'Créer la commande'}
+                {saving ? 'Enregistrement…' : editingId ? 'Enregistrer les modifications' : 'Créer la commande'}
               </button>
             </div>
           </form>
@@ -465,6 +535,51 @@ export default function CommandesFournisseurs() {
               </button>
               <button type="submit" disabled={receptionSaving || receiving.articles.length === 0} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
                 {receptionSaving ? 'Réception…' : 'Confirmer la réception'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {correcting && (
+        <Modal title={`Corriger la réception — Commande #${correcting.commande.id}`} onClose={() => setCorrecting(null)}>
+          <form onSubmit={handleSubmitCorrection} className="space-y-4">
+            <p className="text-xs text-slate-500">
+              Ajustez la quantité réellement reçue par article (ex : erreur de saisie, produit manquant à la livraison).
+            </p>
+            {correcting.articles.length === 0 ? (
+              <p className="text-sm text-slate-500">Chargement…</p>
+            ) : (
+              <div className="space-y-2">
+                {correcting.articles.map((a) => (
+                  <div key={a.id} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 p-2">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900">{a.produit_nom || nomProduit(a.produit_id)}</div>
+                      <div className="text-xs text-slate-500">Commandé : {a.quantite}</div>
+                    </div>
+                    <div className="w-24">
+                      <input
+                        type="number"
+                        min={0}
+                        max={a.quantite}
+                        value={correctionQtes[a.produit_id] ?? a.quantite_recue}
+                        onChange={(e) =>
+                          setCorrectionQtes((qs) => ({ ...qs, [a.produit_id]: Number(e.target.value) }))
+                        }
+                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {correctionError && <p className="text-sm text-red-600">{correctionError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setCorrecting(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={correctionSaving || correcting.articles.length === 0} className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-60">
+                {correctionSaving ? 'Correction…' : 'Enregistrer la correction'}
               </button>
             </div>
           </form>

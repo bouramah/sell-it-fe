@@ -127,6 +127,16 @@ export interface ReceptionInput {
   lignes: ReceptionLigneInput[]
 }
 
+export interface CorrectionReceptionLigneInput {
+  produit_id: string
+  quantite_recue: number
+}
+
+export interface CorrectionReceptionInput {
+  operateur: string
+  lignes: CorrectionReceptionLigneInput[]
+}
+
 export interface LivraisonInput {
   commande_id: string
   livreur: string
