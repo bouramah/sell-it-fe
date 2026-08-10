@@ -27,14 +27,9 @@ export default function PaiementsClients() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Paiements clients</h1>
-          <p className="text-sm text-slate-500">Encaissements reçus, avec reçu associé</p>
-        </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Enregistrer un paiement client
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Paiements clients</h1>
+        <p className="text-sm text-slate-500">Encaissements reçus, avec reçu associé</p>
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
@@ -69,6 +64,10 @@ export default function PaiementsClients() {
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-slate-400">
+        Cette liste est générée automatiquement : un paiement apparaît à la création d'une commande client payée
+        immédiatement (hors crédit client), ou lors de l'encaissement d'un remboursement de dette.
+      </p>
     </div>
   )
 }

@@ -147,6 +147,7 @@ export const api = {
   supprimerClient: (id: string) => sendJson<void>('DELETE', `/clients/${id}`),
   paiementsClients: () => getJson<PaiementClient[]>('/paiements-clients'),
   paiementsFournisseurs: () => getJson<PaiementFournisseur[]>('/paiements-fournisseurs'),
+  payerPaiementFournisseur: (id: string) => sendJson<PaiementFournisseur>('POST', `/paiements-fournisseurs/${id}/payer`),
 
   stock: (boutiqueId?: string) => getJson<LigneStock[]>(`/stock${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
   creerLigneStock: (payload: StockLigneInput) => sendJson<LigneStock>('POST', '/stock', payload),

@@ -17,24 +17,32 @@ const TONE: Record<StatutPaiement, 'success' | 'warning' | 'default'> = {
 export default function PaiementsFournisseurs() {
   const [paiements, setPaiements] = useState<PaiementFournisseur[]>([])
   const { nomBoutique } = useBoutiques()
+  const [payingId, setPayingId] = useState<string | null>(null)
 
-  useEffect(() => {
+  function refresh() {
     api.paiementsFournisseurs().then(setPaiements)
-  }, [])
+  }
+
+  useEffect(refresh, [])
 
   const getFields = useCallback((p: PaiementFournisseur) => [p.fournisseur_nom, p.reference], [])
   const { query, setQuery, filtered } = useSearch(paiements, getFields)
 
+  async function handlePayer(p: PaiementFournisseur) {
+    setPayingId(p.id)
+    try {
+      await api.payerPaiementFournisseur(p.id)
+      refresh()
+    } finally {
+      setPayingId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Paiements fournisseurs</h1>
-          <p className="text-sm text-slate-500">Règlements aux fournisseurs, avec justificatif</p>
-        </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Enregistrer un paiement fournisseur
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Paiements fournisseurs</h1>
+        <p className="text-sm text-slate-500">Règlements aux fournisseurs, avec justificatif</p>
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
@@ -63,12 +71,25 @@ export default function PaiementsFournisseurs() {
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(p.montant)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={TONE[p.statut]}>{STATUT_PAIEMENT_LABELS[p.statut]}</Badge>
+                  {(p.statut === 'en_attente' || p.statut === 'partiel') && (
+                    <button
+                      onClick={() => handlePayer(p)}
+                      disabled={payingId === p.id}
+                      className="ml-2 text-xs font-medium text-teal-700 hover:underline disabled:opacity-50"
+                    >
+                      {payingId === p.id ? 'Règlement…' : 'Marquer payé'}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-slate-400">
+        Cette liste est générée automatiquement : un paiement « en attente » apparaît dès qu'une commande fournisseur
+        est intégralement réceptionnée, ou lors de l'encaissement d'un remboursement de dette fournisseur.
+      </p>
     </div>
   )
 }
