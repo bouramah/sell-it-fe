@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
@@ -42,6 +43,7 @@ export default function Clients() {
   const [villesRef, setVillesRef] = useState<ReferentielItem[]>([])
   const [communesRef, setCommunesRef] = useState<ReferentielItem[]>([])
   const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
+  const [confirmDelete, setConfirmDelete] = useState<Client | null>(null)
 
   function refresh() {
     api.clients().then(setClients)
@@ -102,8 +104,8 @@ export default function Clients() {
   }
 
   async function handleDelete(c: Client) {
-    if (!confirm(`Supprimer le client "${c.nom}" ?`)) return
     await api.supprimerClient(c.id)
+    setConfirmDelete(null)
     refresh()
   }
 
@@ -160,7 +162,7 @@ export default function Clients() {
                     <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
                       Modifier
                     </button>
-                    <button onClick={() => handleDelete(c)} className="font-medium text-red-600 hover:underline">
+                    <button onClick={() => setConfirmDelete(c)} className="font-medium text-red-600 hover:underline">
                       Suppr.
                     </button>
                   </div>
@@ -271,6 +273,16 @@ export default function Clients() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Supprimer le client"
+          message={`Supprimer le client "${confirmDelete.nom}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

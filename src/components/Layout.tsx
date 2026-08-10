@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import ConfirmDialog from './ConfirmDialog'
 import { useAuth } from '../lib/AuthContext'
 import { ROLE_LABELS } from '../types'
 
@@ -68,6 +70,7 @@ const sections: NavSection[] = [
 export default function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   function handleLogout() {
     logout()
@@ -120,7 +123,7 @@ export default function Layout() {
             </div>
             <div className="text-xs text-slate-500">{user ? ROLE_LABELS[user.role] : ''}</div>
             <button
-              onClick={handleLogout}
+              onClick={() => setConfirmLogout(true)}
               className="mt-2 text-xs font-medium text-slate-500 hover:text-red-600"
             >
               Déconnexion
@@ -131,6 +134,16 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Déconnexion"
+          message="Voulez-vous vraiment vous déconnecter ?"
+          confirmLabel="Se déconnecter"
+          onConfirm={handleLogout}
+          onCancel={() => setConfirmLogout(false)}
+        />
+      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
@@ -18,6 +19,7 @@ export default function Fournisseurs() {
   const [form, setForm] = useState<FournisseurInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<Fournisseur | null>(null)
   const { secteurs, nomSecteur } = useSecteurs()
 
   function refresh() {
@@ -62,8 +64,8 @@ export default function Fournisseurs() {
   }
 
   async function handleDelete(f: Fournisseur) {
-    if (!confirm(`Supprimer le fournisseur "${f.nom}" ?`)) return
     await api.supprimerFournisseur(f.id)
+    setConfirmDelete(null)
     refresh()
   }
 
@@ -108,7 +110,7 @@ export default function Fournisseurs() {
                     <button onClick={() => openEdit(f)} className="font-medium text-teal-700 hover:underline">
                       Modifier
                     </button>
-                    <button onClick={() => handleDelete(f)} className="font-medium text-red-600 hover:underline">
+                    <button onClick={() => setConfirmDelete(f)} className="font-medium text-red-600 hover:underline">
                       Suppr.
                     </button>
                   </div>
@@ -177,6 +179,16 @@ export default function Fournisseurs() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Supprimer le fournisseur"
+          message={`Supprimer le fournisseur "${confirmDelete.nom}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

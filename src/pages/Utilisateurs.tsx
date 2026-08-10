@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
@@ -47,6 +48,7 @@ export default function Utilisateurs() {
   const [form, setForm] = useState<UtilisateurInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<Utilisateur | null>(null)
 
   function refresh() {
     api.utilisateurs().then(setUtilisateurs)
@@ -127,8 +129,8 @@ export default function Utilisateurs() {
   }
 
   async function handleDelete(u: Utilisateur) {
-    if (!confirm(`Supprimer l'utilisateur "${u.prenom} ${u.nom}" ?`)) return
     await api.supprimerUtilisateur(u.id)
+    setConfirmDelete(null)
     refresh()
   }
 
@@ -187,7 +189,7 @@ export default function Utilisateurs() {
                       <button onClick={() => openEdit(u)} className="font-medium text-teal-700 hover:underline">
                         Modifier
                       </button>
-                      <button onClick={() => handleDelete(u)} className="font-medium text-red-600 hover:underline">
+                      <button onClick={() => setConfirmDelete(u)} className="font-medium text-red-600 hover:underline">
                         Suppr.
                       </button>
                     </div>
@@ -363,6 +365,16 @@ export default function Utilisateurs() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Supprimer l'utilisateur"
+          message={`Supprimer l'utilisateur "${confirmDelete.prenom} ${confirmDelete.nom}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
@@ -42,6 +43,7 @@ export function BoutiquesListe() {
   const [villesRef, setVillesRef] = useState<ReferentielItem[]>([])
   const [communesRef, setCommunesRef] = useState<ReferentielItem[]>([])
   const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
+  const [confirmDelete, setConfirmDelete] = useState<Boutique | null>(null)
   const [responsables, setResponsables] = useState<Utilisateur[]>([])
   const { secteurs, nomSecteur } = useSecteurs()
 
@@ -129,8 +131,8 @@ export function BoutiquesListe() {
   }
 
   async function handleDelete(b: Boutique) {
-    if (!confirm(`Supprimer la boutique "${b.nom}" ?`)) return
     await api.supprimerBoutique(b.id)
+    setConfirmDelete(null)
     refresh()
   }
 
@@ -212,7 +214,7 @@ export function BoutiquesListe() {
                     <button onClick={() => openEdit(b)} className="font-medium text-teal-700 hover:underline">
                       Modifier
                     </button>
-                    <button onClick={() => handleDelete(b)} className="font-medium text-red-600 hover:underline">
+                    <button onClick={() => setConfirmDelete(b)} className="font-medium text-red-600 hover:underline">
                       Suppr.
                     </button>
                   </div>
@@ -387,6 +389,16 @@ export function BoutiquesListe() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Supprimer la boutique"
+          message={`Supprimer la boutique "${confirmDelete.nom}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

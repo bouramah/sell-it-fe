@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import Tabs from '../components/Tabs'
 import type { ReferentielItem } from '../types'
@@ -38,6 +39,7 @@ export default function Parametres() {
   const [nom, setNom] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<ReferentielItem | null>(null)
 
   function refresh() {
     api.referentiels().then(setReferentiels)
@@ -81,8 +83,8 @@ export default function Parametres() {
   }
 
   async function handleDelete(item: ReferentielItem) {
-    if (!confirm(`Supprimer "${item.nom}" ?`)) return
     await api.supprimerReferentiel(categorie, item.id)
+    setConfirmDelete(null)
     refresh()
   }
 
@@ -126,7 +128,7 @@ export default function Parametres() {
               <button onClick={() => openEdit(item)} className="font-medium text-teal-700 hover:underline">
                 Modifier
               </button>
-              <button onClick={() => handleDelete(item)} className="font-medium text-red-600 hover:underline">
+              <button onClick={() => setConfirmDelete(item)} className="font-medium text-red-600 hover:underline">
                 Suppr.
               </button>
             </div>
@@ -178,6 +180,16 @@ export default function Parametres() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Supprimer l'élément"
+          message={`Supprimer "${confirmDelete.nom}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

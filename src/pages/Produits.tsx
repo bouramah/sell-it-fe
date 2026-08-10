@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
+import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
@@ -35,6 +36,7 @@ export function ProduitsListe() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [categoriesRef, setCategoriesRef] = useState<ReferentielItem[]>([])
+  const [confirmDelete, setConfirmDelete] = useState<Produit | null>(null)
   const { secteurs, nomSecteur } = useSecteurs()
 
   function refresh() {
@@ -91,8 +93,8 @@ export function ProduitsListe() {
   }
 
   async function handleDelete(p: Produit) {
-    if (!confirm(`Supprimer "${p.nom}" du catalogue ?`)) return
     await api.supprimerProduit(p.id)
+    setConfirmDelete(null)
     refresh()
   }
 
@@ -158,7 +160,7 @@ export function ProduitsListe() {
               <button
                 onClick={(e) => {
                   e.preventDefault()
-                  handleDelete(p)
+                  setConfirmDelete(p)
                 }}
                 className="font-medium text-red-600 hover:underline"
               >
@@ -279,6 +281,16 @@ export function ProduitsListe() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Supprimer le produit"
+          message={`Supprimer "${confirmDelete.nom}" du catalogue ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )
