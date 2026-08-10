@@ -63,6 +63,9 @@ export interface ClientInput {
   boutique_id: string
   segment: SegmentClient
   credit_autorise: boolean
+  quartier?: string | null
+  commune?: string | null
+  ville?: string | null
 }
 
 export interface StockLigneInput {

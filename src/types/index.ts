@@ -71,6 +71,9 @@ export interface Client {
   segment: SegmentClient
   credit_autorise: boolean
   solde_dette: number
+  quartier: string | null
+  commune: string | null
+  ville: string | null
 }
 
 export interface PaiementClient {

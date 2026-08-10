@@ -7,7 +7,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { SEGMENT_LABELS, type Client, type SegmentClient } from '../types'
+import { SEGMENT_LABELS, type Client, type ReferentielItem, type SegmentClient } from '../types'
 import type { ClientInput } from '../types/write'
 
 const SEGMENT_TONE: Record<SegmentClient, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -19,7 +19,16 @@ const SEGMENT_TONE: Record<SegmentClient, 'default' | 'success' | 'warning' | 'd
 
 const SEGMENTS: SegmentClient[] = ['nouveau', 'regulier', 'fidele', 'a_risque']
 
-const EMPTY_FORM: ClientInput = { nom: '', contact: '', boutique_id: '', segment: 'nouveau', credit_autorise: false }
+const EMPTY_FORM: ClientInput = {
+  nom: '',
+  contact: '',
+  boutique_id: '',
+  segment: 'nouveau',
+  credit_autorise: false,
+  quartier: '',
+  commune: '',
+  ville: '',
+}
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([])
@@ -30,12 +39,23 @@ export default function Clients() {
   const [form, setForm] = useState<ClientInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [villesRef, setVillesRef] = useState<ReferentielItem[]>([])
+  const [communesRef, setCommunesRef] = useState<ReferentielItem[]>([])
+  const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
 
   function refresh() {
     api.clients().then(setClients)
   }
 
   useEffect(refresh, [])
+
+  useEffect(() => {
+    api.referentiels().then((r) => {
+      setVillesRef(r.villes ?? [])
+      setCommunesRef(r.communes ?? [])
+      setQuartiersRef(r.quartiers ?? [])
+    })
+  }, [])
 
   const getFields = useCallback((c: Client) => [c.nom, c.contact], [])
   const { query, setQuery, filtered } = useSearch(clients, getFields)
@@ -47,7 +67,16 @@ export default function Clients() {
   }
 
   function openEdit(c: Client) {
-    setForm({ nom: c.nom, contact: c.contact, boutique_id: c.boutique_id, segment: c.segment, credit_autorise: c.credit_autorise })
+    setForm({
+      nom: c.nom,
+      contact: c.contact,
+      boutique_id: c.boutique_id,
+      segment: c.segment,
+      credit_autorise: c.credit_autorise,
+      quartier: c.quartier ?? '',
+      commune: c.commune ?? '',
+      ville: c.ville ?? '',
+    })
     setError(null)
     setEditing(c)
   }
@@ -101,6 +130,7 @@ export default function Clients() {
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Boutique fréquentée</th>
+              <th className="px-4 py-3">Localisation</th>
               <th className="px-4 py-3">Segment</th>
               <th className="px-4 py-3">Crédit autorisé</th>
               <th className="px-4 py-3 text-right">Solde dette</th>
@@ -113,6 +143,11 @@ export default function Clients() {
                 <td className="px-4 py-3 font-medium text-slate-900">{c.nom}</td>
                 <td className="px-4 py-3 text-slate-600">{c.contact}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(c.boutique_id)}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {c.quartier || c.commune || c.ville
+                    ? [c.quartier, c.commune, c.ville].filter(Boolean).join(', ')
+                    : <span className="text-slate-400">—</span>}
+                </td>
                 <td className="px-4 py-3">
                   <Badge tone={SEGMENT_TONE[c.segment]}>{SEGMENT_LABELS[c.segment]}</Badge>
                 </td>
@@ -134,7 +169,7 @@ export default function Clients() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
                   Aucun client.
                 </td>
               </tr>
@@ -172,6 +207,35 @@ export default function Clients() {
                 options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                 required
               />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Quartier</label>
+                <SearchableSelect
+                  value={form.quartier ?? ''}
+                  onChange={(v) => setForm({ ...form, quartier: v })}
+                  options={quartiersRef.map((q) => ({ value: q.nom, label: q.nom }))}
+                  allowEmpty="Non renseigné"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Commune</label>
+                <SearchableSelect
+                  value={form.commune ?? ''}
+                  onChange={(v) => setForm({ ...form, commune: v })}
+                  options={communesRef.map((c) => ({ value: c.nom, label: c.nom }))}
+                  allowEmpty="Non renseigné"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Ville</label>
+                <SearchableSelect
+                  value={form.ville ?? ''}
+                  onChange={(v) => setForm({ ...form, ville: v })}
+                  options={villesRef.map((v) => ({ value: v.nom, label: v.nom }))}
+                  allowEmpty="Non renseigné"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
