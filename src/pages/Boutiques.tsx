@@ -26,6 +26,8 @@ const EMPTY_FORM: BoutiqueInput = {
   responsable: '',
   statut: 'en_creation',
   telephone: '',
+  latitude: null,
+  longitude: null,
 }
 
 export function BoutiquesListe() {
@@ -88,6 +90,8 @@ export function BoutiquesListe() {
       responsable: b.responsable,
       statut: b.statut,
       telephone: b.telephone,
+      latitude: b.latitude,
+      longitude: b.longitude,
     })
     setError(null)
     setEditing(b)
@@ -335,6 +339,31 @@ export function BoutiquesListe() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Latitude (optionnel)</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={form.latitude ?? ''}
+                  onChange={(e) => setForm({ ...form, latitude: e.target.value === '' ? null : Number(e.target.value) })}
+                  placeholder="Ex : 9.5370"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Longitude (optionnel)</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={form.longitude ?? ''}
+                  onChange={(e) => setForm({ ...form, longitude: e.target.value === '' ? null : Number(e.target.value) })}
+                  placeholder="Ex : -13.6785"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
@@ -399,6 +428,21 @@ export function BoutiqueFiche() {
             <Field label="Commune" value={boutique.commune} />
             <Field label="Ville / région" value={boutique.ville} />
             <Field label="Téléphone" value={boutique.telephone} />
+            {boutique.latitude != null && boutique.longitude != null && (
+              <div className="flex justify-between gap-4 pt-1">
+                <dt className="text-slate-500">Position GPS</dt>
+                <dd>
+                  <a
+                    href={`https://www.google.com/maps?q=${boutique.latitude},${boutique.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-teal-700 hover:underline"
+                  >
+                    Voir sur la carte
+                  </a>
+                </dd>
+              </div>
+            )}
           </dl>
         </section>
 

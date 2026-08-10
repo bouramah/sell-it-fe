@@ -35,6 +35,8 @@ export interface Boutique {
   responsable: string
   statut: StatutBoutique
   telephone: string
+  latitude: number | null
+  longitude: number | null
 }
 
 export interface Fournisseur {
