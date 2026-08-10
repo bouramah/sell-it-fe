@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import Modal from '../components/Modal'
+import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_TRANSFERT_LABELS, type Produit, type StatutTransfert, type TransfertStock } from '../types'
+import type { TransfertInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutTransfert, 'default' | 'warning' | 'success'> = {
   demande: 'default',
@@ -13,15 +16,26 @@ const STATUT_TONE: Record<StatutTransfert, 'default' | 'warning' | 'success'> = 
   recu: 'success',
 }
 
+const STATUTS: StatutTransfert[] = ['demande', 'valide', 'en_transit', 'recu']
+
+const EMPTY_FORM: TransfertInput = { produit_id: '', boutique_source_id: '', boutique_destination_id: '', quantite: 1, demandeur: '' }
+
 export default function Transferts() {
   const [transferts, setTransferts] = useState<TransfertStock[]>([])
   const [produits, setProduits] = useState<Produit[]>([])
-  const { nomBoutique } = useBoutiques()
+  const { boutiques, nomBoutique } = useBoutiques()
 
-  useEffect(() => {
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState<TransfertInput>(EMPTY_FORM)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  function refresh() {
     api.transferts().then(setTransferts)
     api.produits().then(setProduits)
-  }, [])
+  }
+
+  useEffect(refresh, [])
 
   const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
   const getFields = useCallback(
@@ -30,6 +44,45 @@ export default function Transferts() {
   )
   const { query, setQuery, filtered } = useSearch(transferts, getFields)
 
+  function openCreate() {
+    setForm(EMPTY_FORM)
+    setError(null)
+    setCreating(true)
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (form.boutique_source_id === form.boutique_destination_id) {
+      setError('La boutique source et la boutique destination doivent être différentes.')
+      return
+    }
+    if (form.quantite <= 0) {
+      setError('La quantité doit être positive.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await api.creerTransfert(form)
+      setCreating(false)
+      refresh()
+    } catch {
+      setError('Échec de la création du transfert.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleStatutChange(t: TransfertStock, statut: StatutTransfert) {
+    try {
+      await api.modifierStatutTransfert(t.id, statut)
+      refresh()
+    } catch {
+      window.alert("Échec de la mise à jour — le stock source est peut-être insuffisant pour la réception.")
+      refresh()
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -37,7 +90,7 @@ export default function Transferts() {
           <h1 className="text-2xl font-bold text-slate-900">Transferts de stock</h1>
           <p className="text-sm text-slate-500">Mouvements inter-boutiques</p>
         </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
           + Nouveau transfert
         </button>
       </div>
@@ -65,13 +118,96 @@ export default function Transferts() {
                 <td className="px-4 py-3 text-right">{t.quantite}</td>
                 <td className="px-4 py-3 text-slate-600">{t.demandeur}</td>
                 <td className="px-4 py-3">
-                  <Badge tone={STATUT_TONE[t.statut]}>{STATUT_TRANSFERT_LABELS[t.statut]}</Badge>
+                  <div className="w-40">
+                    <SearchableSelect
+                      value={t.statut}
+                      onChange={(v) => handleStatutChange(t, v as StatutTransfert)}
+                      options={STATUTS.map((s) => ({ value: s, label: STATUT_TRANSFERT_LABELS[s] }))}
+                    />
+                  </div>
+                  <div className="mt-1">
+                    <Badge tone={STATUT_TONE[t.statut]}>{STATUT_TRANSFERT_LABELS[t.statut]}</Badge>
+                  </div>
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-400">
+                  Aucun transfert.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {creating && (
+        <Modal title="Nouveau transfert de stock" onClose={() => setCreating(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Produit</label>
+              <SearchableSelect
+                value={form.produit_id}
+                onChange={(v) => setForm({ ...form, produit_id: v })}
+                options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Boutique source</label>
+                <SearchableSelect
+                  value={form.boutique_source_id}
+                  onChange={(v) => setForm({ ...form, boutique_source_id: v })}
+                  options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Boutique destination</label>
+                <SearchableSelect
+                  value={form.boutique_destination_id}
+                  onChange={(v) => setForm({ ...form, boutique_destination_id: v })}
+                  options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Quantité</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.quantite}
+                  onChange={(e) => setForm({ ...form, quantite: Number(e.target.value) })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Demandeur</label>
+                <input
+                  value={form.demandeur}
+                  onChange={(e) => setForm({ ...form, demandeur: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {saving ? 'Création…' : 'Créer le transfert'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }
