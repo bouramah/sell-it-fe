@@ -77,7 +77,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex">
-        <aside className="w-64 shrink-0 border-r border-slate-200 bg-white min-h-screen p-4 overflow-y-auto">
+        <aside className="w-64 shrink-0 border-r border-slate-200 bg-white sticky top-0 h-screen overflow-y-auto p-4">
           <div className="mb-6 flex items-center gap-2 px-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-sm font-bold text-white">
               K
