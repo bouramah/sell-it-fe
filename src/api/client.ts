@@ -38,8 +38,10 @@ import type {
   ClientInput,
   CommandeClientInput,
   CommandeFournisseurInput,
+  DepenseInput,
   DetteInput,
   FournisseurInput,
+  LivraisonInput,
   LoginRequest,
   MouvementCaisseInput,
   MouvementStockInput,
@@ -175,7 +177,12 @@ export const api = {
     sendJson<CommandeFournisseurDetail>('POST', `/commandes-fournisseurs/${id}/reception`, payload),
 
   livraisons: () => getJson<Livraison[]>('/livraisons'),
+  creerLivraison: (payload: LivraisonInput) => sendJson<Livraison>('POST', '/livraisons', payload),
+  modifierStatutLivraison: (id: string, statut: string) => sendJson<Livraison>('PUT', `/livraisons/${id}/statut`, { statut }),
+
   depenses: () => getJson<Depense[]>('/depenses'),
+  creerDepense: (payload: DepenseInput) => sendJson<Depense>('POST', '/depenses', payload),
+  validerDepense: (id: string) => sendJson<Depense>('POST', `/depenses/${id}/valider`),
 
   dettes: (tiersType: 'client' | 'fournisseur') => getJson<LigneDette[]>(`/dettes?tiers_type=${tiersType}`),
   creerDette: (payload: DetteInput) => sendJson<LigneDette>('POST', '/dettes', payload),

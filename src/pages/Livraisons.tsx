@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_LIVRAISON_LABELS, type Livraison, type StatutLivraison } from '../types'
+import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type StatutLivraison } from '../types'
+import type { LivraisonInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutLivraison, 'default' | 'success' | 'warning' | 'danger'> = {
   preparee: 'default',
@@ -14,18 +16,64 @@ const STATUT_TONE: Record<StatutLivraison, 'default' | 'success' | 'warning' | '
   echec: 'danger',
 }
 
+const STATUTS: StatutLivraison[] = ['preparee', 'en_cours', 'livree', 'echec']
+
+const EMPTY_FORM: LivraisonInput = { commande_id: '', livreur: '', boutique_id: '', adresse: '', creneau: '' }
+
 export default function Livraisons() {
   const [livraisons, setLivraisons] = useState<Livraison[]>([])
+  const [commandes, setCommandes] = useState<CommandeClient[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
 
-  useEffect(() => {
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState<LivraisonInput>(EMPTY_FORM)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  function refresh() {
     api.livraisons().then(setLivraisons)
-  }, [])
+    api.commandesClients().then(setCommandes)
+  }
+
+  useEffect(refresh, [])
 
   const preFiltrees = boutiqueId ? livraisons.filter((l) => l.boutique_id === boutiqueId) : livraisons
   const getFields = useCallback((l: Livraison) => [l.commande_id, l.livreur, l.adresse], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
+
+  const commandesLivrables = commandes.filter((c) => c.statut !== 'annulee' && c.statut !== 'livree')
+
+  function openCreate() {
+    setForm(EMPTY_FORM)
+    setError(null)
+    setCreating(true)
+  }
+
+  function selectCommande(commandeId: string) {
+    const c = commandes.find((x) => x.id === commandeId)
+    setForm({ ...form, commande_id: commandeId, boutique_id: c ? c.boutique_id : form.boutique_id })
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      await api.creerLivraison(form)
+      setCreating(false)
+      refresh()
+    } catch {
+      setError("Échec de l'affectation de la livraison.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleStatutChange(l: Livraison, statut: StatutLivraison) {
+    await api.modifierStatutLivraison(l.id, statut)
+    refresh()
+  }
 
   return (
     <div className="space-y-6">
@@ -34,7 +82,7 @@ export default function Livraisons() {
           <h1 className="text-2xl font-bold text-slate-900">Livraisons</h1>
           <p className="text-sm text-slate-500">Affectation des livreurs et suivi des tournées</p>
         </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
           + Affecter une livraison
         </button>
       </div>
@@ -74,7 +122,16 @@ export default function Livraisons() {
                 <td className="px-4 py-3 text-slate-600">{l.adresse}</td>
                 <td className="px-4 py-3 text-slate-500">{l.creneau}</td>
                 <td className="px-4 py-3">
-                  <Badge tone={STATUT_TONE[l.statut]}>{STATUT_LIVRAISON_LABELS[l.statut]}</Badge>
+                  <div className="w-36">
+                    <SearchableSelect
+                      value={l.statut}
+                      onChange={(v) => handleStatutChange(l, v as StatutLivraison)}
+                      options={STATUTS.map((s) => ({ value: s, label: STATUT_LIVRAISON_LABELS[s] }))}
+                    />
+                  </div>
+                  <div className="mt-1">
+                    <Badge tone={STATUT_TONE[l.statut]}>{STATUT_LIVRAISON_LABELS[l.statut]}</Badge>
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   {l.preuve_disponible ? (
@@ -85,9 +142,78 @@ export default function Livraisons() {
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                  Aucune livraison.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {creating && (
+        <Modal title="Affecter une livraison" onClose={() => setCreating(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Commande client</label>
+              <SearchableSelect
+                value={form.commande_id}
+                onChange={selectCommande}
+                options={commandesLivrables.map((c) => ({ value: c.id, label: `#${c.id} — ${c.client_nom}` }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
+              <SearchableSelect
+                value={form.boutique_id}
+                onChange={(v) => setForm({ ...form, boutique_id: v })}
+                options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Livreur</label>
+              <input
+                value={form.livreur}
+                onChange={(e) => setForm({ ...form, livreur: e.target.value })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Adresse / quartier</label>
+              <input
+                value={form.adresse}
+                onChange={(e) => setForm({ ...form, adresse: e.target.value })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Créneau</label>
+              <input
+                value={form.creneau}
+                onChange={(e) => setForm({ ...form, creneau: e.target.value })}
+                placeholder="Ex : Aujourd'hui, 14h-18h"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {saving ? 'Affectation…' : 'Affecter'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

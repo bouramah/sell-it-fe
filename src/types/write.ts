@@ -127,6 +127,23 @@ export interface ReceptionInput {
   lignes: ReceptionLigneInput[]
 }
 
+export interface LivraisonInput {
+  commande_id: string
+  livreur: string
+  boutique_id: string
+  adresse: string
+  creneau: string
+}
+
+export interface DepenseInput {
+  boutique_id: string
+  categorie: string
+  auteur: string
+  date: string
+  montant: number
+  justificatif_disponible?: boolean
+}
+
 export interface DetteInput {
   tiers_type: TiersType
   tiers_nom: string
