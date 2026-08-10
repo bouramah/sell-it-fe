@@ -102,6 +102,7 @@ export interface Produit {
   unite: string
   code_barres: string
   date_peremption: string | null
+  image_url: string | null
 }
 
 export interface LigneStock {
@@ -209,6 +210,15 @@ export interface LigneDette {
   solde_restant: number
   echeance: string
   statut: StatutDette
+}
+
+export interface Remboursement {
+  id: string
+  dette_id: string
+  montant: number
+  mode_paiement: ModePaiement
+  date: string
+  operateur: string
 }
 
 export interface TransfertStock {

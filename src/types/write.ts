@@ -1,4 +1,16 @@
-import type { Role, Secteur, StatutBoutique } from './index'
+import type {
+  CanalCommande,
+  ModePaiement,
+  MotifMouvementStock,
+  Role,
+  Secteur,
+  SegmentClient,
+  StatutBoutique,
+  StatutCommandeClient,
+  StatutCommandeFournisseur,
+  TiersType,
+  TypeMouvementCaisse,
+} from './index'
 
 export interface BoutiqueInput {
   nom: string
@@ -34,6 +46,91 @@ export interface ProduitInput {
 
 export interface ReferentielInput {
   nom: string
+}
+
+export interface FournisseurInput {
+  nom: string
+  secteur: Secteur
+  conditions_paiement: string
+  contact: string
+}
+
+export interface ClientInput {
+  nom: string
+  contact: string
+  boutique_id: string
+  segment: SegmentClient
+  credit_autorise: boolean
+}
+
+export interface StockLigneInput {
+  boutique_id: string
+  produit_id: string
+  quantite_disponible: number
+  quantite_reservee: number
+  seuil_alerte: number
+}
+
+export interface MouvementStockInput {
+  produit_id: string
+  boutique_id: string
+  motif: MotifMouvementStock
+  operateur: string
+  quantite: number
+}
+
+export interface CaisseInput {
+  boutique_id: string
+  libelle: string
+  fond_initial: number
+  operateur: string
+}
+
+export interface MouvementCaisseInput {
+  caisse_id: string
+  type: TypeMouvementCaisse
+  motif: string
+  operateur: string
+  montant: number
+}
+
+export interface CommandeClientInput {
+  client_nom: string
+  boutique_id: string
+  canal: CanalCommande
+  mode_paiement: ModePaiement
+  montant: number
+  statut: StatutCommandeClient
+}
+
+export interface CommandeFournisseurInput {
+  fournisseur_id: string
+  boutique_id: string
+  date_attendue: string
+  montant: number
+  statut: StatutCommandeFournisseur
+}
+
+export interface DetteInput {
+  tiers_type: TiersType
+  tiers_nom: string
+  boutique_id: string
+  montant_initial: number
+  echeance: string
+}
+
+export interface RemboursementInput {
+  montant: number
+  mode_paiement: ModePaiement
+  operateur: string
+}
+
+export interface TransfertInput {
+  produit_id: string
+  boutique_source_id: string
+  boutique_destination_id: string
+  quantite: number
+  demandeur: string
 }
 
 export interface LoginRequest {

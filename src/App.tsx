@@ -5,6 +5,7 @@ import { AuthProvider } from './lib/AuthContext'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import { BoutiqueFiche, BoutiquesListe } from './pages/Boutiques'
+import { ProduitFiche, ProduitsListe } from './pages/Produits'
 import Fournisseurs from './pages/Fournisseurs'
 import Utilisateurs from './pages/Utilisateurs'
 import Clients from './pages/Clients'
@@ -37,6 +38,8 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="boutiques" element={<BoutiquesListe />} />
             <Route path="boutiques/:id" element={<BoutiqueFiche />} />
+            <Route path="produits" element={<ProduitsListe />} />
+            <Route path="produits/:id" element={<ProduitFiche />} />
             <Route path="fournisseurs" element={<Fournisseurs />} />
             <Route path="utilisateurs" element={<Utilisateurs />} />
             <Route path="clients" element={<Clients />} />

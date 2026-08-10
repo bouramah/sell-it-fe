@@ -23,6 +23,7 @@ import type {
   Produit,
   Promotion,
   ReferentielItem,
+  Remboursement,
   ReportingIntelligent,
   SuggestionAvecProduit,
   TransfertStock,
@@ -31,15 +32,27 @@ import type {
 import { getToken } from '../lib/auth'
 import type {
   BoutiqueInput,
+  CaisseInput,
+  ClientInput,
+  CommandeClientInput,
+  CommandeFournisseurInput,
+  DetteInput,
+  FournisseurInput,
   LoginRequest,
+  MouvementCaisseInput,
+  MouvementStockInput,
   ProduitInput,
   ReferentielInput,
+  RemboursementInput,
+  StockLigneInput,
   TokenResponse,
+  TransfertInput,
   UtilisateurConnecte,
   UtilisateurInput,
 } from '../types/write'
 
 const API_BASE = 'http://localhost:8000/api/v1'
+export const SERVER_BASE = 'http://localhost:8000'
 
 class ApiError extends Error {
   status: number
@@ -83,6 +96,17 @@ async function sendJson<T>(method: 'POST' | 'PUT' | 'DELETE', path: string, body
   return handle<T>(res, path)
 }
 
+async function sendFile<T>(path: string, file: File): Promise<T> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData,
+  })
+  return handle<T>(res, path)
+}
+
 export const api = {
   login: (payload: LoginRequest) => sendJson<TokenResponse>('POST', '/auth/login', payload),
   moi: () => getJson<UtilisateurConnecte>('/auth/moi'),
@@ -94,6 +118,9 @@ export const api = {
   supprimerBoutique: (id: string) => sendJson<void>('DELETE', `/boutiques/${id}`),
 
   fournisseurs: () => getJson<Fournisseur[]>('/fournisseurs'),
+  creerFournisseur: (payload: FournisseurInput) => sendJson<Fournisseur>('POST', '/fournisseurs', payload),
+  modifierFournisseur: (id: string, payload: Partial<FournisseurInput>) => sendJson<Fournisseur>('PUT', `/fournisseurs/${id}`, payload),
+  supprimerFournisseur: (id: string) => sendJson<void>('DELETE', `/fournisseurs/${id}`),
 
   utilisateurs: () => getJson<Utilisateur[]>('/utilisateurs'),
   creerUtilisateur: (payload: UtilisateurInput) => sendJson<Utilisateur>('POST', '/utilisateurs', payload),
@@ -102,29 +129,56 @@ export const api = {
   permissions: () => getJson<PermissionLigne[]>('/permissions'),
 
   produits: (q?: string) => getJson<Produit[]>(`/produits${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  produit: (id: string) => getJson<Produit>(`/produits/${id}`),
   creerProduit: (payload: ProduitInput) => sendJson<Produit>('POST', '/produits', payload),
   modifierProduit: (id: string, payload: Partial<ProduitInput>) => sendJson<Produit>('PUT', `/produits/${id}`, payload),
   supprimerProduit: (id: string) => sendJson<void>('DELETE', `/produits/${id}`),
+  uploaderImageProduit: (id: string, file: File) => sendFile<Produit>(`/produits/${id}/image`, file),
+  supprimerImageProduit: (id: string) => sendJson<Produit>('DELETE', `/produits/${id}/image`),
 
   clients: () => getJson<ClientEntity[]>('/clients'),
+  creerClient: (payload: ClientInput) => sendJson<ClientEntity>('POST', '/clients', payload),
+  modifierClient: (id: string, payload: Partial<ClientInput>) => sendJson<ClientEntity>('PUT', `/clients/${id}`, payload),
+  supprimerClient: (id: string) => sendJson<void>('DELETE', `/clients/${id}`),
   paiementsClients: () => getJson<PaiementClient[]>('/paiements-clients'),
   paiementsFournisseurs: () => getJson<PaiementFournisseur[]>('/paiements-fournisseurs'),
 
   stock: (boutiqueId?: string) => getJson<LigneStock[]>(`/stock${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
+  creerLigneStock: (payload: StockLigneInput) => sendJson<LigneStock>('POST', '/stock', payload),
+  modifierLigneStock: (boutiqueId: string, produitId: string, payload: Partial<StockLigneInput>) =>
+    sendJson<LigneStock>('PUT', `/stock/${boutiqueId}/${produitId}`, payload),
+  supprimerLigneStock: (boutiqueId: string, produitId: string) => sendJson<void>('DELETE', `/stock/${boutiqueId}/${produitId}`),
   mouvementsStock: (boutiqueId?: string) => getJson<LigneMouvementStock[]>(`/stock/mouvements${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
+  creerMouvementStock: (payload: MouvementStockInput) => sendJson<LigneMouvementStock>('POST', '/stock/mouvements', payload),
   inventaire: (boutiqueId?: string) => getJson<LigneEcartInventaire[]>(`/stock/inventaire${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
 
   caisses: () => getJson<Caisse[]>('/caisse/caisses'),
+  creerCaisse: (payload: CaisseInput) => sendJson<Caisse>('POST', '/caisse/caisses', payload),
+  fermerCaisse: (id: string, soldeReel: number) => sendJson<Caisse>('POST', `/caisse/caisses/${id}/fermer`, { solde_reel: soldeReel }),
+  rouvrirCaisse: (id: string) => sendJson<Caisse>('POST', `/caisse/caisses/${id}/rouvrir`),
   mouvementsCaisse: () => getJson<LigneMouvementCaisse[]>('/caisse/mouvements'),
+  creerMouvementCaisse: (payload: MouvementCaisseInput) => sendJson<LigneMouvementCaisse>('POST', '/caisse/mouvements', payload),
 
   commandesClients: () => getJson<CommandeClient[]>('/commandes-clients'),
+  creerCommandeClient: (payload: CommandeClientInput) => sendJson<CommandeClient>('POST', '/commandes-clients', payload),
+  modifierCommandeClient: (id: string, statut: string) => sendJson<CommandeClient>('PUT', `/commandes-clients/${id}`, { statut }),
+
   commandesFournisseurs: () => getJson<LigneCommandeFournisseur[]>('/commandes-fournisseurs'),
+  creerCommandeFournisseur: (payload: CommandeFournisseurInput) => sendJson<LigneCommandeFournisseur>('POST', '/commandes-fournisseurs', payload),
+  modifierCommandeFournisseur: (id: string, statut: string) => sendJson<LigneCommandeFournisseur>('PUT', `/commandes-fournisseurs/${id}`, { statut }),
 
   livraisons: () => getJson<Livraison[]>('/livraisons'),
   depenses: () => getJson<Depense[]>('/depenses'),
 
   dettes: (tiersType: 'client' | 'fournisseur') => getJson<LigneDette[]>(`/dettes?tiers_type=${tiersType}`),
+  creerDette: (payload: DetteInput) => sendJson<LigneDette>('POST', '/dettes', payload),
+  encaisserRemboursement: (detteId: string, payload: RemboursementInput) =>
+    sendJson<LigneDette>('POST', `/dettes/${detteId}/remboursements`, payload),
+  remboursements: (detteId?: string) => getJson<Remboursement[]>(`/dettes/remboursements${detteId ? `?dette_id=${detteId}` : ''}`),
+
   transferts: () => getJson<TransfertStock[]>('/transferts'),
+  creerTransfert: (payload: TransfertInput) => sendJson<TransfertStock>('POST', '/transferts', payload),
+  modifierStatutTransfert: (id: string, statut: string) => sendJson<TransfertStock>('PUT', `/transferts/${id}/statut`, { statut }),
 
   comptabilite: () => getJson<ComptabiliteConsolidee>('/comptabilite'),
   promotions: () => getJson<Promotion[]>('/promotions'),

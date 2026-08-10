@@ -19,6 +19,7 @@ const sections: NavSection[] = [
     title: 'Réseau',
     items: [
       { to: '/boutiques', label: 'Boutiques' },
+      { to: '/produits', label: 'Produits' },
       { to: '/fournisseurs', label: 'Fournisseurs' },
       { to: '/utilisateurs', label: 'Utilisateurs & droits' },
     ],
