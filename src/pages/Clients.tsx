@@ -23,7 +23,7 @@ const SEGMENTS: SegmentClient[] = ['nouveau', 'regulier', 'fidele', 'a_risque']
 const EMPTY_FORM: ClientInput = {
   nom: '',
   contact: '',
-  boutique_id: '',
+  boutique_ids: [],
   segment: 'nouveau',
   credit_autorise: false,
   quartier: '',
@@ -72,7 +72,7 @@ export default function Clients() {
     setForm({
       nom: c.nom,
       contact: c.contact,
-      boutique_id: c.boutique_id,
+      boutique_ids: c.boutique_ids,
       segment: c.segment,
       credit_autorise: c.credit_autorise,
       quartier: c.quartier ?? '',
@@ -83,8 +83,19 @@ export default function Clients() {
     setEditing(c)
   }
 
+  function toggleBoutique(id: string) {
+    setForm((f) => ({
+      ...f,
+      boutique_ids: f.boutique_ids.includes(id) ? f.boutique_ids.filter((x) => x !== id) : [...f.boutique_ids, id],
+    }))
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (form.boutique_ids.length === 0) {
+      setError('Sélectionnez au moins une boutique fréquentée.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -144,7 +155,7 @@ export default function Clients() {
               <tr key={c.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{c.nom}</td>
                 <td className="px-4 py-3 text-slate-600">{c.contact}</td>
-                <td className="px-4 py-3 text-slate-600">{nomBoutique(c.boutique_id)}</td>
+                <td className="px-4 py-3 text-slate-600">{c.boutique_ids.map((id) => nomBoutique(id)).join(', ')}</td>
                 <td className="px-4 py-3 text-slate-600">
                   {c.quartier || c.commune || c.ville
                     ? [c.quartier, c.commune, c.ville].filter(Boolean).join(', ')
@@ -202,13 +213,19 @@ export default function Clients() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Boutique fréquentée</label>
-              <SearchableSelect
-                value={form.boutique_id}
-                onChange={(v) => setForm({ ...form, boutique_id: v })}
-                options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
-                required
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-700">Boutique(s) fréquentée(s)</label>
+              <div className="flex flex-wrap gap-3">
+                {boutiques.map((b) => (
+                  <label key={b.id} className="flex items-center gap-1.5 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={form.boutique_ids.includes(b.id)}
+                      onChange={() => toggleBoutique(b.id)}
+                    />
+                    {b.nom}
+                  </label>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>

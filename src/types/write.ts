@@ -60,7 +60,7 @@ export interface FournisseurInput {
 export interface ClientInput {
   nom: string
   contact: string
-  boutique_id: string
+  boutique_ids: string[]
   segment: SegmentClient
   credit_autorise: boolean
   quartier?: string | null

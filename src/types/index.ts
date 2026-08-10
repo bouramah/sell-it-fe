@@ -67,7 +67,7 @@ export interface Client {
   id: string
   nom: string
   contact: string
-  boutique_id: string
+  boutique_ids: string[]
   segment: SegmentClient
   credit_autorise: boolean
   solde_dette: number
