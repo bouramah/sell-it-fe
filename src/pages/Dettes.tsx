@@ -12,12 +12,14 @@ import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
   STATUT_DETTE_LABELS,
+  type Caisse,
   type Client,
   type Fournisseur,
   type LigneDette,
   type ModePaiement,
   type StatutDette,
   type TiersType,
+  type Utilisateur,
 } from '../types'
 import type { DetteInput, RemboursementInput } from '../types/write'
 
@@ -36,6 +38,8 @@ export default function Dettes() {
   const [dettes, setDettes] = useState<LigneDette[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
+  const [caisses, setCaisses] = useState<Caisse[]>([])
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
 
@@ -47,6 +51,8 @@ export default function Dettes() {
   useEffect(() => {
     api.clients().then(setClients)
     api.fournisseurs().then(setFournisseurs)
+    api.caisses().then(setCaisses)
+    api.utilisateurs().then(setUtilisateurs)
   }, [])
 
   const preFiltrees = boutiqueId ? dettes.filter((d) => d.boutique_id === boutiqueId) : dettes
@@ -82,13 +88,19 @@ export default function Dettes() {
   }
 
   const [encaissant, setEncaissant] = useState<LigneDette | null>(null)
-  const [remb, setRemb] = useState<RemboursementInput>({ montant: 0, mode_paiement: 'especes', operateur: '' })
+  const [remb, setRemb] = useState<RemboursementInput>({ caisse_id: '', montant: 0, mode_paiement: 'especes', operateur: '' })
   const [rembError, setRembError] = useState<string | null>(null)
   const [rembSaving, setRembSaving] = useState(false)
+  const [operateurManuel, setOperateurManuel] = useState(false)
+
+  const caissesOuvertesEncaissant = encaissant
+    ? caisses.filter((c) => c.statut === 'ouverte' && c.boutique_id === encaissant.boutique_id)
+    : []
 
   function openEncaisser(d: LigneDette) {
-    setRemb({ montant: d.solde_restant, mode_paiement: 'especes', operateur: '' })
+    setRemb({ caisse_id: '', montant: d.solde_restant, mode_paiement: 'especes', operateur: '' })
     setRembError(null)
+    setOperateurManuel(false)
     setEncaissant(d)
   }
 
@@ -97,6 +109,10 @@ export default function Dettes() {
     if (!encaissant) return
     if (remb.montant <= 0 || remb.montant > encaissant.solde_restant) {
       setRembError('Le montant doit être positif et ne pas dépasser le solde restant.')
+      return
+    }
+    if (!remb.caisse_id) {
+      setRembError('Sélectionnez la caisse concernée.')
       return
     }
     setRembSaving(true)
@@ -293,6 +309,18 @@ export default function Dettes() {
               />
             </div>
             <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Caisse concernée</label>
+              <SearchableSelect
+                value={remb.caisse_id}
+                onChange={(v) => setRemb({ ...remb, caisse_id: v })}
+                options={caissesOuvertesEncaissant.map((c) => ({ value: c.id, label: c.libelle }))}
+                required
+              />
+              {caissesOuvertesEncaissant.length === 0 && (
+                <p className="mt-1 text-xs text-red-600">Aucune caisse ouverte pour la boutique de cette dette.</p>
+              )}
+            </div>
+            <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Mode de paiement</label>
               <SearchableSelect
                 value={remb.mode_paiement}
@@ -302,13 +330,34 @@ export default function Dettes() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Opérateur</label>
-              <input
-                value={remb.operateur}
-                onChange={(e) => setRemb({ ...remb, operateur: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                required
-              />
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Opérateur</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOperateurManuel((m) => !m)
+                    setRemb({ ...remb, operateur: '' })
+                  }}
+                  className="text-xs font-medium text-teal-700 hover:underline"
+                >
+                  {operateurManuel ? 'Choisir dans la liste' : 'Saisir manuellement'}
+                </button>
+              </div>
+              {operateurManuel ? (
+                <input
+                  value={remb.operateur}
+                  onChange={(e) => setRemb({ ...remb, operateur: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              ) : (
+                <SearchableSelect
+                  value={remb.operateur}
+                  onChange={(v) => setRemb({ ...remb, operateur: v })}
+                  options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom}` }))}
+                  required
+                />
+              )}
             </div>
             {rembError && <p className="text-sm text-red-600">{rembError}</p>}
             <div className="flex justify-end gap-3 pt-2">

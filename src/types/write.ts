@@ -147,11 +147,11 @@ export interface LivraisonInput {
 
 export interface DepenseInput {
   boutique_id: string
+  caisse_id: string
   categorie: string
   auteur: string
   date: string
   montant: number
-  justificatif_disponible?: boolean
 }
 
 export interface DetteInput {
@@ -163,9 +163,17 @@ export interface DetteInput {
 }
 
 export interface RemboursementInput {
+  caisse_id: string
   montant: number
   mode_paiement: ModePaiement
   operateur: string
+}
+
+export interface PromotionInput {
+  nom: string
+  boutique_id: string | null
+  secteur: Secteur | null
+  impact_estime: string
 }
 
 export interface TransfertInput {

@@ -47,6 +47,7 @@ import type {
   MouvementCaisseInput,
   MouvementStockInput,
   ProduitInput,
+  PromotionInput,
   ReceptionInput,
   ReferentielInput,
   RemboursementInput,
@@ -193,6 +194,8 @@ export const api = {
   depenses: () => getJson<Depense[]>('/depenses'),
   creerDepense: (payload: DepenseInput) => sendJson<Depense>('POST', '/depenses', payload),
   validerDepense: (id: string) => sendJson<Depense>('POST', `/depenses/${id}/valider`),
+  uploaderJustificatifDepense: (id: string, file: File) => sendFile<Depense>(`/depenses/${id}/justificatif`, file),
+  supprimerJustificatifDepense: (id: string) => sendJson<Depense>('DELETE', `/depenses/${id}/justificatif`),
 
   dettes: (tiersType: 'client' | 'fournisseur') => getJson<LigneDette[]>(`/dettes?tiers_type=${tiersType}`),
   creerDette: (payload: DetteInput) => sendJson<LigneDette>('POST', '/dettes', payload),
@@ -206,6 +209,8 @@ export const api = {
 
   comptabilite: () => getJson<ComptabiliteConsolidee>('/comptabilite'),
   promotions: () => getJson<Promotion[]>('/promotions'),
+  creerPromotion: (payload: PromotionInput) => sendJson<Promotion>('POST', '/promotions', payload),
+  modifierStatutPromotion: (id: string, statut: string) => sendJson<Promotion>('PUT', `/promotions/${id}/statut`, { statut }),
 
   urlBonCommande: (commandeId: string) => `${API_BASE}/commandes-fournisseurs/${commandeId}/bon-commande.pdf`,
   urlBonReception: (commandeId: string) => `${API_BASE}/commandes-fournisseurs/${commandeId}/bon-reception.pdf`,

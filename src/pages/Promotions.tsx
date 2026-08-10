@@ -1,10 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import Modal from '../components/Modal'
+import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { ORIGINE_PROMOTION_LABELS, SECTEUR_LABELS, STATUT_PROMOTION_LABELS, type OriginePromotion, type Promotion, type StatutPromotion } from '../types'
+import {
+  ORIGINE_PROMOTION_LABELS,
+  SECTEUR_LABELS,
+  STATUT_PROMOTION_LABELS,
+  type OriginePromotion,
+  type Promotion,
+  type Secteur,
+  type StatutPromotion,
+} from '../types'
+import type { PromotionInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutPromotion, 'warning' | 'success' | 'default'> = {
   en_attente_validation: 'warning',
@@ -19,19 +30,62 @@ const ORIGINE_TONE: Record<OriginePromotion, 'default' | 'success'> = {
   direction: 'success',
 }
 
+const STATUTS: StatutPromotion[] = ['en_attente_validation', 'validee', 'active', 'terminee']
+
+const SECTEURS: Secteur[] = ['habillement', 'alimentation_generale', 'electronique_electromenager']
+
+const EMPTY_FORM: PromotionInput = { nom: '', boutique_id: null, secteur: null, impact_estime: '' }
+
 export default function Promotions() {
   const [promotions, setPromotions] = useState<Promotion[]>([])
-  const { nomBoutique } = useBoutiques()
+  const { boutiques, nomBoutique } = useBoutiques()
 
-  useEffect(() => {
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState<PromotionInput>(EMPTY_FORM)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  function refresh() {
     api.promotions().then(setPromotions)
-  }, [])
+  }
+
+  useEffect(refresh, [])
 
   const getFields = useCallback(
     (p: Promotion) => [p.nom, p.boutique_id ? nomBoutique(p.boutique_id) : 'Toutes boutiques'],
     [nomBoutique]
   )
   const { query, setQuery, filtered } = useSearch(promotions, getFields)
+
+  function openCreate() {
+    setForm(EMPTY_FORM)
+    setError(null)
+    setCreating(true)
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!form.nom.trim() || !form.impact_estime.trim()) {
+      setError('Le nom et l\'impact estimé sont obligatoires.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await api.creerPromotion(form)
+      setCreating(false)
+      refresh()
+    } catch {
+      setError('Échec de la création de la promotion.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleStatutChange(p: Promotion, statut: StatutPromotion) {
+    await api.modifierStatutPromotion(p.id, statut)
+    refresh()
+  }
 
   return (
     <div className="space-y-6">
@@ -40,7 +94,7 @@ export default function Promotions() {
           <h1 className="text-2xl font-bold text-slate-900">Promotions & tarifs</h1>
           <p className="text-sm text-slate-500">Campagnes tarifaires, humaines et suggérées par l'IA</p>
         </div>
-        <button className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
           + Nouvelle promotion
         </button>
       </div>
@@ -71,13 +125,87 @@ export default function Promotions() {
                 </td>
                 <td className="px-4 py-3 text-slate-600">{p.impact_estime}</td>
                 <td className="px-4 py-3">
-                  <Badge tone={STATUT_TONE[p.statut]}>{STATUT_PROMOTION_LABELS[p.statut]}</Badge>
+                  <div className="w-44">
+                    <SearchableSelect
+                      value={p.statut}
+                      onChange={(v) => handleStatutChange(p, v as StatutPromotion)}
+                      options={STATUTS.map((s) => ({ value: s, label: STATUT_PROMOTION_LABELS[s] }))}
+                    />
+                  </div>
+                  <div className="mt-1">
+                    <Badge tone={STATUT_TONE[p.statut]}>{STATUT_PROMOTION_LABELS[p.statut]}</Badge>
+                  </div>
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-400">
+                  Aucune promotion.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {creating && (
+        <Modal title="Nouvelle promotion" onClose={() => setCreating(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Nom de la promotion</label>
+              <input
+                value={form.nom}
+                onChange={(e) => setForm({ ...form, nom: e.target.value })}
+                placeholder="Ex : -15 % sur les robes wax"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
+                <SearchableSelect
+                  value={form.boutique_id ?? ''}
+                  onChange={(v) => setForm({ ...form, boutique_id: v || null })}
+                  options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+                  allowEmpty="Toutes les boutiques"
+                  placeholder="Toutes les boutiques"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Secteur</label>
+                <SearchableSelect
+                  value={form.secteur ?? ''}
+                  onChange={(v) => setForm({ ...form, secteur: (v as Secteur) || null })}
+                  options={SECTEURS.map((s) => ({ value: s, label: SECTEUR_LABELS[s] }))}
+                  allowEmpty="Tous secteurs"
+                  placeholder="Tous secteurs"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Impact estimé</label>
+              <input
+                value={form.impact_estime}
+                onChange={(e) => setForm({ ...form, impact_estime: e.target.value })}
+                placeholder="Ex : Écoulement stock à rotation lente"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {saving ? 'Création…' : 'Créer la promotion'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

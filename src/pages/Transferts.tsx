@@ -6,7 +6,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_TRANSFERT_LABELS, type Produit, type StatutTransfert, type TransfertStock } from '../types'
+import { STATUT_TRANSFERT_LABELS, type Produit, type StatutTransfert, type TransfertStock, type Utilisateur } from '../types'
 import type { TransfertInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutTransfert, 'default' | 'warning' | 'success'> = {
@@ -23,16 +23,19 @@ const EMPTY_FORM: TransfertInput = { produit_id: '', boutique_source_id: '', bou
 export default function Transferts() {
   const [transferts, setTransferts] = useState<TransfertStock[]>([])
   const [produits, setProduits] = useState<Produit[]>([])
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<TransfertInput>(EMPTY_FORM)
+  const [demandeurManuel, setDemandeurManuel] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   function refresh() {
     api.transferts().then(setTransferts)
     api.produits().then(setProduits)
+    api.utilisateurs().then(setUtilisateurs)
   }
 
   useEffect(refresh, [])
@@ -46,6 +49,7 @@ export default function Transferts() {
 
   function openCreate() {
     setForm(EMPTY_FORM)
+    setDemandeurManuel(false)
     setError(null)
     setCreating(true)
   }
@@ -187,13 +191,34 @@ export default function Transferts() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Demandeur</label>
-                <input
-                  value={form.demandeur}
-                  onChange={(e) => setForm({ ...form, demandeur: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
-                />
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">Demandeur</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDemandeurManuel((m) => !m)
+                      setForm({ ...form, demandeur: '' })
+                    }}
+                    className="text-xs font-medium text-teal-700 hover:underline"
+                  >
+                    {demandeurManuel ? 'Liste' : 'Manuel'}
+                  </button>
+                </div>
+                {demandeurManuel ? (
+                  <input
+                    value={form.demandeur}
+                    onChange={(e) => setForm({ ...form, demandeur: e.target.value })}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    required
+                  />
+                ) : (
+                  <SearchableSelect
+                    value={form.demandeur}
+                    onChange={(v) => setForm({ ...form, demandeur: v })}
+                    options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom}` }))}
+                    required
+                  />
+                )}
               </div>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}

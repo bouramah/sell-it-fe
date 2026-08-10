@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { api } from '../api/client'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
@@ -7,7 +7,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_VALIDATION_DEPENSE_LABELS, type Depense, type ReferentielItem, type StatutValidationDepense } from '../types'
+import { STATUT_VALIDATION_DEPENSE_LABELS, type Caisse, type Depense, type ReferentielItem, type StatutValidationDepense } from '../types'
 import type { DepenseInput } from '../types/write'
 import { useAuth } from '../lib/AuthContext'
 
@@ -22,7 +22,7 @@ function todayIso() {
 }
 
 function emptyForm(auteur: string): DepenseInput {
-  return { boutique_id: '', categorie: '', auteur, date: todayIso(), montant: 0, justificatif_disponible: false }
+  return { boutique_id: '', caisse_id: '', categorie: '', auteur, date: todayIso(), montant: 0 }
 }
 
 export default function Depenses() {
@@ -31,15 +31,20 @@ export default function Depenses() {
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
   const [categories, setCategories] = useState<ReferentielItem[]>([])
+  const [caisses, setCaisses] = useState<Caisse[]>([])
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<DepenseInput>(emptyForm(''))
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [validatingId, setValidatingId] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadTargetRef = useRef<string | null>(null)
 
   function refresh() {
     api.depenses().then(setDepenses)
+    api.caisses().then(setCaisses)
   }
 
   useEffect(refresh, [])
@@ -51,6 +56,17 @@ export default function Depenses() {
   const getFields = useCallback((d: Depense) => [d.categorie, d.auteur], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
 
+  const nomCaisse = useCallback(
+    (id: string | null) => {
+      if (!id) return '—'
+      const c = caisses.find((x) => x.id === id)
+      return c ? `${nomBoutique(c.boutique_id)} — ${c.libelle}` : id
+    },
+    [caisses, nomBoutique]
+  )
+
+  const caissesOuvertesForm = caisses.filter((c) => c.statut === 'ouverte' && (!form.boutique_id || c.boutique_id === form.boutique_id))
+
   function openCreate() {
     setForm(emptyForm(user ? `${user.prenom} ${user.nom}` : ''))
     setError(null)
@@ -61,6 +77,10 @@ export default function Depenses() {
     e.preventDefault()
     if (form.montant <= 0) {
       setError('Le montant doit être positif.')
+      return
+    }
+    if (!form.caisse_id) {
+      setError('Sélectionnez la caisse depuis laquelle la dépense est payée.')
       return
     }
     setSaving(true)
@@ -83,6 +103,35 @@ export default function Depenses() {
       refresh()
     } finally {
       setValidatingId(null)
+    }
+  }
+
+  function openFilePicker(d: Depense) {
+    uploadTargetRef.current = d.id
+    fileInputRef.current?.click()
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const targetId = uploadTargetRef.current
+    e.target.value = ''
+    if (!file || !targetId) return
+    setUploadingId(targetId)
+    try {
+      await api.uploaderJustificatifDepense(targetId, file)
+      refresh()
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
+  async function handleRemoveJustificatif(d: Depense) {
+    setUploadingId(d.id)
+    try {
+      await api.supprimerJustificatifDepense(d.id)
+      refresh()
+    } finally {
+      setUploadingId(null)
     }
   }
 
@@ -111,11 +160,14 @@ export default function Depenses() {
         </div>
       </div>
 
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
+
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">Boutique</th>
+              <th className="px-4 py-3">Caisse</th>
               <th className="px-4 py-3">Catégorie</th>
               <th className="px-4 py-3">Auteur</th>
               <th className="px-4 py-3">Date</th>
@@ -128,6 +180,7 @@ export default function Depenses() {
             {filtered.map((d) => (
               <tr key={d.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(d.boutique_id)}</td>
+                <td className="px-4 py-3 text-slate-600">{nomCaisse(d.caisse_id)}</td>
                 <td className="px-4 py-3 font-medium text-slate-900">{d.categorie}</td>
                 <td className="px-4 py-3 text-slate-600">{d.auteur}</td>
                 <td className="px-4 py-3 text-slate-500">{formatShortDate(d.date)}</td>
@@ -145,17 +198,34 @@ export default function Depenses() {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {d.justificatif_disponible ? (
-                    <span className="text-teal-700 font-medium">Voir justificatif</span>
+                  {d.justificatif_url ? (
+                    <div className="flex items-center gap-2">
+                      <a href={`${SERVER_BASE}${d.justificatif_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                        Voir justificatif
+                      </a>
+                      <button
+                        onClick={() => handleRemoveJustificatif(d)}
+                        disabled={uploadingId === d.id}
+                        className="text-slate-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   ) : (
-                    <span className="text-slate-400">Aucun justificatif</span>
+                    <button
+                      onClick={() => openFilePicker(d)}
+                      disabled={uploadingId === d.id}
+                      className="font-medium text-teal-700 hover:underline disabled:opacity-50"
+                    >
+                      {uploadingId === d.id ? 'Envoi…' : 'Joindre justificatif'}
+                    </button>
                   )}
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
                   Aucune dépense.
                 </td>
               </tr>
@@ -171,10 +241,22 @@ export default function Depenses() {
               <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
               <SearchableSelect
                 value={form.boutique_id}
-                onChange={(v) => setForm({ ...form, boutique_id: v })}
+                onChange={(v) => setForm({ ...form, boutique_id: v, caisse_id: '' })}
                 options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                 required
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Caisse (payée depuis)</label>
+              <SearchableSelect
+                value={form.caisse_id}
+                onChange={(v) => setForm({ ...form, caisse_id: v })}
+                options={caissesOuvertesForm.map((c) => ({ value: c.id, label: `${nomBoutique(c.boutique_id)} — ${c.libelle}` }))}
+                required
+              />
+              {form.boutique_id && caissesOuvertesForm.length === 0 && (
+                <p className="mt-1 text-xs text-red-600">Aucune caisse ouverte pour cette boutique.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -220,17 +302,9 @@ export default function Depenses() {
                 />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.justificatif_disponible ?? false}
-                onChange={(e) => setForm({ ...form, justificatif_disponible: e.target.checked })}
-                className="rounded border-slate-300"
-              />
-              Justificatif disponible
-            </label>
             <p className="text-xs text-slate-400">
               Au-delà de 500 000 GNF, la dépense passera automatiquement « en attente » de validation par le siège.
+              Le justificatif pourra être joint juste après l'enregistrement.
             </p>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">

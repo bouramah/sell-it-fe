@@ -215,12 +215,13 @@ export interface Livraison {
 export interface Depense {
   id: string
   boutique_id: string
+  caisse_id: string | null
   categorie: string
   auteur: string
   date: string
   montant: number
   statut_validation: StatutValidationDepense
-  justificatif_disponible: boolean
+  justificatif_url: string | null
 }
 
 export interface LigneDette {
@@ -236,6 +237,7 @@ export interface LigneDette {
 export interface Remboursement {
   id: string
   dette_id: string
+  caisse_id: string | null
   montant: number
   mode_paiement: ModePaiement
   date: string
