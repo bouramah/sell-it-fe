@@ -7,6 +7,7 @@ import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import type { Fournisseur } from '../types'
@@ -23,6 +24,7 @@ export default function Fournisseurs() {
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Fournisseur | null>(null)
   const { secteurs, nomSecteur } = useSecteurs()
+  const { fournisseurGestion: canGererFournisseur } = usePermissions()
 
   function refresh() {
     api.fournisseurs().then(setFournisseurs)
@@ -81,9 +83,11 @@ export default function Fournisseurs() {
           <h1 className="text-2xl font-bold text-slate-900">Fournisseurs</h1>
           <p className="text-sm text-slate-500">Fiches fournisseurs et conditions commerciales</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Ajouter un fournisseur
-        </button>
+        {canGererFournisseur && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Ajouter un fournisseur
+          </button>
+        )}
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un fournisseur…" />
@@ -109,14 +113,16 @@ export default function Fournisseurs() {
                 <td className="px-4 py-3 text-slate-600">{f.conditions_paiement}</td>
                 <td className="px-4 py-3 text-slate-600">{f.contact}</td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-3">
-                    <button onClick={() => openEdit(f)} className="font-medium text-teal-700 hover:underline">
-                      Modifier
-                    </button>
-                    <button onClick={() => setConfirmDelete(f)} className="font-medium text-red-600 hover:underline">
-                      Suppr.
-                    </button>
-                  </div>
+                  {canGererFournisseur && (
+                    <div className="flex gap-3">
+                      <button onClick={() => openEdit(f)} className="font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                      <button onClick={() => setConfirmDelete(f)} className="font-medium text-red-600 hover:underline">
+                        Suppr.
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

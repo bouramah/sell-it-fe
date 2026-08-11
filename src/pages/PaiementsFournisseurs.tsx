@@ -268,7 +268,15 @@ export default function PaiementsFournisseurs() {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {p.document_url ? (
+                  {!canPayer ? (
+                    p.document_url ? (
+                      <a href={`${SERVER_BASE}${p.document_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                        Voir
+                      </a>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )
+                  ) : p.document_url ? (
                     <div className="flex items-center gap-2">
                       <a href={`${SERVER_BASE}${p.document_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
                         Voir

@@ -26,6 +26,7 @@ const ROLES_CAISSE_GESTION: Role[] = ['caissier', 'gerant', 'administrateur']
 const ROLES_DASHBOARD: Role[] = ['gerant', 'responsable_achats', 'administrateur']
 const ROLES_COMPTABILITE: Role[] = ['gerant', 'responsable_achats', 'administrateur']
 const ROLES_PRODUIT_GESTION: Role[] = ['gerant', 'responsable_achats', 'administrateur']
+const ROLES_FOURNISSEUR_GESTION: Role[] = ['gerant', 'responsable_achats', 'administrateur']
 const ROLES_RESEAU: Role[] = ['administrateur']
 const ROLES_UTILISATEURS: Role[] = ['administrateur']
 const ROLES_SECURITE: Role[] = ['administrateur']
@@ -52,6 +53,7 @@ export interface Permissions {
   dashboard: boolean
   comptabilite: boolean
   produitGestion: boolean
+  fournisseurGestion: boolean
   reseau: boolean
   utilisateurs: boolean
   securite: boolean
@@ -81,6 +83,7 @@ function build(role: Role | null): Permissions {
     dashboard: has(ROLES_DASHBOARD),
     comptabilite: has(ROLES_COMPTABILITE),
     produitGestion: has(ROLES_PRODUIT_GESTION),
+    fournisseurGestion: has(ROLES_FOURNISSEUR_GESTION),
     reseau: has(ROLES_RESEAU),
     utilisateurs: has(ROLES_UTILISATEURS),
     securite: has(ROLES_SECURITE),

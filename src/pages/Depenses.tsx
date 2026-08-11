@@ -209,7 +209,15 @@ export default function Depenses() {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {d.justificatif_url ? (
+                  {!canCreerDepense ? (
+                    d.justificatif_url ? (
+                      <a href={`${SERVER_BASE}${d.justificatif_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                        Voir justificatif
+                      </a>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )
+                  ) : d.justificatif_url ? (
                     <div className="flex items-center gap-2">
                       <a href={`${SERVER_BASE}${d.justificatif_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
                         Voir justificatif

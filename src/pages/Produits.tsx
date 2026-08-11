@@ -10,6 +10,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import type { Produit, ReferentielItem } from '../types'
@@ -40,6 +41,7 @@ export function ProduitsListe() {
   const [categoriesRef, setCategoriesRef] = useState<ReferentielItem[]>([])
   const [confirmDelete, setConfirmDelete] = useState<Produit | null>(null)
   const { secteurs, nomSecteur } = useSecteurs()
+  const { produitGestion: canGererProduit } = usePermissions()
 
   function refresh() {
     api.produits().then(setProduits)
@@ -110,12 +112,14 @@ export function ProduitsListe() {
           <h1 className="text-2xl font-bold text-slate-900">Produits</h1>
           <p className="text-sm text-slate-500">Catalogue produit — fiches, prix, images</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
-        >
-          + Ajouter un produit
-        </button>
+        {canGererProduit && (
+          <button
+            onClick={openCreate}
+            className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+          >
+            + Ajouter un produit
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -150,26 +154,28 @@ export function ProduitsListe() {
               <Badge>{nomSecteur(p.secteur)}</Badge>
             </div>
             <div className="mt-2 text-sm font-semibold text-slate-900">{formatGNF(p.prix)}</div>
-            <div className="mt-2 flex gap-3 text-xs">
-              <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  openEdit(p)
-                }}
-                className="font-medium text-teal-700 hover:underline"
-              >
-                Modifier
-              </button>
-              <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  setConfirmDelete(p)
-                }}
-                className="font-medium text-red-600 hover:underline"
-              >
-                Suppr.
-              </button>
-            </div>
+            {canGererProduit && (
+              <div className="mt-2 flex gap-3 text-xs">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    openEdit(p)
+                  }}
+                  className="font-medium text-teal-700 hover:underline"
+                >
+                  Modifier
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setConfirmDelete(p)
+                  }}
+                  className="font-medium text-red-600 hover:underline"
+                >
+                  Suppr.
+                </button>
+              </div>
+            )}
           </Link>
         ))}
         {filtered.length === 0 && <p className="text-sm text-slate-400">Aucun produit ne correspond à la recherche.</p>}
@@ -310,6 +316,7 @@ export function ProduitFiche() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { nomBoutique } = useBoutiques()
   const { nomSecteur } = useSecteurs()
+  const { produitGestion: canGererProduit } = usePermissions()
 
   function refresh() {
     if (!id) return
@@ -409,6 +416,8 @@ export function ProduitFiche() {
               ))}
             </div>
           )}
+          {canGererProduit && (
+          <>
           <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="hidden" id="produit-image-input" />
           <div className="flex gap-2">
             <label
@@ -427,6 +436,8 @@ export function ProduitFiche() {
               </button>
             )}
           </div>
+          </>
+          )}
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:col-span-2">
