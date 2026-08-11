@@ -10,13 +10,14 @@ import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
   STATUT_PAIEMENT_LABELS,
+  type Caisse,
   type Fournisseur,
   type LigneCommandeFournisseur,
   type ModePaiement,
   type PaiementFournisseur,
   type StatutPaiement,
 } from '../types'
-import type { PaiementFournisseurInput } from '../types/write'
+import type { PaiementCaisseInput, PaiementFournisseurInput } from '../types/write'
 
 const TONE: Record<StatutPaiement, 'success' | 'warning' | 'default'> = {
   encaisse: 'success',
@@ -31,6 +32,7 @@ const EMPTY_FORM: PaiementFournisseurInput = {
   fournisseur_nom: '',
   commande_id: null,
   boutique_id: '',
+  caisse_id: '',
   mode_paiement: 'especes',
   montant: 0,
   date_paiement: null,
@@ -40,8 +42,8 @@ export default function PaiementsFournisseurs() {
   const [paiements, setPaiements] = useState<PaiementFournisseur[]>([])
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const [commandes, setCommandes] = useState<LigneCommandeFournisseur[]>([])
+  const [caisses, setCaisses] = useState<Caisse[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
-  const [payingId, setPayingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<string | null>(null)
@@ -51,9 +53,15 @@ export default function PaiementsFournisseurs() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  const [payant, setPayant] = useState<PaiementFournisseur | null>(null)
+  const [payerCaisseId, setPayerCaisseId] = useState('')
+  const [payerError, setPayerError] = useState<string | null>(null)
+  const [payerSaving, setPayerSaving] = useState(false)
+
   function refresh() {
     api.paiementsFournisseurs().then(setPaiements)
     api.commandesFournisseurs().then(setCommandes)
+    api.caisses().then(setCaisses)
   }
 
   useEffect(refresh, [])
@@ -63,6 +71,20 @@ export default function PaiementsFournisseurs() {
 
   const getFields = useCallback((p: PaiementFournisseur) => [p.fournisseur_nom, p.reference], [])
   const { query, setQuery, filtered } = useSearch(paiements, getFields)
+
+  const nomCaisse = useCallback(
+    (id: string | null) => {
+      if (!id) return '—'
+      const c = caisses.find((x) => x.id === id)
+      return c ? `${nomBoutique(c.boutique_id)} — ${c.libelle}` : id
+    },
+    [caisses, nomBoutique]
+  )
+
+  const caissesOuvertesForm = caisses.filter((c) => c.statut === 'ouverte' && (!form.boutique_id || c.boutique_id === form.boutique_id))
+  const caissesOuvertesPayant = payant
+    ? caisses.filter((c) => c.statut === 'ouverte' && c.boutique_id === payant.boutique_id)
+    : []
 
   const fournisseurSelectionne = fournisseurs.find((f) => f.nom === form.fournisseur_nom)
   const commandesDuFournisseur = fournisseurSelectionne
@@ -91,11 +113,20 @@ export default function PaiementsFournisseurs() {
 
   function selectCommande(commandeId: string) {
     const c = commandes.find((x) => x.id === commandeId)
-    setForm({ ...form, commande_id: commandeId || null, boutique_id: c ? c.boutique_id : form.boutique_id })
+    setForm({
+      ...form,
+      commande_id: commandeId || null,
+      boutique_id: c ? c.boutique_id : form.boutique_id,
+      caisse_id: c && c.boutique_id !== form.boutique_id ? '' : form.caisse_id,
+    })
   }
 
   async function handleSubmitPaiement(e: FormEvent) {
     e.preventDefault()
+    if (!form.caisse_id) {
+      setError('Sélectionnez la caisse depuis laquelle le paiement est réglé.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -109,13 +140,30 @@ export default function PaiementsFournisseurs() {
     }
   }
 
-  async function handlePayer(p: PaiementFournisseur) {
-    setPayingId(p.id)
+  function openPayer(p: PaiementFournisseur) {
+    setPayerCaisseId('')
+    setPayerError(null)
+    setPayant(p)
+  }
+
+  async function handleSubmitPayer(e: FormEvent) {
+    e.preventDefault()
+    if (!payant) return
+    if (!payerCaisseId) {
+      setPayerError('Sélectionnez la caisse concernée.')
+      return
+    }
+    setPayerSaving(true)
+    setPayerError(null)
     try {
-      await api.payerPaiementFournisseur(p.id)
+      const payload: PaiementCaisseInput = { caisse_id: payerCaisseId }
+      await api.payerPaiementFournisseur(payant.id, payload)
+      setPayant(null)
       refresh()
+    } catch (err) {
+      setPayerError(err instanceof Error ? err.message : "Échec du règlement.")
     } finally {
-      setPayingId(null)
+      setPayerSaving(false)
     }
   }
 
@@ -171,6 +219,7 @@ export default function PaiementsFournisseurs() {
               <th className="px-4 py-3">Fournisseur</th>
               <th className="px-4 py-3">Commande liée</th>
               <th className="px-4 py-3">Boutique</th>
+              <th className="px-4 py-3">Caisse</th>
               <th className="px-4 py-3">Mode de paiement</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3 text-right">Montant</th>
@@ -184,6 +233,7 @@ export default function PaiementsFournisseurs() {
                 <td className="px-4 py-3 font-medium text-slate-900">{p.fournisseur_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{p.reference}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(p.boutique_id)}</td>
+                <td className="px-4 py-3 text-slate-600">{nomCaisse(p.caisse_id)}</td>
                 <td className="px-4 py-3 text-slate-600">{MODE_PAIEMENT_LABELS[p.mode_paiement]}</td>
                 <td className="px-4 py-3 text-slate-500">{formatShortDate(p.date)}</td>
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(p.montant)}</td>
@@ -191,11 +241,10 @@ export default function PaiementsFournisseurs() {
                   <Badge tone={TONE[p.statut]}>{STATUT_PAIEMENT_LABELS[p.statut]}</Badge>
                   {(p.statut === 'en_attente' || p.statut === 'partiel') && (
                     <button
-                      onClick={() => handlePayer(p)}
-                      disabled={payingId === p.id}
-                      className="ml-2 text-xs font-medium text-teal-700 hover:underline disabled:opacity-50"
+                      onClick={() => openPayer(p)}
+                      className="ml-2 text-xs font-medium text-teal-700 hover:underline"
                     >
-                      {payingId === p.id ? 'Règlement…' : 'Marquer payé'}
+                      Marquer payé
                     </button>
                   )}
                 </td>
@@ -264,10 +313,22 @@ export default function PaiementsFournisseurs() {
               <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
               <SearchableSelect
                 value={form.boutique_id}
-                onChange={(v) => setForm({ ...form, boutique_id: v })}
+                onChange={(v) => setForm({ ...form, boutique_id: v, caisse_id: '' })}
                 options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                 required
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Caisse (réglé depuis)</label>
+              <SearchableSelect
+                value={form.caisse_id}
+                onChange={(v) => setForm({ ...form, caisse_id: v })}
+                options={caissesOuvertesForm.map((c) => ({ value: c.id, label: `${nomBoutique(c.boutique_id)} — ${c.libelle}` }))}
+                required
+              />
+              {form.boutique_id && caissesOuvertesForm.length === 0 && (
+                <p className="mt-1 text-xs text-red-600">Aucune caisse ouverte pour cette boutique.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -307,6 +368,37 @@ export default function PaiementsFournisseurs() {
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
                 {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {payant && (
+        <Modal title={`Marquer payé — ${payant.fournisseur_nom}`} onClose={() => setPayant(null)}>
+          <form onSubmit={handleSubmitPayer} className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Montant à régler : <span className="font-semibold text-slate-900">{formatGNF(payant.montant)}</span>
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Caisse concernée</label>
+              <SearchableSelect
+                value={payerCaisseId}
+                onChange={setPayerCaisseId}
+                options={caissesOuvertesPayant.map((c) => ({ value: c.id, label: c.libelle }))}
+                required
+              />
+              {caissesOuvertesPayant.length === 0 && (
+                <p className="mt-1 text-xs text-red-600">Aucune caisse ouverte pour la boutique de ce paiement.</p>
+              )}
+            </div>
+            {payerError && <p className="text-sm text-red-600">{payerError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setPayant(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={payerSaving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {payerSaving ? 'Règlement…' : 'Marquer payé'}
               </button>
             </div>
           </form>

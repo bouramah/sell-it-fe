@@ -146,6 +146,7 @@ export interface PaiementClientInput {
   client_nom: string
   commande_id?: string | null
   boutique_id: string
+  caisse_id: string
   mode_paiement: ModePaiement
   montant: number
   date_paiement?: string | null
@@ -155,9 +156,14 @@ export interface PaiementFournisseurInput {
   fournisseur_nom: string
   commande_id?: string | null
   boutique_id: string
+  caisse_id: string
   mode_paiement: ModePaiement
   montant: number
   date_paiement?: string | null
+}
+
+export interface PaiementCaisseInput {
+  caisse_id: string
 }
 
 export interface LivraisonInput {

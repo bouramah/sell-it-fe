@@ -10,13 +10,14 @@ import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
   STATUT_PAIEMENT_LABELS,
+  type Caisse,
   type Client,
   type CommandeClient,
   type ModePaiement,
   type PaiementClient,
   type StatutPaiement,
 } from '../types'
-import type { PaiementClientInput } from '../types/write'
+import type { PaiementCaisseInput, PaiementClientInput } from '../types/write'
 
 const TONE: Record<StatutPaiement, 'success' | 'warning' | 'default'> = {
   encaisse: 'success',
@@ -31,6 +32,7 @@ const EMPTY_FORM: PaiementClientInput = {
   client_nom: '',
   commande_id: null,
   boutique_id: '',
+  caisse_id: '',
   mode_paiement: 'especes',
   montant: 0,
   date_paiement: null,
@@ -40,6 +42,7 @@ export default function PaiementsClients() {
   const [paiements, setPaiements] = useState<PaiementClient[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [commandes, setCommandes] = useState<CommandeClient[]>([])
+  const [caisses, setCaisses] = useState<Caisse[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [creating, setCreating] = useState(false)
@@ -47,15 +50,35 @@ export default function PaiementsClients() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  const [encaissant, setEncaissant] = useState<PaiementClient | null>(null)
+  const [encaisserCaisseId, setEncaisserCaisseId] = useState('')
+  const [encaisserError, setEncaisserError] = useState<string | null>(null)
+  const [encaisserSaving, setEncaisserSaving] = useState(false)
+
   function refresh() {
     api.paiementsClients().then(setPaiements)
     api.commandesClients().then(setCommandes)
+    api.caisses().then(setCaisses)
   }
 
   useEffect(refresh, [])
   useEffect(() => {
     api.clients().then(setClients)
   }, [])
+
+  const nomCaisse = useCallback(
+    (id: string | null) => {
+      if (!id) return '—'
+      const c = caisses.find((x) => x.id === id)
+      return c ? `${nomBoutique(c.boutique_id)} — ${c.libelle}` : id
+    },
+    [caisses, nomBoutique]
+  )
+
+  const caissesOuvertesForm = caisses.filter((c) => c.statut === 'ouverte' && (!form.boutique_id || c.boutique_id === form.boutique_id))
+  const caissesOuvertesEncaissant = encaissant
+    ? caisses.filter((c) => c.statut === 'ouverte' && c.boutique_id === encaissant.boutique_id)
+    : []
 
   const getFields = useCallback((p: PaiementClient) => [p.client_nom, p.reference], [])
   const { query, setQuery, filtered } = useSearch(paiements, getFields)
@@ -84,11 +107,20 @@ export default function PaiementsClients() {
 
   function selectCommande(commandeId: string) {
     const c = commandes.find((x) => x.id === commandeId)
-    setForm({ ...form, commande_id: commandeId || null, boutique_id: c ? c.boutique_id : form.boutique_id })
+    setForm({
+      ...form,
+      commande_id: commandeId || null,
+      boutique_id: c ? c.boutique_id : form.boutique_id,
+      caisse_id: c && c.boutique_id !== form.boutique_id ? '' : form.caisse_id,
+    })
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!form.caisse_id) {
+      setError('Sélectionnez la caisse dans laquelle le paiement est encaissé.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -99,6 +131,33 @@ export default function PaiementsClients() {
       setError(err instanceof Error ? err.message : "Échec de l'enregistrement du paiement.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  function openEncaisser(p: PaiementClient) {
+    setEncaisserCaisseId('')
+    setEncaisserError(null)
+    setEncaissant(p)
+  }
+
+  async function handleSubmitEncaisser(e: FormEvent) {
+    e.preventDefault()
+    if (!encaissant) return
+    if (!encaisserCaisseId) {
+      setEncaisserError('Sélectionnez la caisse concernée.')
+      return
+    }
+    setEncaisserSaving(true)
+    setEncaisserError(null)
+    try {
+      const payload: PaiementCaisseInput = { caisse_id: encaisserCaisseId }
+      await api.encaisserPaiementClient(encaissant.id, payload)
+      setEncaissant(null)
+      refresh()
+    } catch (err) {
+      setEncaisserError(err instanceof Error ? err.message : "Échec de l'encaissement.")
+    } finally {
+      setEncaisserSaving(false)
     }
   }
 
@@ -123,6 +182,7 @@ export default function PaiementsClients() {
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Commande / dette liée</th>
               <th className="px-4 py-3">Boutique</th>
+              <th className="px-4 py-3">Caisse</th>
               <th className="px-4 py-3">Mode de paiement</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3 text-right">Montant</th>
@@ -136,11 +196,20 @@ export default function PaiementsClients() {
                 <td className="px-4 py-3 font-medium text-slate-900">{p.client_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{p.reference}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(p.boutique_id)}</td>
+                <td className="px-4 py-3 text-slate-600">{nomCaisse(p.caisse_id)}</td>
                 <td className="px-4 py-3 text-slate-600">{MODE_PAIEMENT_LABELS[p.mode_paiement]}</td>
                 <td className="px-4 py-3 text-slate-500">{formatShortDate(p.date)}</td>
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(p.montant)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={TONE[p.statut]}>{STATUT_PAIEMENT_LABELS[p.statut]}</Badge>
+                  {p.statut === 'en_attente' && (
+                    <button
+                      onClick={() => openEncaisser(p)}
+                      className="ml-2 text-xs font-medium text-teal-700 hover:underline"
+                    >
+                      Encaisser
+                    </button>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <a href={api.urlRecu(p.id)} className="font-medium text-teal-700 hover:underline">
@@ -187,10 +256,22 @@ export default function PaiementsClients() {
               <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
               <SearchableSelect
                 value={form.boutique_id}
-                onChange={(v) => setForm({ ...form, boutique_id: v })}
+                onChange={(v) => setForm({ ...form, boutique_id: v, caisse_id: '' })}
                 options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                 required
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Caisse (encaissé dans)</label>
+              <SearchableSelect
+                value={form.caisse_id}
+                onChange={(v) => setForm({ ...form, caisse_id: v })}
+                options={caissesOuvertesForm.map((c) => ({ value: c.id, label: `${nomBoutique(c.boutique_id)} — ${c.libelle}` }))}
+                required
+              />
+              {form.boutique_id && caissesOuvertesForm.length === 0 && (
+                <p className="mt-1 text-xs text-red-600">Aucune caisse ouverte pour cette boutique.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -230,6 +311,37 @@ export default function PaiementsClients() {
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
                 {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {encaissant && (
+        <Modal title={`Encaisser — ${encaissant.client_nom}`} onClose={() => setEncaissant(null)}>
+          <form onSubmit={handleSubmitEncaisser} className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Montant à encaisser : <span className="font-semibold text-slate-900">{formatGNF(encaissant.montant)}</span>
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Caisse concernée</label>
+              <SearchableSelect
+                value={encaisserCaisseId}
+                onChange={setEncaisserCaisseId}
+                options={caissesOuvertesEncaissant.map((c) => ({ value: c.id, label: c.libelle }))}
+                required
+              />
+              {caissesOuvertesEncaissant.length === 0 && (
+                <p className="mt-1 text-xs text-red-600">Aucune caisse ouverte pour la boutique de ce paiement.</p>
+              )}
+            </div>
+            {encaisserError && <p className="text-sm text-red-600">{encaisserError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setEncaissant(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={encaisserSaving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {encaisserSaving ? 'Encaissement…' : 'Encaisser'}
               </button>
             </div>
           </form>

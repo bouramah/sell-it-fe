@@ -81,6 +81,7 @@ export interface PaiementClient {
   client_nom: string
   reference: string
   boutique_id: string
+  caisse_id: string | null
   mode_paiement: ModePaiement
   date: string
   montant: number
@@ -92,6 +93,7 @@ export interface PaiementFournisseur {
   fournisseur_nom: string
   reference: string
   boutique_id: string
+  caisse_id: string | null
   mode_paiement: ModePaiement
   date: string
   montant: number
