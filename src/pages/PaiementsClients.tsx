@@ -49,6 +49,7 @@ export default function PaiementsClients() {
   const [form, setForm] = useState<PaiementClientInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [clientManuel, setClientManuel] = useState(false)
 
   const [encaissant, setEncaissant] = useState<PaiementClient | null>(null)
   const [encaisserCaisseId, setEncaisserCaisseId] = useState('')
@@ -98,6 +99,7 @@ export default function PaiementsClients() {
   function openCreate() {
     setForm(EMPTY_FORM)
     setError(null)
+    setClientManuel(false)
     setCreating(true)
   }
 
@@ -231,13 +233,35 @@ export default function PaiementsClients() {
         <Modal title="Enregistrer un paiement client" onClose={() => setCreating(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Client</label>
-              <SearchableSelect
-                value={form.client_nom}
-                onChange={selectClient}
-                options={clients.map((c) => ({ value: c.nom, label: c.nom }))}
-                required
-              />
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Client</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClientManuel((m) => !m)
+                    selectClient('')
+                  }}
+                  className="text-xs font-medium text-teal-700 hover:underline"
+                >
+                  {clientManuel ? 'Liste' : 'Client de passage'}
+                </button>
+              </div>
+              {clientManuel ? (
+                <input
+                  value={form.client_nom}
+                  onChange={(e) => setForm({ ...form, client_nom: e.target.value, commande_id: null })}
+                  placeholder="Nom du client"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              ) : (
+                <SearchableSelect
+                  value={form.client_nom}
+                  onChange={selectClient}
+                  options={clients.map((c) => ({ value: c.nom, label: `${c.nom} — ${c.contact}` }))}
+                  required
+                />
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Commande liée (optionnel)</label>
