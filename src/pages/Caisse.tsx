@@ -7,7 +7,15 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatTime } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_CAISSE_LABELS, type Caisse as CaisseEntity, type LigneMouvementCaisse, type StatutCaisse, type TypeMouvementCaisse } from '../types'
+import {
+  STATUT_CAISSE_LABELS,
+  type Caisse as CaisseEntity,
+  type LigneMouvementCaisse,
+  type ReferentielItem,
+  type StatutCaisse,
+  type TypeMouvementCaisse,
+  type Utilisateur,
+} from '../types'
 import type { CaisseInput, MouvementCaisseInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutCaisse, 'success' | 'default' | 'danger'> = {
@@ -16,18 +24,21 @@ const STATUT_TONE: Record<StatutCaisse, 'success' | 'default' | 'danger'> = {
   ecart_signale: 'danger',
 }
 
-const EMPTY_CAISSE_FORM: CaisseInput = { boutique_id: '', libelle: 'Principale', fond_initial: 0, operateur: '' }
+const EMPTY_CAISSE_FORM: CaisseInput = { boutique_id: '', libelle: '', fond_initial: 0, operateur: '' }
 const EMPTY_MVT_FORM: MouvementCaisseInput = { caisse_id: '', type: 'encaissement', motif: '', operateur: '', montant: 0 }
 
 export default function Caisse() {
   const [caisses, setCaisses] = useState<CaisseEntity[]>([])
   const [mouvements, setMouvements] = useState<LigneMouvementCaisse[]>([])
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
+  const [libellesRef, setLibellesRef] = useState<ReferentielItem[]>([])
   const { nomBoutique, boutiques } = useBoutiques()
 
   const [creatingCaisse, setCreatingCaisse] = useState(false)
   const [caisseForm, setCaisseForm] = useState<CaisseInput>(EMPTY_CAISSE_FORM)
   const [caisseError, setCaisseError] = useState<string | null>(null)
   const [savingCaisse, setSavingCaisse] = useState(false)
+  const [operateurCaisseManuel, setOperateurCaisseManuel] = useState(false)
 
   const [closingCaisse, setClosingCaisse] = useState<CaisseEntity | null>(null)
   const [soldeReel, setSoldeReel] = useState(0)
@@ -38,6 +49,7 @@ export default function Caisse() {
   const [mvtForm, setMvtForm] = useState<MouvementCaisseInput>(EMPTY_MVT_FORM)
   const [mvtError, setMvtError] = useState<string | null>(null)
   const [savingMvt, setSavingMvt] = useState(false)
+  const [operateurMvtManuel, setOperateurMvtManuel] = useState(false)
 
   function refresh() {
     api.caisses().then(setCaisses)
@@ -45,6 +57,10 @@ export default function Caisse() {
   }
 
   useEffect(refresh, [])
+  useEffect(() => {
+    api.utilisateurs().then(setUtilisateurs)
+    api.referentiels().then((r) => setLibellesRef(r.caisses_comptes ?? []))
+  }, [])
 
   const getFields = useCallback(
     (m: LigneMouvementCaisse) => [nomBoutique(m.boutique_id), m.caisse_libelle, m.motif, m.operateur],
@@ -55,6 +71,7 @@ export default function Caisse() {
   function openCreateCaisse() {
     setCaisseForm(EMPTY_CAISSE_FORM)
     setCaisseError(null)
+    setOperateurCaisseManuel(false)
     setCreatingCaisse(true)
   }
 
@@ -103,6 +120,7 @@ export default function Caisse() {
   function openCreateMvt() {
     setMvtForm(EMPTY_MVT_FORM)
     setMvtError(null)
+    setOperateurMvtManuel(false)
     setCreatingMvt(true)
   }
 
@@ -228,9 +246,10 @@ export default function Caisse() {
                 <SearchableSelect
                   value={caisseForm.libelle}
                   onChange={(v) => setCaisseForm({ ...caisseForm, libelle: v })}
-                  options={[{ value: 'Principale', label: 'Principale' }, { value: 'Secondaire', label: 'Secondaire' }]}
+                  options={libellesRef.map((l) => ({ value: l.nom, label: l.nom }))}
                   required
                 />
+                <p className="mt-1 text-xs text-slate-400">Cette liste se gère depuis Configuration → Paramètres.</p>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Fond de caisse initial</label>
@@ -238,8 +257,34 @@ export default function Caisse() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Opérateur</label>
-              <input value={caisseForm.operateur} onChange={(e) => setCaisseForm({ ...caisseForm, operateur: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" required />
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Opérateur (optionnel)</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOperateurCaisseManuel((m) => !m)
+                    setCaisseForm({ ...caisseForm, operateur: '' })
+                  }}
+                  className="text-xs font-medium text-teal-700 hover:underline"
+                >
+                  {operateurCaisseManuel ? 'Liste' : 'Manuel'}
+                </button>
+              </div>
+              {operateurCaisseManuel ? (
+                <input
+                  value={caisseForm.operateur}
+                  onChange={(e) => setCaisseForm({ ...caisseForm, operateur: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              ) : (
+                <SearchableSelect
+                  value={caisseForm.operateur}
+                  onChange={(v) => setCaisseForm({ ...caisseForm, operateur: v })}
+                  options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
+                  allowEmpty="Non renseigné"
+                  placeholder="Non renseigné"
+                />
+              )}
             </div>
             {caisseError && <p className="text-sm text-red-600">{caisseError}</p>}
             <div className="flex justify-end gap-3 pt-2">
@@ -301,15 +346,39 @@ export default function Caisse() {
                 <input type="number" min={0} value={mvtForm.montant} onChange={(e) => setMvtForm({ ...mvtForm, montant: Number(e.target.value) })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" required />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Motif</label>
-                <input value={mvtForm.motif} onChange={(e) => setMvtForm({ ...mvtForm, motif: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" required />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Motif</label>
+              <input value={mvtForm.motif} onChange={(e) => setMvtForm({ ...mvtForm, motif: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" required />
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-slate-700">Opérateur (optionnel)</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOperateurMvtManuel((m) => !m)
+                    setMvtForm({ ...mvtForm, operateur: '' })
+                  }}
+                  className="text-xs font-medium text-teal-700 hover:underline"
+                >
+                  {operateurMvtManuel ? 'Liste' : 'Manuel'}
+                </button>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Opérateur</label>
-                <input value={mvtForm.operateur} onChange={(e) => setMvtForm({ ...mvtForm, operateur: e.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" required />
-              </div>
+              {operateurMvtManuel ? (
+                <input
+                  value={mvtForm.operateur}
+                  onChange={(e) => setMvtForm({ ...mvtForm, operateur: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              ) : (
+                <SearchableSelect
+                  value={mvtForm.operateur}
+                  onChange={(v) => setMvtForm({ ...mvtForm, operateur: v })}
+                  options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
+                  allowEmpty="Non renseigné"
+                  placeholder="Non renseigné"
+                />
+              )}
             </div>
             {mvtError && <p className="text-sm text-red-600">{mvtError}</p>}
             <div className="flex justify-end gap-3 pt-2">
