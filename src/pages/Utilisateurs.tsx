@@ -8,6 +8,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatDate } from '../lib/format'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { ROLE_LABELS, type Boutique, type DroitAcces, type PermissionLigne, type Role, type Utilisateur } from '../types'
 import type { UtilisateurInput } from '../types/write'
@@ -47,6 +48,8 @@ export default function Utilisateurs() {
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const [permissions, setPermissions] = useState<PermissionLigne[]>([])
   const [boutiques, setBoutiques] = useState<Boutique[]>([])
+  const [boutiqueId, setBoutiqueId] = useState('')
+  const { utilisateurs: canGererUtilisateurs } = usePermissions()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Utilisateur | null>(null)
   const [form, setForm] = useState<UtilisateurInput>(EMPTY_FORM)
@@ -56,11 +59,11 @@ export default function Utilisateurs() {
   const [savingCell, setSavingCell] = useState<string | null>(null)
 
   function refresh() {
-    api.utilisateurs().then(setUtilisateurs)
+    api.utilisateurs(boutiqueId || undefined).then(setUtilisateurs)
   }
 
+  useEffect(refresh, [boutiqueId])
   useEffect(() => {
-    refresh()
     api.permissions().then(setPermissions)
     api.boutiques().then(setBoutiques)
   }, [])
@@ -160,18 +163,29 @@ export default function Utilisateurs() {
           <h1 className="text-2xl font-bold text-slate-900">Utilisateurs & droits</h1>
           <p className="text-sm text-slate-500">Comptes, rôles et matrice de permissions</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
-        >
-          + Ajouter un utilisateur
-        </button>
+        {canGererUtilisateurs && (
+          <button
+            onClick={openCreate}
+            className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+          >
+            + Ajouter un utilisateur
+          </button>
+        )}
       </div>
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Utilisateurs</h2>
-        <div className="mb-3">
+        <div className="mb-3 flex flex-wrap gap-3">
           <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un utilisateur…" />
+          <div className="w-56">
+            <SearchableSelect
+              value={boutiqueId}
+              onChange={setBoutiqueId}
+              options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+              allowEmpty="Toutes les boutiques"
+              placeholder="Toutes les boutiques"
+            />
+          </div>
         </div>
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
@@ -202,14 +216,16 @@ export default function Utilisateurs() {
                   </td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(u.derniere_connexion)}</td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-3">
-                      <button onClick={() => openEdit(u)} className="font-medium text-teal-700 hover:underline">
-                        Modifier
-                      </button>
-                      <button onClick={() => setConfirmDelete(u)} className="font-medium text-red-600 hover:underline">
-                        Suppr.
-                      </button>
-                    </div>
+                    {canGererUtilisateurs && (
+                      <div className="flex gap-3">
+                        <button onClick={() => openEdit(u)} className="font-medium text-teal-700 hover:underline">
+                          Modifier
+                        </button>
+                        <button onClick={() => setConfirmDelete(u)} className="font-medium text-red-600 hover:underline">
+                          Suppr.
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -226,6 +242,7 @@ export default function Utilisateurs() {
         </div>
       </section>
 
+      {canGererUtilisateurs && (
       <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
           Matrice des droits par rôle
@@ -275,6 +292,7 @@ export default function Utilisateurs() {
           </table>
         </div>
       </section>
+      )}
 
       {showModal && (
         <Modal

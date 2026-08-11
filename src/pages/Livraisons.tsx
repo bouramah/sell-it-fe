@@ -7,6 +7,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type ReferentielItem, type StatutLivraison } from '../types'
 import type { LivraisonInput } from '../types/write'
@@ -27,6 +28,7 @@ export default function Livraisons() {
   const [commandes, setCommandes] = useState<CommandeClient[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const { livraisonGestion: canGererLivraison } = usePermissions()
   const [livreursRef, setLivreursRef] = useState<ReferentielItem[]>([])
   const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
 
@@ -136,9 +138,11 @@ export default function Livraisons() {
           <h1 className="text-2xl font-bold text-slate-900">Livraisons</h1>
           <p className="text-sm text-slate-500">Affectation des livreurs et suivi des tournées</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Affecter une livraison
-        </button>
+        {canGererLivraison && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Affecter une livraison
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -178,19 +182,28 @@ export default function Livraisons() {
                 <td className="px-4 py-3 text-slate-600">{l.adresse}</td>
                 <td className="px-4 py-3 text-slate-500">{l.creneau}</td>
                 <td className="px-4 py-3">
-                  <div className="w-36">
-                    <SearchableSelect
-                      value={l.statut}
-                      onChange={(v) => handleStatutChange(l, v as StatutLivraison)}
-                      options={STATUTS.map((s) => ({ value: s, label: STATUT_LIVRAISON_LABELS[s] }))}
-                    />
-                  </div>
-                  <div className="mt-1">
+                  {canGererLivraison ? (
+                    <div className="w-36">
+                      <SearchableSelect
+                        value={l.statut}
+                        onChange={(v) => handleStatutChange(l, v as StatutLivraison)}
+                        options={STATUTS.map((s) => ({ value: s, label: STATUT_LIVRAISON_LABELS[s] }))}
+                      />
+                    </div>
+                  ) : (
                     <Badge tone={STATUT_TONE[l.statut]}>{STATUT_LIVRAISON_LABELS[l.statut]}</Badge>
-                  </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
-                  {l.preuve_url ? (
+                  {!canGererLivraison ? (
+                    l.preuve_url ? (
+                      <a href={`${SERVER_BASE}${l.preuve_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                        Voir
+                      </a>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )
+                  ) : l.preuve_url ? (
                     <div className="flex items-center gap-2">
                       <a href={`${SERVER_BASE}${l.preuve_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
                         Voir

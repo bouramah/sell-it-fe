@@ -7,6 +7,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_TRANSFERT_LABELS, type Produit, type StatutTransfert, type TransfertStock, type Utilisateur } from '../types'
 import type { TransfertInput } from '../types/write'
@@ -27,6 +28,11 @@ export default function Transferts() {
   const [produits, setProduits] = useState<Produit[]>([])
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
+  const { transfertDemande: canDemander, transfertValidation: canValider, transfertReception: canRecevoir } = usePermissions()
+  const statutsEditables: StatutTransfert[] = [
+    ...(canValider ? (['valide', 'en_transit'] as StatutTransfert[]) : []),
+    ...(canRecevoir ? (['recu'] as StatutTransfert[]) : []),
+  ]
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<TransfertInput>(EMPTY_FORM)
@@ -97,9 +103,11 @@ export default function Transferts() {
           <h1 className="text-2xl font-bold text-slate-900">Transferts de stock</h1>
           <p className="text-sm text-slate-500">Mouvements inter-boutiques</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Nouveau transfert
-        </button>
+        {canDemander && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Nouveau transfert
+          </button>
+        )}
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un transfert…" />
@@ -125,16 +133,19 @@ export default function Transferts() {
                 <td className="px-4 py-3 text-right">{t.quantite}</td>
                 <td className="px-4 py-3 text-slate-600">{t.demandeur}</td>
                 <td className="px-4 py-3">
-                  <div className="w-40">
-                    <SearchableSelect
-                      value={t.statut}
-                      onChange={(v) => handleStatutChange(t, v as StatutTransfert)}
-                      options={STATUTS.map((s) => ({ value: s, label: STATUT_TRANSFERT_LABELS[s] }))}
-                    />
-                  </div>
-                  <div className="mt-1">
+                  {statutsEditables.length > 0 && t.statut !== 'recu' ? (
+                    <div className="w-40">
+                      <SearchableSelect
+                        value={t.statut}
+                        onChange={(v) => handleStatutChange(t, v as StatutTransfert)}
+                        options={[t.statut, ...statutsEditables]
+                          .filter((s, i, arr) => arr.indexOf(s) === i)
+                          .map((s) => ({ value: s, label: STATUT_TRANSFERT_LABELS[s] }))}
+                      />
+                    </div>
+                  ) : (
                     <Badge tone={STATUT_TONE[t.statut]}>{STATUT_TRANSFERT_LABELS[t.statut]}</Badge>
-                  </div>
+                  )}
                 </td>
               </tr>
             ))}

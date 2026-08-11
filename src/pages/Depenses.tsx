@@ -8,6 +8,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_VALIDATION_DEPENSE_LABELS, type Caisse, type Depense, type ReferentielItem, type StatutValidationDepense, type Utilisateur } from '../types'
 import type { DepenseInput } from '../types/write'
@@ -32,6 +33,7 @@ export default function Depenses() {
   const [depenses, setDepenses] = useState<Depense[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const { depenseCreation: canCreerDepense, depenseValidation: canValiderDepense } = usePermissions()
   const [categories, setCategories] = useState<ReferentielItem[]>([])
   const [caisses, setCaisses] = useState<Caisse[]>([])
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
@@ -149,9 +151,11 @@ export default function Depenses() {
           <h1 className="text-2xl font-bold text-slate-900">Dépenses</h1>
           <p className="text-sm text-slate-500">Dépenses de boutique et circuit de validation</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Enregistrer une dépense
-        </button>
+        {canCreerDepense && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Enregistrer une dépense
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -194,7 +198,7 @@ export default function Depenses() {
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(d.montant)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={STATUT_TONE[d.statut_validation]}>{STATUT_VALIDATION_DEPENSE_LABELS[d.statut_validation]}</Badge>
-                  {d.statut_validation === 'en_attente' && (
+                  {d.statut_validation === 'en_attente' && canValiderDepense && (
                     <button
                       onClick={() => handleValider(d)}
                       disabled={validatingId === d.id}

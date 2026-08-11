@@ -8,6 +8,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
@@ -45,7 +46,9 @@ export default function PaiementsFournisseurs() {
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const [commandes, setCommandes] = useState<LigneCommandeFournisseur[]>([])
   const [caisses, setCaisses] = useState<Caisse[]>([])
+  const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const { encaissement: canPayer } = usePermissions()
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<string | null>(null)
@@ -61,12 +64,12 @@ export default function PaiementsFournisseurs() {
   const [payerSaving, setPayerSaving] = useState(false)
 
   function refresh() {
-    api.paiementsFournisseurs().then(setPaiements)
+    api.paiementsFournisseurs(boutiqueId || undefined).then(setPaiements)
     api.commandesFournisseurs().then(setCommandes)
     api.caisses().then(setCaisses)
   }
 
-  useEffect(refresh, [])
+  useEffect(refresh, [boutiqueId])
   useEffect(() => {
     api.fournisseurs().then(setFournisseurs)
   }, [])
@@ -206,12 +209,25 @@ export default function PaiementsFournisseurs() {
           <h1 className="text-2xl font-bold text-slate-900">Paiements fournisseurs</h1>
           <p className="text-sm text-slate-500">Règlements aux fournisseurs, avec justificatif</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Enregistrer un paiement
-        </button>
+        {canPayer && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Enregistrer un paiement
+          </button>
+        )}
       </div>
 
-      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
+      <div className="flex flex-wrap gap-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
+      </div>
 
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
 
@@ -242,7 +258,7 @@ export default function PaiementsFournisseurs() {
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(p.montant)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={TONE[p.statut]}>{STATUT_PAIEMENT_LABELS[p.statut]}</Badge>
-                  {(p.statut === 'en_attente' || p.statut === 'partiel') && (
+                  {(p.statut === 'en_attente' || p.statut === 'partiel') && canPayer && (
                     <button
                       onClick={() => openPayer(p)}
                       className="ml-2 text-xs font-medium text-teal-700 hover:underline"

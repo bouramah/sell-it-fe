@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
 import GuineaMap from '../components/GuineaMap'
+import SearchableSelect from '../components/SearchableSelect'
 import StatCard from '../components/StatCard'
 import { formatGNF } from '../lib/format'
 import { PRESET_LABELS, periodFromPreset, type PeriodPreset } from '../lib/dashboardPeriod'
 import { exportDashboardCsv } from '../lib/exportDashboard'
+import { useBoutiques } from '../lib/useBoutiques'
 import { useSecteurs } from '../lib/useSecteurs'
 import { CANAL_LABELS, MODE_PAIEMENT_LABELS, type DashboardConsolide, type DashboardKpis } from '../types'
 
@@ -17,12 +19,14 @@ function todayIso() {
 export default function Dashboard() {
   const [data, setData] = useState<DashboardConsolide | null>(null)
   const [kpis, setKpis] = useState<DashboardKpis | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [denied, setDenied] = useState(false)
   const { nomSecteur } = useSecteurs()
+  const { boutiques } = useBoutiques()
 
   const [preset, setPreset] = useState<PeriodPreset>('24h')
   const [customDebut, setCustomDebut] = useState(todayIso())
   const [customFin, setCustomFin] = useState(todayIso())
+  const [boutiqueId, setBoutiqueId] = useState('')
 
   const period = useMemo(() => periodFromPreset(preset, customDebut, customFin), [preset, customDebut, customFin])
 
@@ -33,10 +37,18 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    api.dashboardKpis(period.debut, period.fin).then(setKpis).catch((e) => setError(String(e)))
-  }, [period.debut, period.fin])
+    // Le dashboard (même KPIs de boutique) est réservé à gérant/responsable achats/administrateur
+    // (CDC 3.3 : vendeur/caissier n'y ont pas accès du tout).
+    api.dashboardKpis(period.debut, period.fin, boutiqueId || undefined).then(setKpis).catch(() => setDenied(true))
+  }, [period.debut, period.fin, boutiqueId])
 
-  if (error) return <div className="text-red-600">{error}</div>
+  if (denied) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+        Le tableau de bord est réservé au gérant, au responsable achats et à l'administrateur.
+      </div>
+    )
+  }
   if (!kpis) return <div className="text-slate-400">Chargement…</div>
 
   return (
@@ -68,6 +80,15 @@ export default function Dashboard() {
             {PRESET_LABELS[p]}
           </button>
         ))}
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
         {preset === 'personnalise' && (
           <div className="flex items-center gap-2">
             <input

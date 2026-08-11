@@ -40,7 +40,7 @@ export default function Comptabilite() {
   if (denied) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
-        La comptabilité consolidée du réseau est réservée au siège (responsable achats / administrateur).
+        La comptabilité est réservée au gérant (sa boutique), au responsable achats et à l'administrateur (réseau).
       </div>
     )
   }

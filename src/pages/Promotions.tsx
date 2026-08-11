@@ -7,6 +7,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import {
@@ -39,6 +40,7 @@ export default function Promotions() {
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
   const { secteurs, nomSecteur } = useSecteurs()
+  const { promotionCreation: canCreerPromotion, promotionValidation: canValiderPromotion } = usePermissions()
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<PromotionInput>(EMPTY_FORM)
@@ -95,9 +97,11 @@ export default function Promotions() {
           <h1 className="text-2xl font-bold text-slate-900">Promotions & tarifs</h1>
           <p className="text-sm text-slate-500">Campagnes tarifaires, humaines et suggérées par l'IA</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Nouvelle promotion
-        </button>
+        {canCreerPromotion && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Nouvelle promotion
+          </button>
+        )}
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une promotion…" />
@@ -126,16 +130,17 @@ export default function Promotions() {
                 </td>
                 <td className="px-4 py-3 text-slate-600">{p.impact_estime}</td>
                 <td className="px-4 py-3">
-                  <div className="w-44">
-                    <SearchableSelect
-                      value={p.statut}
-                      onChange={(v) => handleStatutChange(p, v as StatutPromotion)}
-                      options={STATUTS.map((s) => ({ value: s, label: STATUT_PROMOTION_LABELS[s] }))}
-                    />
-                  </div>
-                  <div className="mt-1">
+                  {canValiderPromotion ? (
+                    <div className="w-44">
+                      <SearchableSelect
+                        value={p.statut}
+                        onChange={(v) => handleStatutChange(p, v as StatutPromotion)}
+                        options={STATUTS.map((s) => ({ value: s, label: STATUT_PROMOTION_LABELS[s] }))}
+                      />
+                    </div>
+                  ) : (
                     <Badge tone={STATUT_TONE[p.statut]}>{STATUT_PROMOTION_LABELS[p.statut]}</Badge>
-                  </div>
+                  )}
                 </td>
               </tr>
             ))}

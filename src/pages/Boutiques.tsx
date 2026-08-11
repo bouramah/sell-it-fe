@@ -8,6 +8,7 @@ import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import { ROLE_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
@@ -48,6 +49,7 @@ export function BoutiquesListe() {
   const [confirmDelete, setConfirmDelete] = useState<Boutique | null>(null)
   const [responsables, setResponsables] = useState<Utilisateur[]>([])
   const { secteurs, nomSecteur } = useSecteurs()
+  const { reseau: canGererReseau } = usePermissions()
 
   function refresh() {
     api.boutiques().then(setBoutiques)
@@ -148,12 +150,14 @@ export function BoutiquesListe() {
           <h1 className="text-2xl font-bold text-slate-900">Boutiques</h1>
           <p className="text-sm text-slate-500">Réseau de points de vente — identité, localisation, statut</p>
         </div>
-        <button
-          onClick={openCreate}
-          className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
-        >
-          + Ajouter une boutique
-        </button>
+        {canGererReseau && (
+          <button
+            onClick={openCreate}
+            className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+          >
+            + Ajouter une boutique
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -213,14 +217,16 @@ export function BoutiquesListe() {
                   <Badge tone={STATUT_TONE[b.statut]}>{STATUT_BOUTIQUE_LABELS[b.statut]}</Badge>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-3">
-                    <button onClick={() => openEdit(b)} className="font-medium text-teal-700 hover:underline">
-                      Modifier
-                    </button>
-                    <button onClick={() => setConfirmDelete(b)} className="font-medium text-red-600 hover:underline">
-                      Suppr.
-                    </button>
-                  </div>
+                  {canGererReseau && (
+                    <div className="flex gap-3">
+                      <button onClick={() => openEdit(b)} className="font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                      <button onClick={() => setConfirmDelete(b)} className="font-medium text-red-600 hover:underline">
+                        Suppr.
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

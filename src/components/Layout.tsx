@@ -4,8 +4,6 @@ import ConfirmDialog from './ConfirmDialog'
 import { useAuth } from '../lib/AuthContext'
 import { ROLE_LABELS, type Role } from '../types'
 
-const ROLES_PORTEE_RESEAU: Role[] = ['responsable_achats', 'administrateur']
-
 interface NavItem {
   to: string
   label: string
@@ -20,14 +18,14 @@ interface NavSection {
 }
 
 const sections: NavSection[] = [
-  { title: 'Pilotage', items: [{ to: '/', label: 'Tableau de bord', end: true }] },
+  { title: 'Pilotage', items: [{ to: '/', label: 'Tableau de bord', end: true, roles: ['gerant', 'responsable_achats', 'administrateur'] }] },
   {
     title: 'Réseau',
     items: [
       { to: '/boutiques', label: 'Boutiques' },
       { to: '/produits', label: 'Produits' },
       { to: '/fournisseurs', label: 'Fournisseurs' },
-      { to: '/utilisateurs', label: 'Utilisateurs & droits' },
+      { to: '/utilisateurs', label: 'Utilisateurs & droits', roles: ['administrateur'] },
     ],
   },
   {
@@ -54,7 +52,7 @@ const sections: NavSection[] = [
   {
     title: 'Finance & marketing',
     items: [
-      { to: '/comptabilite', label: 'Comptabilité', roles: ROLES_PORTEE_RESEAU },
+      { to: '/comptabilite', label: 'Comptabilité', roles: ['gerant', 'responsable_achats', 'administrateur'] },
       { to: '/promotions', label: 'Promotions & tarifs' },
     ],
   },

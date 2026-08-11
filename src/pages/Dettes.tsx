@@ -10,6 +10,7 @@ import Tabs from '../components/Tabs'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
@@ -44,6 +45,7 @@ export default function Dettes() {
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const { detteCreation: canCreerDette, remboursement: canRembourser } = usePermissions()
 
   function refresh() {
     api.dettes(tiers).then(setDettes)
@@ -155,9 +157,11 @@ export default function Dettes() {
             {tiers === 'client' ? 'Suivi des impayés clients par boutique' : 'Suivi des dettes envers les fournisseurs'}
           </p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Enregistrer une dette
-        </button>
+        {canCreerDette && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Enregistrer une dette
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -217,20 +221,24 @@ export default function Dettes() {
                   {d.statut !== 'soldee' && (
                     <div className="flex items-center justify-end gap-2">
                       {rappelErreurId === d.id && <span className="text-xs text-red-600">Échec de l'envoi</span>}
-                      <button
-                        onClick={() => handleRappelSms(d)}
-                        disabled={rappelEnvoiId === d.id}
-                        title="Envoyer un rappel SMS de relance d'échéance"
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        {rappelEnvoiId === d.id ? 'Envoi…' : 'Rappel SMS'}
-                      </button>
-                      <button
-                        onClick={() => openEncaisser(d)}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        Encaisser
-                      </button>
+                      {canCreerDette && (
+                        <button
+                          onClick={() => handleRappelSms(d)}
+                          disabled={rappelEnvoiId === d.id}
+                          title="Envoyer un rappel SMS de relance d'échéance"
+                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          {rappelEnvoiId === d.id ? 'Envoi…' : 'Rappel SMS'}
+                        </button>
+                      )}
+                      {canRembourser && (
+                        <button
+                          onClick={() => openEncaisser(d)}
+                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Encaisser
+                        </button>
+                      )}
                     </div>
                   )}
                 </td>

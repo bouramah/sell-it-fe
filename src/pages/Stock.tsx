@@ -9,6 +9,7 @@ import Tabs from '../components/Tabs'
 import { formatDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import {
   MOTIF_MOUVEMENT_LABELS,
@@ -63,6 +64,7 @@ export default function Stock() {
   const [produits, setProduits] = useState<Produit[]>([])
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
+  const { stockEcriture: canGererStock } = usePermissions()
 
   const [creatingLigne, setCreatingLigne] = useState(false)
   const [ligneForm, setLigneForm] = useState<StockLigneInput>(EMPTY_LIGNE_FORM)
@@ -162,14 +164,16 @@ export default function Stock() {
           <h1 className="text-2xl font-bold text-slate-900">Gestion des stocks</h1>
           <p className="text-sm text-slate-500">Suivi des quantités par boutique et par produit</p>
         </div>
-        {vue === 'etat' ? (
-          <button onClick={openCreateLigne} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-            + Ajouter un produit en stock
-          </button>
-        ) : (
-          <button onClick={openCreateMvt} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-            + Enregistrer un mouvement
-          </button>
+        {canGererStock && (
+          vue === 'etat' ? (
+            <button onClick={openCreateLigne} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+              + Ajouter un produit en stock
+            </button>
+          ) : (
+            <button onClick={openCreateMvt} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+              + Enregistrer un mouvement
+            </button>
+          )
         )}
       </div>
 

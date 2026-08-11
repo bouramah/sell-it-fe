@@ -8,6 +8,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import {
   CANAL_LABELS,
@@ -64,6 +65,7 @@ export default function CommandesClients() {
   const [produits, setProduits] = useState<Produit[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const { commandeClient: canGererCommande } = usePermissions()
 
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -179,9 +181,11 @@ export default function CommandesClients() {
           <h1 className="text-2xl font-bold text-slate-900">Commandes clients</h1>
           <p className="text-sm text-slate-500">Web, mobile et prise en boutique</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Nouvelle commande client
-        </button>
+        {canGererCommande && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Nouvelle commande client
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -221,13 +225,15 @@ export default function CommandesClients() {
                 <td className="px-4 py-3 text-slate-600">{MODE_PAIEMENT_LABELS[c.mode_paiement]}</td>
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(c.montant)}</td>
                 <td className="px-4 py-3">
-                  <div className="w-40">
-                    <SearchableSelect
-                      value={c.statut}
-                      onChange={(v) => handleStatutChange(c, v as StatutCommandeClient)}
-                      options={STATUTS.map((s) => ({ value: s, label: STATUT_COMMANDE_CLIENT_LABELS[s] }))}
-                    />
-                  </div>
+                  {canGererCommande && (
+                    <div className="w-40">
+                      <SearchableSelect
+                        value={c.statut}
+                        onChange={(v) => handleStatutChange(c, v as StatutCommandeClient)}
+                        options={STATUTS.map((s) => ({ value: s, label: STATUT_COMMANDE_CLIENT_LABELS[s] }))}
+                      />
+                    </div>
+                  )}
                   <div className="mt-1">
                     <Badge tone={STATUT_TONE[c.statut]}>{STATUT_COMMANDE_CLIENT_LABELS[c.statut]}</Badge>
                   </div>
@@ -237,7 +243,7 @@ export default function CommandesClients() {
                     <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
                       Voir
                     </button>
-                    {c.statut === 'en_attente' && (
+                    {c.statut === 'en_attente' && canGererCommande && (
                       <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
                         Modifier
                       </button>

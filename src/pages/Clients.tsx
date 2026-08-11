@@ -9,6 +9,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { SEGMENT_LABELS, type Client, type ReferentielItem, type SegmentClient } from '../types'
 import type { ClientInput } from '../types/write'
@@ -35,7 +36,9 @@ const EMPTY_FORM: ClientInput = {
 
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([])
+  const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const { client: canGererClient } = usePermissions()
 
   const [editing, setEditing] = useState<Client | null>(null)
   const [creating, setCreating] = useState(false)
@@ -48,10 +51,10 @@ export default function Clients() {
   const [confirmDelete, setConfirmDelete] = useState<Client | null>(null)
 
   function refresh() {
-    api.clients().then(setClients)
+    api.clients(boutiqueId || undefined).then(setClients)
   }
 
-  useEffect(refresh, [])
+  useEffect(refresh, [boutiqueId])
 
   useEffect(() => {
     api.referentiels().then((r) => {
@@ -132,12 +135,25 @@ export default function Clients() {
           <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
           <p className="text-sm text-slate-500">Fiche client, historique et droit de crédit</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Ajouter un client
-        </button>
+        {canGererClient && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Ajouter un client
+          </button>
+        )}
       </div>
 
-      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un client…" />
+      <div className="flex flex-wrap gap-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un client…" />
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -172,14 +188,16 @@ export default function Clients() {
                 </td>
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(c.solde_dette)}</td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-3">
-                    <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
-                      Modifier
-                    </button>
-                    <button onClick={() => setConfirmDelete(c)} className="font-medium text-red-600 hover:underline">
-                      Suppr.
-                    </button>
-                  </div>
+                  {canGererClient && (
+                    <div className="flex gap-3">
+                      <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                      <button onClick={() => setConfirmDelete(c)} className="font-medium text-red-600 hover:underline">
+                        Suppr.
+                      </button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

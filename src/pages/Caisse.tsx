@@ -8,6 +8,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatTime } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import {
   STATUT_CAISSE_LABELS,
@@ -34,7 +35,9 @@ export default function Caisse() {
   const [mouvements, setMouvements] = useState<LigneMouvementCaisse[]>([])
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const [libellesRef, setLibellesRef] = useState<ReferentielItem[]>([])
+  const [boutiqueId, setBoutiqueId] = useState('')
   const { nomBoutique, boutiques } = useBoutiques()
+  const { caisseGestion: canGererCaisse } = usePermissions()
 
   const [creatingCaisse, setCreatingCaisse] = useState(false)
   const [caisseForm, setCaisseForm] = useState<CaisseInput>(EMPTY_CAISSE_FORM)
@@ -54,11 +57,11 @@ export default function Caisse() {
   const [operateurMvtManuel, setOperateurMvtManuel] = useState(false)
 
   function refresh() {
-    api.caisses().then(setCaisses)
-    api.mouvementsCaisse().then(setMouvements)
+    api.caisses(boutiqueId || undefined).then(setCaisses)
+    api.mouvementsCaisse(boutiqueId || undefined).then(setMouvements)
   }
 
-  useEffect(refresh, [])
+  useEffect(refresh, [boutiqueId])
   useEffect(() => {
     api.utilisateurs().then(setUtilisateurs)
     api.referentiels().then((r) => setLibellesRef(r.caisses_comptes ?? []))
@@ -155,14 +158,26 @@ export default function Caisse() {
           <h1 className="text-2xl font-bold text-slate-900">Caisse / Point de vente</h1>
           <p className="text-sm text-slate-500">État des caisses et journal des mouvements du jour</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={openCreateMvt} className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            + Enregistrer un mouvement
-          </button>
-          <button onClick={openCreateCaisse} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-            + Ouvrir une caisse
-          </button>
-        </div>
+        {canGererCaisse && (
+          <div className="flex gap-3">
+            <button onClick={openCreateMvt} className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              + Enregistrer un mouvement
+            </button>
+            <button onClick={openCreateCaisse} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+              + Ouvrir une caisse
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="w-56">
+        <SearchableSelect
+          value={boutiqueId}
+          onChange={setBoutiqueId}
+          options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+          allowEmpty="Toutes les boutiques"
+          placeholder="Toutes les boutiques"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -179,12 +194,14 @@ export default function Caisse() {
             <div className={`text-lg font-semibold ${c.solde_reel === c.solde_theorique ? 'text-slate-900' : 'text-red-600'}`}>
               {formatGNF(c.solde_reel)}
             </div>
-            <button
-              onClick={() => (c.statut === 'ouverte' ? openClose(c) : handleReopen(c))}
-              className="mt-3 w-full rounded-md border border-slate-300 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            >
-              {c.statut === 'ouverte' ? 'Fermer la caisse' : 'Rouvrir la caisse'}
-            </button>
+            {canGererCaisse && (
+              <button
+                onClick={() => (c.statut === 'ouverte' ? openClose(c) : handleReopen(c))}
+                className="mt-3 w-full rounded-md border border-slate-300 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                {c.statut === 'ouverte' ? 'Fermer la caisse' : 'Rouvrir la caisse'}
+              </button>
+            )}
           </div>
         ))}
         {caisses.length === 0 && <p className="text-sm text-slate-400">Aucune caisse ouverte pour le moment.</p>}

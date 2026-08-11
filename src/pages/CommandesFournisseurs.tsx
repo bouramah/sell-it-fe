@@ -8,6 +8,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import {
   STATUT_COMMANDE_FOURNISSEUR_LABELS,
@@ -62,6 +63,7 @@ const EMPTY_FORM = {
 
 export default function CommandesFournisseurs() {
   const { user } = useAuth()
+  const { commandeFournisseur: canGererCommande } = usePermissions()
   const [commandes, setCommandes] = useState<LigneCommandeFournisseur[]>([])
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const [produits, setProduits] = useState<Produit[]>([])
@@ -266,9 +268,11 @@ export default function CommandesFournisseurs() {
           <h1 className="text-2xl font-bold text-slate-900">Commandes fournisseurs</h1>
           <p className="text-sm text-slate-500">Suivi des achats et réceptions</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Nouvelle commande fournisseur
-        </button>
+        {canGererCommande && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Nouvelle commande fournisseur
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -306,33 +310,34 @@ export default function CommandesFournisseurs() {
                 <td className="px-4 py-3 text-slate-500">{formatShortDate(c.date_attendue)}</td>
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(c.montant)}</td>
                 <td className="px-4 py-3">
-                  <div className="w-48">
-                    <SearchableSelect
-                      value={c.statut}
-                      onChange={(v) => handleStatutChange(c, v as StatutCommandeFournisseur)}
-                      options={STATUTS.map((s) => ({ value: s, label: STATUT_COMMANDE_FOURNISSEUR_LABELS[s] }))}
-                    />
-                  </div>
-                  <div className="mt-1">
+                  {canGererCommande ? (
+                    <div className="w-48">
+                      <SearchableSelect
+                        value={c.statut}
+                        onChange={(v) => handleStatutChange(c, v as StatutCommandeFournisseur)}
+                        options={STATUTS.map((s) => ({ value: s, label: STATUT_COMMANDE_FOURNISSEUR_LABELS[s] }))}
+                      />
+                    </div>
+                  ) : (
                     <Badge tone={STATUT_TONE[c.statut]}>{STATUT_COMMANDE_FOURNISSEUR_LABELS[c.statut]}</Badge>
-                  </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col items-start gap-1">
                     <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
                       Voir
                     </button>
-                    {c.statut === 'brouillon' && (
+                    {c.statut === 'brouillon' && canGererCommande && (
                       <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
                         Modifier
                       </button>
                     )}
-                    {c.statut !== 'receptionnee' && c.statut !== 'cloturee' && (
+                    {c.statut !== 'receptionnee' && c.statut !== 'cloturee' && canGererCommande && (
                       <button onClick={() => openReceive(c)} className="font-medium text-teal-700 hover:underline">
                         Réceptionner
                       </button>
                     )}
-                    {(c.statut === 'receptionnee_partielle' || c.statut === 'receptionnee') && (
+                    {(c.statut === 'receptionnee_partielle' || c.statut === 'receptionnee') && canGererCommande && (
                       <button onClick={() => openCorrect(c)} className="font-medium text-amber-700 hover:underline">
                         Corriger la réception
                       </button>

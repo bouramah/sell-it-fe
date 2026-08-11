@@ -8,6 +8,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
+import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
@@ -45,7 +46,9 @@ export default function PaiementsClients() {
   const [clients, setClients] = useState<Client[]>([])
   const [commandes, setCommandes] = useState<CommandeClient[]>([])
   const [caisses, setCaisses] = useState<Caisse[]>([])
+  const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
+  const { encaissement: canEncaisser } = usePermissions()
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<PaiementClientInput>(EMPTY_FORM)
@@ -59,12 +62,12 @@ export default function PaiementsClients() {
   const [encaisserSaving, setEncaisserSaving] = useState(false)
 
   function refresh() {
-    api.paiementsClients().then(setPaiements)
+    api.paiementsClients(boutiqueId || undefined).then(setPaiements)
     api.commandesClients().then(setCommandes)
     api.caisses().then(setCaisses)
   }
 
-  useEffect(refresh, [])
+  useEffect(refresh, [boutiqueId])
   useEffect(() => {
     api.clients().then(setClients)
   }, [])
@@ -173,12 +176,25 @@ export default function PaiementsClients() {
           <h1 className="text-2xl font-bold text-slate-900">Paiements clients</h1>
           <p className="text-sm text-slate-500">Encaissements reçus, avec reçu associé</p>
         </div>
-        <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          + Enregistrer un paiement
-        </button>
+        {canEncaisser && (
+          <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
+            + Enregistrer un paiement
+          </button>
+        )}
       </div>
 
-      <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
+      <div className="flex flex-wrap gap-3">
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un paiement…" />
+        <div className="w-56">
+          <SearchableSelect
+            value={boutiqueId}
+            onChange={setBoutiqueId}
+            options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+            allowEmpty="Toutes les boutiques"
+            placeholder="Toutes les boutiques"
+          />
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -207,7 +223,7 @@ export default function PaiementsClients() {
                 <td className="px-4 py-3 text-right text-slate-900">{formatGNF(p.montant)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={TONE[p.statut]}>{STATUT_PAIEMENT_LABELS[p.statut]}</Badge>
-                  {p.statut === 'en_attente' && (
+                  {p.statut === 'en_attente' && canEncaisser && (
                     <button
                       onClick={() => openEncaisser(p)}
                       className="ml-2 text-xs font-medium text-teal-700 hover:underline"
