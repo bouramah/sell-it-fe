@@ -215,7 +215,7 @@ export default function Transferts() {
                   <SearchableSelect
                     value={form.demandeur}
                     onChange={(v) => setForm({ ...form, demandeur: v })}
-                    options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom}` }))}
+                    options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
                     required
                   />
                 )}

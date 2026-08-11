@@ -238,10 +238,9 @@ export default function Dettes() {
               <SearchableSelect
                 value={form.tiers_nom}
                 onChange={(v) => setForm({ ...form, tiers_nom: v })}
-                options={(form.tiers_type === 'client' ? clients.map((c) => c.nom) : fournisseurs.map((f) => f.nom)).map((nom) => ({
-                  value: nom,
-                  label: nom,
-                }))}
+                options={(form.tiers_type === 'client' ? clients.map((c) => ({ nom: c.nom, contact: c.contact })) : fournisseurs.map((f) => ({ nom: f.nom, contact: f.contact }))).map(
+                  ({ nom, contact }) => ({ value: nom, label: `${nom} — ${contact}` })
+                )}
                 required
               />
             </div>
@@ -354,7 +353,7 @@ export default function Dettes() {
                 <SearchableSelect
                   value={remb.operateur}
                   onChange={(v) => setRemb({ ...remb, operateur: v })}
-                  options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom}` }))}
+                  options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
                   required
                 />
               )}

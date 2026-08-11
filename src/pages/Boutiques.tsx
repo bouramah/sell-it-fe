@@ -304,7 +304,7 @@ export function BoutiquesListe() {
                   onChange={(v) => setForm({ ...form, responsable: v })}
                   options={responsables.map((u) => ({
                     value: `${u.prenom} ${u.nom}`,
-                    label: `${u.prenom} ${u.nom} — ${ROLE_LABELS[u.role]}`,
+                    label: `${u.prenom} ${u.nom} — ${ROLE_LABELS[u.role]} — ${u.contact}`,
                   }))}
                   required
                 />

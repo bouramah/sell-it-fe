@@ -265,7 +265,7 @@ export default function CommandesClients() {
               <SearchableSelect
                 value={form.client_nom}
                 onChange={(v) => setForm({ ...form, client_nom: v })}
-                options={clients.map((c) => ({ value: c.nom, label: c.nom }))}
+                options={clients.map((c) => ({ value: c.nom, label: `${c.nom} — ${c.contact}` }))}
                 required
               />
             </div>

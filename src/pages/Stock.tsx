@@ -402,7 +402,7 @@ export default function Stock() {
                   <SearchableSelect
                     value={mvtForm.operateur}
                     onChange={(v) => setMvtForm({ ...mvtForm, operateur: v })}
-                    options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom}` }))}
+                    options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
                     allowEmpty="Non renseigné"
                     placeholder="Non renseigné"
                   />
