@@ -4,6 +4,7 @@ import GuineaMap from '../components/GuineaMap'
 import StatCard from '../components/StatCard'
 import { formatGNF } from '../lib/format'
 import { PRESET_LABELS, periodFromPreset, type PeriodPreset } from '../lib/dashboardPeriod'
+import { exportDashboardCsv } from '../lib/exportDashboard'
 import { useSecteurs } from '../lib/useSecteurs'
 import { CANAL_LABELS, MODE_PAIEMENT_LABELS, type DashboardConsolide, type DashboardKpis } from '../types'
 
@@ -43,8 +44,11 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-slate-900">Tableau de bord</h1>
           <p className="text-sm text-slate-500">Vue consolidée du réseau KFSTORE</p>
         </div>
-        <button className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-          Exporter (PDF/Excel)
+        <button
+          onClick={() => exportDashboardCsv(kpis, PRESET_LABELS[preset])}
+          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Exporter (Excel)
         </button>
       </div>
 

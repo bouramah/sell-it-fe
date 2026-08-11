@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
+import { csvRow, downloadCsv } from '../lib/csv'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
@@ -18,6 +19,23 @@ export default function Comptabilite() {
   const getFields = useCallback((c: CompteResultatBoutique) => [nomBoutique(c.boutique_id)], [nomBoutique])
   const { query, setQuery, filtered } = useSearch(data?.comptes ?? [], getFields)
 
+  function handleExport() {
+    if (!data) return
+    const lines: string[] = []
+    lines.push(csvRow('Comptabilité KFSTORE — cumulé depuis le début'))
+    lines.push('')
+    lines.push(csvRow('CA consolidé', data.ca_consolide))
+    lines.push(csvRow('Marge nette consolidée', data.marge_nette_consolidee))
+    lines.push(csvRow('Dépenses consolidées', data.depenses_consolidees))
+    lines.push(csvRow('Marge nette moyenne (%)', data.marge_nette_moyenne_pct))
+    lines.push('')
+    lines.push(csvRow('Boutique', 'Chiffre d\'affaires', 'Achats', 'Dépenses', 'Marge nette'))
+    for (const c of data.comptes) {
+      lines.push(csvRow(nomBoutique(c.boutique_id), c.chiffre_affaires, c.achats, c.depenses, c.marge_nette))
+    }
+    downloadCsv('kfstore-comptabilite', lines)
+  }
+
   if (!data) return <div className="text-slate-400">Chargement…</div>
 
   return (
@@ -27,8 +45,11 @@ export default function Comptabilite() {
           <h1 className="text-2xl font-bold text-slate-900">Comptabilité</h1>
           <p className="text-sm text-slate-500">Résultats par boutique et consolidation réseau</p>
         </div>
-        <button className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-          Exporter (PDF/Excel)
+        <button
+          onClick={handleExport}
+          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Exporter (Excel)
         </button>
       </div>
 
