@@ -54,15 +54,16 @@ const sections: NavSection[] = [
       { to: '/promotions', label: 'Promotions & tarifs' },
     ],
   },
-  {
-    title: 'Intelligence artificielle',
-    items: [
-      { to: '/catalogue', label: 'Catalogue & recherche' },
-      { to: '/chatbot', label: 'Chatbot service client' },
-      { to: '/previsions', label: 'Prévisions de demande' },
-      { to: '/reporting', label: 'Reporting intelligent' },
-    ],
-  },
+  // Masqué temporairement le temps de valider cette phase — routes toujours actives, juste retirées du menu.
+  // {
+  //   title: 'Intelligence artificielle',
+  //   items: [
+  //     { to: '/catalogue', label: 'Catalogue & recherche' },
+  //     { to: '/chatbot', label: 'Chatbot service client' },
+  //     { to: '/previsions', label: 'Prévisions de demande' },
+  //     { to: '/reporting', label: 'Reporting intelligent' },
+  //   ],
+  // },
   { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit' }] },
   { title: 'Configuration', items: [{ to: '/parametres', label: 'Paramètres' }] },
 ]
