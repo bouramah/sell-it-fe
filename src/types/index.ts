@@ -361,6 +361,76 @@ export interface DashboardConsolide {
   alertes: AlerteReseau[]
 }
 
+export interface KpiCanal {
+  canal: CanalCommande
+  montant: number
+  nombre: number
+}
+
+export interface KpiModePaiement {
+  mode: ModePaiement
+  montant: number
+}
+
+export interface KpiTopProduit {
+  produit_id: string
+  produit_nom: string
+  quantite: number
+  montant: number
+}
+
+export interface KpiTopBoutique {
+  boutique_id: string
+  nom: string
+  montant: number
+}
+
+export interface KpiVentes {
+  chiffre_affaires: number
+  nombre_commandes: number
+  panier_moyen: number
+  par_canal: KpiCanal[]
+  par_mode_paiement: KpiModePaiement[]
+  top_produits: KpiTopProduit[]
+  top_boutiques: KpiTopBoutique[]
+}
+
+export interface KpiCaisse {
+  encaissements: number
+  decaissements: number
+  flux_net: number
+}
+
+export interface KpiStock {
+  entrees: number
+  sorties: number
+}
+
+export interface KpiFinance {
+  depenses: number
+  marge_nette: number
+  dettes_clients_en_cours: number
+}
+
+export interface BoutiqueCarte {
+  boutique_id: string
+  nom: string
+  latitude: number | null
+  longitude: number | null
+  ca_periode: number
+  alertes_stock: number
+}
+
+export interface DashboardKpis {
+  debut: string
+  fin: string
+  ventes: KpiVentes
+  caisse: KpiCaisse
+  stock: KpiStock
+  finance: KpiFinance
+  boutiques: BoutiqueCarte[]
+}
+
 export const STATUT_BOUTIQUE_LABELS: Record<StatutBoutique, string> = {
   active: 'Active',
   fermee: 'Fermée',

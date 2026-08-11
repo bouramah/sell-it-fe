@@ -8,6 +8,7 @@ import type {
   ComptabiliteConsolidee,
   ConversationMessage,
   DashboardConsolide,
+  DashboardKpis,
   Depense,
   Fournisseur,
   JournalAuditEntry,
@@ -244,4 +245,9 @@ export const api = {
     sendJson<void>('DELETE', `/parametres/referentiels/${categorie}/${id}`),
 
   dashboard: () => getJson<DashboardConsolide>('/dashboard'),
+  dashboardKpis: (debut: string, fin: string, boutiqueId?: string) => {
+    const params = new URLSearchParams({ debut, fin })
+    if (boutiqueId) params.set('boutique_id', boutiqueId)
+    return getJson<DashboardKpis>(`/dashboard/kpis?${params.toString()}`)
+  },
 }
