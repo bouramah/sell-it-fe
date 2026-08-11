@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type ReferentielItem, type StatutLivraison } from '../types'
 import type { LivraisonInput } from '../types/write'
@@ -55,6 +57,7 @@ export default function Livraisons() {
   const preFiltrees = boutiqueId ? livraisons.filter((l) => l.boutique_id === boutiqueId) : livraisons
   const getFields = useCallback((l: Livraison) => [l.commande_id, l.livreur, l.adresse], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   const commandesLivrables = commandes.filter((c) => c.statut !== 'annulee' && c.statut !== 'livree')
 
@@ -167,7 +170,7 @@ export default function Livraisons() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((l) => (
+            {paginated.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">#{l.commande_id}</td>
                 <td className="px-4 py-3 text-slate-600">{l.livreur || <span className="text-slate-400">Non affecté</span>}</td>
@@ -228,6 +231,7 @@ export default function Livraisons() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {creating && (

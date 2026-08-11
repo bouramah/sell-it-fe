@@ -4,10 +4,12 @@ import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import type { Produit, ReferentielItem } from '../types'
@@ -51,6 +53,7 @@ export function ProduitsListe() {
   const preFiltres = secteurFiltre ? produits.filter((p) => p.secteur === secteurFiltre) : produits
   const getFields = useCallback((p: Produit) => [p.nom, p.categorie, p.code_barres], [])
   const { query, setQuery, filtered } = useSearch(preFiltres, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -129,7 +132,7 @@ export function ProduitsListe() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {filtered.map((p) => (
+        {paginated.map((p) => (
           <Link
             key={p.id}
             to={`/produits/${p.id}`}
@@ -171,6 +174,7 @@ export function ProduitsListe() {
         ))}
         {filtered.length === 0 && <p className="text-sm text-slate-400">Aucun produit ne correspond à la recherche.</p>}
       </div>
+      <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
 
       {showModal && (
         <Modal

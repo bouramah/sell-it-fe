@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import {
@@ -54,6 +56,7 @@ export default function Promotions() {
     [nomBoutique]
   )
   const { query, setQuery, filtered } = useSearch(promotions, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -111,7 +114,7 @@ export default function Promotions() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((p) => (
+            {paginated.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{p.nom}</td>
                 <td className="px-4 py-3 text-slate-600">
@@ -145,6 +148,7 @@ export default function Promotions() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {creating && (

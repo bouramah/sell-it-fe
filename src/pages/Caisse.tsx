@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatGNF, formatTime } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import {
   STATUT_CAISSE_LABELS,
@@ -67,6 +69,7 @@ export default function Caisse() {
     [nomBoutique]
   )
   const { query, setQuery, filtered } = useSearch(mouvements, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreateCaisse() {
     setCaisseForm(EMPTY_CAISSE_FORM)
@@ -207,7 +210,7 @@ export default function Caisse() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((m) => (
+              {paginated.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-500">{formatTime(m.horodatage)}</td>
                   <td className="px-4 py-3 text-slate-600">{nomBoutique(m.boutique_id)} — {m.caisse_libelle}</td>
@@ -225,6 +228,7 @@ export default function Caisse() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
         </div>
       </section>
 

@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
 import Tabs from '../components/Tabs'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
@@ -58,6 +60,7 @@ export default function Dettes() {
   const preFiltrees = boutiqueId ? dettes.filter((d) => d.boutique_id === boutiqueId) : dettes
   const getFields = useCallback((d: LigneDette) => [d.tiers_nom], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
   const totalRestant = filtered.reduce((sum, d) => sum + d.solde_restant, 0)
   const enRetard = filtered.filter((d) => d.statut === 'en_retard').length
 
@@ -185,7 +188,7 @@ export default function Dettes() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((d) => (
+            {paginated.map((d) => (
               <tr key={d.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{d.tiers_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(d.boutique_id)}</td>
@@ -216,6 +219,7 @@ export default function Dettes() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {creating && (

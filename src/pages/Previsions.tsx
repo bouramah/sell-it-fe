@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import Pagination from '../components/Pagination'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import type { SuggestionAvecProduit } from '../types'
 
@@ -15,6 +17,7 @@ export default function Previsions() {
 
   const getFields = useCallback((s: SuggestionAvecProduit) => [s.produit_nom, nomBoutique(s.boutique_id)], [nomBoutique])
   const { query, setQuery, filtered } = useSearch(suggestions, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   return (
     <div className="space-y-6">
@@ -45,7 +48,7 @@ export default function Previsions() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((s) => (
+            {paginated.map((s) => (
               <tr key={`${s.produit_id}-${s.boutique_id}`} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{s.produit_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(s.boutique_id)}</td>
@@ -59,6 +62,7 @@ export default function Previsions() {
             ))}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
     </div>
   )

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_VALIDATION_DEPENSE_LABELS, type Caisse, type Depense, type ReferentielItem, type StatutValidationDepense, type Utilisateur } from '../types'
 import type { DepenseInput } from '../types/write'
@@ -58,6 +60,7 @@ export default function Depenses() {
   const preFiltrees = boutiqueId ? depenses.filter((d) => d.boutique_id === boutiqueId) : depenses
   const getFields = useCallback((d: Depense) => [d.categorie, d.auteur], [])
   const { query, setQuery, filtered } = useSearch(preFiltrees, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   const nomCaisse = useCallback(
     (id: string | null) => {
@@ -181,7 +184,7 @@ export default function Depenses() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((d) => (
+            {paginated.map((d) => (
               <tr key={d.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(d.boutique_id)}</td>
                 <td className="px-4 py-3 text-slate-600">{nomCaisse(d.caisse_id)}</td>
@@ -236,6 +239,7 @@ export default function Depenses() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {creating && (

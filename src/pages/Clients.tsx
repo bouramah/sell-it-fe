@@ -3,10 +3,12 @@ import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { SEGMENT_LABELS, type Client, type ReferentielItem, type SegmentClient } from '../types'
 import type { ClientInput } from '../types/write'
@@ -61,6 +63,7 @@ export default function Clients() {
 
   const getFields = useCallback((c: Client) => [c.nom, c.contact], [])
   const { query, setQuery, filtered } = useSearch(clients, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -151,7 +154,7 @@ export default function Clients() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((c) => (
+            {paginated.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{c.nom}</td>
                 <td className="px-4 py-3 text-slate-600">{c.contact}</td>
@@ -189,6 +192,7 @@ export default function Clients() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {showModal && (

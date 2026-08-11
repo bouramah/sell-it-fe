@@ -3,9 +3,11 @@ import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatDate } from '../lib/format'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { ROLE_LABELS, type Boutique, type DroitAcces, type PermissionLigne, type Role, type Utilisateur } from '../types'
 import type { UtilisateurInput } from '../types/write'
@@ -74,6 +76,7 @@ export default function Utilisateurs() {
     [boutiques]
   )
   const { query, setQuery, filtered } = useSearch(utilisateurs, getUserFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   const getPermFields = useCallback((p: PermissionLigne) => [p.module_action], [])
   const { query: permQuery, setQuery: setPermQuery, filtered: filteredPermissions } = useSearch(permissions, getPermFields)
@@ -184,7 +187,7 @@ export default function Utilisateurs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((u) => (
+              {paginated.map((u) => (
                 <tr key={u.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {u.prenom} {u.nom}
@@ -219,6 +222,7 @@ export default function Utilisateurs() {
               )}
             </tbody>
           </table>
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
         </div>
       </section>
 

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
@@ -71,6 +73,7 @@ export default function PaiementsFournisseurs() {
 
   const getFields = useCallback((p: PaiementFournisseur) => [p.fournisseur_nom, p.reference], [])
   const { query, setQuery, filtered } = useSearch(paiements, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   const nomCaisse = useCallback(
     (id: string | null) => {
@@ -228,7 +231,7 @@ export default function PaiementsFournisseurs() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((p) => (
+            {paginated.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{p.fournisseur_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{p.reference}</td>
@@ -276,6 +279,7 @@ export default function PaiementsFournisseurs() {
             ))}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
       <p className="text-xs text-slate-400">
         Un paiement « en attente » apparaît automatiquement dès qu'une commande fournisseur est intégralement

@@ -4,8 +4,10 @@ import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import { ROLE_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
@@ -74,6 +76,7 @@ export function BoutiquesListe() {
     []
   )
   const { query, setQuery, filtered } = useSearch(preFiltered, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -188,7 +191,7 @@ export function BoutiquesListe() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((b) => (
+            {paginated.map((b) => (
               <tr key={b.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3">
                   <Link to={`/boutiques/${b.id}`} className="font-medium text-teal-800 hover:underline">
@@ -230,6 +233,7 @@ export function BoutiquesListe() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {showModal && (

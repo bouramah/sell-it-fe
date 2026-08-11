@@ -3,8 +3,10 @@ import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import type { Fournisseur } from '../types'
@@ -30,6 +32,7 @@ export default function Fournisseurs() {
 
   const getFields = useCallback((f: Fournisseur) => [f.nom, f.contact, f.conditions_paiement], [])
   const { query, setQuery, filtered } = useSearch(fournisseurs, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -97,7 +100,7 @@ export default function Fournisseurs() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((f) => (
+            {paginated.map((f) => (
               <tr key={f.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{f.nom}</td>
                 <td className="px-4 py-3">
@@ -126,6 +129,7 @@ export default function Fournisseurs() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {showModal && (

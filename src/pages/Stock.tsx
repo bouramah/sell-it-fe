@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import Tabs from '../components/Tabs'
 import { formatDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import {
   MOTIF_MOUVEMENT_LABELS,
@@ -92,15 +94,18 @@ export default function Stock() {
 
   const getLigneFields = useCallback((l: LigneStock) => [l.produit_nom, nomBoutique(l.boutique_id)], [nomBoutique])
   const { query: ligneQuery, setQuery: setLigneQuery, filtered: filteredLignes } = useSearch(lignes, getLigneFields)
+  const { page: lignePage, setPage: setLignePage, pageCount: lignePageCount, paginated: paginatedLignes, totalItems: ligneTotalItems, pageSize: lignePageSize } = usePagination(filteredLignes)
 
   const getMouvementFields = useCallback(
     (m: LigneMouvementStock) => [m.produit_nom, nomBoutique(m.boutique_id), m.operateur, MOTIF_MOUVEMENT_LABELS[m.motif]],
     [nomBoutique]
   )
   const { query: mvtQuery, setQuery: setMvtQuery, filtered: filteredMouvements } = useSearch(mouvements, getMouvementFields)
+  const { page: mvtPage, setPage: setMvtPage, pageCount: mvtPageCount, paginated: paginatedMouvements, totalItems: mvtTotalItems, pageSize: mvtPageSize } = usePagination(filteredMouvements)
 
   const getEcartFields = useCallback((e: LigneEcartInventaire) => [e.produit_nom, nomBoutique(e.boutique_id)], [nomBoutique])
   const { query: ecartQuery, setQuery: setEcartQuery, filtered: filteredEcarts } = useSearch(ecarts, getEcartFields)
+  const { page: ecartPage, setPage: setEcartPage, pageCount: ecartPageCount, paginated: paginatedEcarts, totalItems: ecartTotalItems, pageSize: ecartPageSize } = usePagination(filteredEcarts)
 
   function openCreateLigne() {
     setLigneForm(EMPTY_LIGNE_FORM)
@@ -204,7 +209,7 @@ export default function Stock() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredLignes.map((l) => (
+              {paginatedLignes.map((l) => (
                 <tr key={`${l.boutique_id}-${l.produit_id}`} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">{l.produit_nom}</td>
                   <td className="px-4 py-3 text-slate-600">{nomBoutique(l.boutique_id)}</td>
@@ -218,6 +223,7 @@ export default function Stock() {
               ))}
             </tbody>
           </table>
+          <Pagination page={lignePage} pageCount={lignePageCount} onChange={setLignePage} totalItems={ligneTotalItems} pageSize={lignePageSize} />
         </div>
         </div>
       ) : (
@@ -245,7 +251,7 @@ export default function Stock() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredMouvements.map((m) => (
+                  {paginatedMouvements.map((m) => (
                     <tr key={m.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 text-slate-500">{formatDate(m.horodatage)}</td>
                       <td className="px-4 py-3 font-medium text-slate-900">{m.produit_nom}</td>
@@ -259,6 +265,7 @@ export default function Stock() {
                   ))}
                 </tbody>
               </table>
+              <Pagination page={mvtPage} pageCount={mvtPageCount} onChange={setMvtPage} totalItems={mvtTotalItems} pageSize={mvtPageSize} />
             </div>
           </section>
 
@@ -282,7 +289,7 @@ export default function Stock() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredEcarts.map((e) => (
+                  {paginatedEcarts.map((e) => (
                     <tr key={e.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-900">{e.produit_nom}</td>
                       <td className="px-4 py-3 text-slate-600">{nomBoutique(e.boutique_id)}</td>
@@ -298,6 +305,7 @@ export default function Stock() {
                   ))}
                 </tbody>
               </table>
+              <Pagination page={ecartPage} pageCount={ecartPageCount} onChange={setEcartPage} totalItems={ecartTotalItems} pageSize={ecartPageSize} />
             </div>
           </section>
         </div>

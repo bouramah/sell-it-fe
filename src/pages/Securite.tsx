@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import Pagination from '../components/Pagination'
 import SearchInput from '../components/SearchInput'
 import { formatDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import type { JournalAuditEntry, ParametreSecurite } from '../types'
 
@@ -21,6 +23,7 @@ export default function Securite() {
     [nomBoutique]
   )
   const { query, setQuery, filtered } = useSearch(audit, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   return (
     <div className="space-y-6">
@@ -39,7 +42,7 @@ export default function Securite() {
             <SearchInput value={query} onChange={setQuery} placeholder="Rechercher dans le journal…" />
           </div>
           <ul className="space-y-3">
-            {filtered.map((a) => (
+            {paginated.map((a) => (
               <li key={a.id} className="border-l-2 border-slate-200 pl-3">
                 <div className="text-xs text-slate-400">{formatDate(a.horodatage)}</div>
                 <div className="text-sm font-medium text-slate-900">{a.action}</div>
@@ -49,6 +52,7 @@ export default function Securite() {
               </li>
             ))}
           </ul>
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
+import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
+import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import {
   MODE_PAIEMENT_LABELS,
@@ -83,6 +85,7 @@ export default function PaiementsClients() {
 
   const getFields = useCallback((p: PaiementClient) => [p.client_nom, p.reference], [])
   const { query, setQuery, filtered } = useSearch(paiements, getFields)
+  const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   const commandesDuClient = form.client_nom ? commandes.filter((c) => c.client_nom === form.client_nom) : []
 
@@ -193,7 +196,7 @@ export default function PaiementsClients() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((p) => (
+            {paginated.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">{p.client_nom}</td>
                 <td className="px-4 py-3 text-slate-600">{p.reference}</td>
@@ -222,6 +225,7 @@ export default function PaiementsClients() {
             ))}
           </tbody>
         </table>
+        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
       <p className="text-xs text-slate-400">
         Un paiement apparaît automatiquement à la création d'une commande client payée immédiatement (hors crédit
