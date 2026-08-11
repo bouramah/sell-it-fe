@@ -2,14 +2,15 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import ConfirmDialog from './ConfirmDialog'
 import { useAuth } from '../lib/AuthContext'
-import { ROLE_LABELS, type Role } from '../types'
+import { type Permissions, usePermissions } from '../lib/permissions'
+import { ROLE_LABELS } from '../types'
 
 interface NavItem {
   to: string
   label: string
   end?: boolean
-  /** Rôles autorisés à voir cet item. Omis = tous les rôles authentifiés. */
-  roles?: Role[]
+  /** Si fourni, l'item n'est affiché que si ce champ de la matrice des droits est vrai. */
+  visible?: (p: Permissions) => boolean
 }
 
 interface NavSection {
@@ -18,14 +19,14 @@ interface NavSection {
 }
 
 const sections: NavSection[] = [
-  { title: 'Pilotage', items: [{ to: '/', label: 'Tableau de bord', end: true, roles: ['gerant', 'responsable_achats', 'administrateur'] }] },
+  { title: 'Pilotage', items: [{ to: '/', label: 'Tableau de bord', end: true, visible: (p) => p.dashboard }] },
   {
     title: 'Réseau',
     items: [
       { to: '/boutiques', label: 'Boutiques' },
       { to: '/produits', label: 'Produits' },
       { to: '/fournisseurs', label: 'Fournisseurs' },
-      { to: '/utilisateurs', label: 'Utilisateurs & droits', roles: ['administrateur'] },
+      { to: '/utilisateurs', label: 'Utilisateurs & droits', visible: (p) => p.utilisateurs },
     ],
   },
   {
@@ -52,7 +53,7 @@ const sections: NavSection[] = [
   {
     title: 'Finance & marketing',
     items: [
-      { to: '/comptabilite', label: 'Comptabilité', roles: ['gerant', 'responsable_achats', 'administrateur'] },
+      { to: '/comptabilite', label: 'Comptabilité', visible: (p) => p.comptabilite },
       { to: '/promotions', label: 'Promotions & tarifs' },
     ],
   },
@@ -66,12 +67,13 @@ const sections: NavSection[] = [
   //     { to: '/reporting', label: 'Reporting intelligent' },
   //   ],
   // },
-  { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit', roles: ['administrateur'] }] },
+  { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit', visible: (p) => p.securite }] },
   { title: 'Configuration', items: [{ to: '/parametres', label: 'Paramètres' }] },
 ]
 
 export default function Layout() {
   const { user, logout } = useAuth()
+  const permissions = usePermissions()
   const navigate = useNavigate()
   const [confirmLogout, setConfirmLogout] = useState(false)
 
@@ -95,7 +97,7 @@ export default function Layout() {
           </div>
           <nav className="space-y-5">
             {sections.map((section) => {
-              const items = section.items.filter((item) => !item.roles || (user && item.roles.includes(user.role)))
+              const items = section.items.filter((item) => !item.visible || item.visible(permissions))
               if (items.length === 0) return null
               return (
                 <div key={section.title}>
