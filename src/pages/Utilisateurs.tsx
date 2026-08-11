@@ -17,12 +17,14 @@ const DROIT_LABELS: Record<DroitAcces, string> = {
   aucun: '—',
 }
 
-const DROIT_TONE: Record<DroitAcces, 'success' | 'default' | 'warning'> = {
-  complet: 'success',
-  lecture_seule: 'default',
-  partiel: 'warning',
-  aucun: 'default',
+const DROIT_SELECT_TONE: Record<DroitAcces, string> = {
+  complet: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  lecture_seule: 'border-slate-200 bg-slate-50 text-slate-700',
+  partiel: 'border-amber-200 bg-amber-50 text-amber-800',
+  aucun: 'border-slate-200 bg-slate-50 text-slate-400',
 }
+
+const DROITS: DroitAcces[] = ['complet', 'lecture_seule', 'partiel', 'aucun']
 
 const ROLES: Role[] = ['vendeur', 'caissier', 'gerant', 'responsable_achats', 'administrateur']
 
@@ -49,6 +51,7 @@ export default function Utilisateurs() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Utilisateur | null>(null)
+  const [savingCell, setSavingCell] = useState<string | null>(null)
 
   function refresh() {
     api.utilisateurs().then(setUtilisateurs)
@@ -74,6 +77,17 @@ export default function Utilisateurs() {
 
   const getPermFields = useCallback((p: PermissionLigne) => [p.module_action], [])
   const { query: permQuery, setQuery: setPermQuery, filtered: filteredPermissions } = useSearch(permissions, getPermFields)
+
+  async function handlePermissionChange(moduleAction: string, role: Role, droit: DroitAcces) {
+    const cellKey = `${moduleAction}::${role}`
+    setSavingCell(cellKey)
+    try {
+      const updated = await api.modifierPermission({ module_action: moduleAction, role, droit })
+      setPermissions((prev) => prev.map((p) => (p.module_action === moduleAction ? updated : p)))
+    } finally {
+      setSavingCell(null)
+    }
+  }
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -232,11 +246,25 @@ export default function Utilisateurs() {
               {filteredPermissions.map((p) => (
                 <tr key={p.module_action} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-700">{p.module_action}</td>
-                  {ROLES.map((r) => (
-                    <td key={r} className="px-4 py-3 text-center">
-                      <Badge tone={DROIT_TONE[p.droits[r]]}>{DROIT_LABELS[p.droits[r]]}</Badge>
-                    </td>
-                  ))}
+                  {ROLES.map((r) => {
+                    const cellKey = `${p.module_action}::${r}`
+                    return (
+                      <td key={r} className="px-4 py-3 text-center">
+                        <select
+                          value={p.droits[r]}
+                          disabled={savingCell === cellKey}
+                          onChange={(e) => handlePermissionChange(p.module_action, r, e.target.value as DroitAcces)}
+                          className={`rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50 ${DROIT_SELECT_TONE[p.droits[r]]}`}
+                        >
+                          {DROITS.map((d) => (
+                            <option key={d} value={d}>
+                              {DROIT_LABELS[d]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    )
+                  })}
                 </tr>
               ))}
             </tbody>

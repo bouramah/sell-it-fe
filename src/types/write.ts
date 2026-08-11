@@ -1,5 +1,6 @@
 import type {
   CanalCommande,
+  DroitAcces,
   ModePaiement,
   MotifMouvementStock,
   Role,
@@ -48,6 +49,12 @@ export interface ProduitInput {
 
 export interface ReferentielInput {
   nom: string
+}
+
+export interface PermissionUpdate {
+  module_action: string
+  role: Role
+  droit: DroitAcces
 }
 
 export interface FournisseurInput {

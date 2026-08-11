@@ -49,6 +49,7 @@ import type {
   PaiementCaisseInput,
   PaiementClientInput,
   PaiementFournisseurInput,
+  PermissionUpdate,
   ProduitInput,
   PromotionInput,
   ReceptionInput,
@@ -137,6 +138,7 @@ export const api = {
   modifierUtilisateur: (id: string, payload: Partial<UtilisateurInput>) => sendJson<Utilisateur>('PUT', `/utilisateurs/${id}`, payload),
   supprimerUtilisateur: (id: string) => sendJson<void>('DELETE', `/utilisateurs/${id}`),
   permissions: () => getJson<PermissionLigne[]>('/permissions'),
+  modifierPermission: (payload: PermissionUpdate) => sendJson<PermissionLigne>('PUT', '/permissions', payload),
 
   produits: (q?: string) => getJson<Produit[]>(`/produits${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   produit: (id: string) => getJson<Produit>(`/produits/${id}`),
