@@ -432,6 +432,13 @@ export interface BoutiqueCarte {
   alertes_stock: number
 }
 
+export interface PointSerieVentes {
+  horodatage: string
+  chiffre_affaires: number
+  nombre_commandes: number
+  encaissements: number
+}
+
 export interface DashboardKpis {
   debut: string
   fin: string
@@ -440,6 +447,7 @@ export interface DashboardKpis {
   stock: KpiStock
   finance: KpiFinance
   boutiques: BoutiqueCarte[]
+  serie_ventes: PointSerieVentes[]
 }
 
 export const STATUT_BOUTIQUE_LABELS: Record<StatutBoutique, string> = {

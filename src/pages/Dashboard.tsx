@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import BarChartHorizontal from '../components/charts/BarChartHorizontal'
+import DonutChart from '../components/charts/DonutChart'
+import LineAreaChart from '../components/charts/LineAreaChart'
 import GuineaMap from '../components/GuineaMap'
 import SearchableSelect from '../components/SearchableSelect'
 import StatCard from '../components/StatCard'
-import { formatGNF } from '../lib/format'
+import { formatGNF, formatGNFCompact } from '../lib/format'
 import { PRESET_LABELS, periodFromPreset, type PeriodPreset } from '../lib/dashboardPeriod'
 import { exportDashboardCsv } from '../lib/exportDashboard'
 import { useBoutiques } from '../lib/useBoutiques'
@@ -14,6 +17,13 @@ const PRESETS: PeriodPreset[] = ['heure', '24h', '7j', '31j', 'personnalise']
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
+}
+
+function formatSeriePoint(iso: string, parHeure: boolean): string {
+  const d = new Date(iso)
+  return parHeure
+    ? new Intl.DateTimeFormat('fr-FR', { hour: '2-digit' }).format(d)
+    : new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(d)
 }
 
 export default function Dashboard() {
@@ -119,6 +129,17 @@ export default function Dashboard() {
         </div>
       </section>
 
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">
+          Évolution du chiffre d'affaires
+        </h2>
+        <LineAreaChart
+          data={kpis.serie_ventes.map((p) => ({ label: p.horodatage, value: p.chiffre_affaires }))}
+          valueFormatter={formatGNFCompact}
+          labelFormatter={(l) => formatSeriePoint(l, preset === 'heure' || preset === '24h')}
+        />
+      </section>
+
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Stock &amp; finance</h2>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -133,56 +154,40 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Répartition des ventes</h2>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Par canal</div>
-              {kpis.ventes.par_canal.length === 0 && <p className="text-sm text-slate-400">Aucune vente sur la période.</p>}
-              {kpis.ventes.par_canal.map((c) => (
-                <div key={c.canal} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm">
-                  <span className="text-slate-600">
-                    {CANAL_LABELS[c.canal]} <span className="text-slate-400">({c.nombre})</span>
-                  </span>
-                  <span className="font-medium text-slate-900">{formatGNF(c.montant)}</span>
-                </div>
-              ))}
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Par canal</div>
+              <DonutChart
+                data={kpis.ventes.par_canal.map((c) => ({ label: CANAL_LABELS[c.canal], value: c.montant }))}
+                valueFormatter={formatGNFCompact}
+              />
             </div>
             <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Par mode de paiement</div>
-              {kpis.ventes.par_mode_paiement.length === 0 && <p className="text-sm text-slate-400">Aucune vente sur la période.</p>}
-              {kpis.ventes.par_mode_paiement.map((m) => (
-                <div key={m.mode} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm">
-                  <span className="text-slate-600">{MODE_PAIEMENT_LABELS[m.mode]}</span>
-                  <span className="font-medium text-slate-900">{formatGNF(m.montant)}</span>
-                </div>
-              ))}
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Par mode de paiement</div>
+              <DonutChart
+                data={kpis.ventes.par_mode_paiement.map((m) => ({ label: MODE_PAIEMENT_LABELS[m.mode], value: m.montant }))}
+                valueFormatter={formatGNFCompact}
+              />
             </div>
           </div>
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Top produits &amp; boutiques</h2>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Top produits</div>
-              {kpis.ventes.top_produits.length === 0 && <p className="text-sm text-slate-400">Aucune vente sur la période.</p>}
-              {kpis.ventes.top_produits.map((p) => (
-                <div key={p.produit_id} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm">
-                  <span className="text-slate-600">
-                    {p.produit_nom} <span className="text-slate-400">×{p.quantite}</span>
-                  </span>
-                  <span className="font-medium text-slate-900">{formatGNF(p.montant)}</span>
-                </div>
-              ))}
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Top produits</div>
+              <BarChartHorizontal
+                data={kpis.ventes.top_produits.map((p) => ({ label: p.produit_nom, sublabel: `×${p.quantite}`, value: p.montant }))}
+                valueFormatter={formatGNFCompact}
+              />
             </div>
             <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Top boutiques</div>
-              {kpis.ventes.top_boutiques.length === 0 && <p className="text-sm text-slate-400">Aucune vente sur la période.</p>}
-              {kpis.ventes.top_boutiques.map((b) => (
-                <div key={b.boutique_id} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm">
-                  <span className="text-slate-600">{b.nom}</span>
-                  <span className="font-medium text-slate-900">{formatGNF(b.montant)}</span>
-                </div>
-              ))}
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Top boutiques</div>
+              <BarChartHorizontal
+                data={kpis.ventes.top_boutiques.map((b) => ({ label: b.nom, value: b.montant }))}
+                valueFormatter={formatGNFCompact}
+              />
             </div>
           </div>
         </section>
