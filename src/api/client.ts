@@ -235,6 +235,7 @@ export const api = {
 
   audit: () => getJson<JournalAuditEntry[]>('/securite/audit'),
   parametresSecurite: () => getJson<ParametreSecurite[]>('/securite/parametres'),
+  modifierParametreSecurite: (id: string, actif: boolean) => sendJson<ParametreSecurite>('PUT', `/securite/parametres/${id}`, { actif }),
 
   referentiels: () => getJson<Record<string, ReferentielItem[]>>('/parametres/referentiels'),
   creerReferentiel: (categorie: string, payload: ReferentielInput) =>

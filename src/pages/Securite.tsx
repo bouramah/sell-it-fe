@@ -11,12 +11,25 @@ import type { JournalAuditEntry, ParametreSecurite } from '../types'
 export default function Securite() {
   const [audit, setAudit] = useState<JournalAuditEntry[]>([])
   const [parametres, setParametres] = useState<ParametreSecurite[]>([])
+  const [togglingId, setTogglingId] = useState<string | null>(null)
   const { nomBoutique } = useBoutiques()
 
-  useEffect(() => {
+  function refresh() {
     api.audit().then(setAudit)
     api.parametresSecurite().then(setParametres)
-  }, [])
+  }
+
+  useEffect(refresh, [])
+
+  async function handleToggle(p: ParametreSecurite) {
+    setTogglingId(p.id)
+    try {
+      await api.modifierParametreSecurite(p.id, !p.actif)
+      refresh()
+    } finally {
+      setTogglingId(null)
+    }
+  }
 
   const getFields = useCallback(
     (a: JournalAuditEntry) => [a.action, a.auteur, a.boutique_id ? nomBoutique(a.boutique_id) : 'Siège'],
@@ -59,17 +72,22 @@ export default function Securite() {
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Paramètres de sécurité</h2>
           <ul className="space-y-3">
             {parametres.map((p) => (
-              <li key={p.label} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
+              <li key={p.id} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
                 <span className="text-slate-700">{p.label}</span>
-                <span
-                  className={`inline-block h-5 w-9 rounded-full transition-colors ${p.actif ? 'bg-teal-700' : 'bg-slate-300'}`}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={p.actif}
+                  disabled={togglingId === p.id}
+                  onClick={() => handleToggle(p)}
+                  className={`inline-block h-5 w-9 rounded-full transition-colors disabled:opacity-50 ${p.actif ? 'bg-teal-700' : 'bg-slate-300'}`}
                 >
                   <span
                     className={`block h-4 w-4 translate-y-0.5 rounded-full bg-white transition-transform ${
                       p.actif ? 'translate-x-4' : 'translate-x-0.5'
                     }`}
                   />
-                </span>
+                </button>
               </li>
             ))}
           </ul>

@@ -327,6 +327,7 @@ export interface JournalAuditEntry {
 }
 
 export interface ParametreSecurite {
+  id: string
   label: string
   actif: boolean
 }
