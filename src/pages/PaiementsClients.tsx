@@ -238,7 +238,9 @@ export default function PaiementsClients() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <div className="mb-1 flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-700">Client</label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Client {clientManuel && <span className="text-slate-400">(optionnel)</span>}
+                </label>
                 <button
                   type="button"
                   onClick={() => {
@@ -254,9 +256,8 @@ export default function PaiementsClients() {
                 <input
                   value={form.client_nom}
                   onChange={(e) => setForm({ ...form, client_nom: e.target.value, commande_id: null })}
-                  placeholder="Nom du client"
+                  placeholder="Nom du client (laisser vide si inconnu)"
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
                 />
               ) : (
                 <SearchableSelect
