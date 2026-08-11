@@ -9,9 +9,10 @@ import SearchInput from '../components/SearchInput'
 import { formatDate } from '../lib/format'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
+import { useRoles } from '../lib/useRoles'
 import { useSearch } from '../lib/useSearch'
-import { ROLE_LABELS, type Boutique, type DroitAcces, type PermissionLigne, type Role, type Utilisateur } from '../types'
-import type { UtilisateurInput } from '../types/write'
+import type { Boutique, DroitAcces, PermissionLigne, PorteeRole, Role, RoleInfo, Utilisateur } from '../types'
+import type { RoleCreate, RoleUpdate, UtilisateurInput } from '../types/write'
 
 const DROIT_LABELS: Record<DroitAcces, string> = {
   complet: '✔',
@@ -29,7 +30,10 @@ const DROIT_SELECT_TONE: Record<DroitAcces, string> = {
 
 const DROITS: DroitAcces[] = ['complet', 'lecture_seule', 'partiel', 'aucun']
 
-const ROLES: Role[] = ['vendeur', 'caissier', 'gerant', 'responsable_achats', 'administrateur']
+const PORTEE_LABELS: Record<PorteeRole, string> = {
+  boutique: 'Boutique',
+  reseau: 'Réseau / siège',
+}
 
 // Doit rester synchronisé avec DEFAULT_PASSWORD dans backend/app/core/security.py
 const DEFAULT_PASSWORD = 'kfstore2026'
@@ -39,9 +43,15 @@ const EMPTY_FORM: UtilisateurInput = {
   prenom: '',
   contact: '',
   mot_de_passe: DEFAULT_PASSWORD,
-  role: 'vendeur',
+  role: '',
   boutique_ids: [],
   statut: 'actif',
+}
+
+const EMPTY_ROLE_FORM: RoleCreate = {
+  id: '',
+  libelle: '',
+  portee: 'boutique',
 }
 
 export default function Utilisateurs() {
@@ -57,6 +67,13 @@ export default function Utilisateurs() {
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Utilisateur | null>(null)
   const [savingCell, setSavingCell] = useState<string | null>(null)
+  const { roles, nomRole, recharger: rechargerRoles } = useRoles()
+  const [roleCreating, setRoleCreating] = useState(false)
+  const [roleEditing, setRoleEditing] = useState<RoleInfo | null>(null)
+  const [roleForm, setRoleForm] = useState<RoleCreate>(EMPTY_ROLE_FORM)
+  const [roleError, setRoleError] = useState<string | null>(null)
+  const [roleSaving, setRoleSaving] = useState(false)
+  const [confirmDeleteRole, setConfirmDeleteRole] = useState<RoleInfo | null>(null)
 
   function refresh() {
     api.utilisateurs(boutiqueId || undefined).then(setUtilisateurs)
@@ -75,8 +92,8 @@ export default function Utilisateurs() {
   }
 
   const getUserFields = useCallback(
-    (u: Utilisateur) => [u.nom, u.prenom, u.contact, ROLE_LABELS[u.role], rattachement(u)],
-    [boutiques]
+    (u: Utilisateur) => [u.nom, u.prenom, u.contact, nomRole(u.role), rattachement(u)],
+    [boutiques, roles]
   )
   const { query, setQuery, filtered } = useSearch(utilisateurs, getUserFields)
   const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
@@ -96,7 +113,7 @@ export default function Utilisateurs() {
   }
 
   function openCreate() {
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, role: roles[0]?.id ?? '' })
     setError(null)
     setCreating(true)
   }
@@ -154,7 +171,48 @@ export default function Utilisateurs() {
     refresh()
   }
 
+  function openRoleCreate() {
+    setRoleForm(EMPTY_ROLE_FORM)
+    setRoleError(null)
+    setRoleCreating(true)
+  }
+
+  function openRoleEdit(r: RoleInfo) {
+    setRoleForm({ id: r.id, libelle: r.libelle, portee: r.portee })
+    setRoleError(null)
+    setRoleEditing(r)
+  }
+
+  async function handleRoleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setRoleSaving(true)
+    setRoleError(null)
+    try {
+      if (roleEditing) {
+        const payload: RoleUpdate = { libelle: roleForm.libelle, portee: roleForm.portee }
+        await api.modifierRole(roleEditing.id, payload)
+      } else {
+        await api.creerRole(roleForm)
+      }
+      setRoleCreating(false)
+      setRoleEditing(null)
+      rechargerRoles()
+      api.permissions().then(setPermissions)
+    } catch {
+      setRoleError("Échec de l'enregistrement — l'identifiant est peut-être déjà utilisé.")
+    } finally {
+      setRoleSaving(false)
+    }
+  }
+
+  async function handleDeleteRole(r: RoleInfo) {
+    await api.supprimerRole(r.id)
+    setConfirmDeleteRole(null)
+    rechargerRoles()
+  }
+
   const showModal = creating || editing !== null
+  const showRoleModal = roleCreating || roleEditing !== null
 
   return (
     <div className="space-y-10">
@@ -208,7 +266,7 @@ export default function Utilisateurs() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{u.contact}</td>
                   <td className="px-4 py-3">
-                    <Badge>{ROLE_LABELS[u.role]}</Badge>
+                    <Badge>{nomRole(u.role)}</Badge>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{rattachement(u)}</td>
                   <td className="px-4 py-3">
@@ -244,6 +302,65 @@ export default function Utilisateurs() {
 
       {canGererUtilisateurs && (
       <section>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Rôles</h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Créez un rôle personnalisé pour l'ajouter automatiquement à la matrice des droits.
+            </p>
+          </div>
+          <button
+            onClick={openRoleCreate}
+            className="rounded-md border border-teal-700 px-3 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-50"
+          >
+            + Ajouter un rôle
+          </button>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Libellé</th>
+                <th className="px-4 py-3">Identifiant</th>
+                <th className="px-4 py-3">Portée</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {roles.map((r) => (
+                <tr key={r.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">{r.libelle}</td>
+                  <td className="px-4 py-3 text-slate-500">{r.id}</td>
+                  <td className="px-4 py-3 text-slate-600">{PORTEE_LABELS[r.portee]}</td>
+                  <td className="px-4 py-3">
+                    <Badge tone={r.systeme ? 'default' : 'success'}>{r.systeme ? 'Système' : 'Personnalisé'}</Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-3">
+                      <button onClick={() => openRoleEdit(r)} className="font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                      {!r.systeme && (
+                        <button
+                          onClick={() => setConfirmDeleteRole(r)}
+                          className="font-medium text-red-600 hover:underline"
+                        >
+                          Suppr.
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      )}
+
+      {canGererUtilisateurs && (
+      <section>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
           Matrice des droits par rôle
         </h2>
@@ -256,9 +373,9 @@ export default function Utilisateurs() {
             <thead className="border-b border-slate-200 bg-teal-800 text-xs uppercase tracking-wide text-white">
               <tr>
                 <th className="px-4 py-3">Module / Action</th>
-                {ROLES.map((r) => (
-                  <th key={r} className="px-4 py-3 text-center">
-                    {ROLE_LABELS[r]}
+                {roles.map((r) => (
+                  <th key={r.id} className="px-4 py-3 text-center">
+                    {r.libelle}
                   </th>
                 ))}
               </tr>
@@ -267,15 +384,16 @@ export default function Utilisateurs() {
               {filteredPermissions.map((p) => (
                 <tr key={p.module_action} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-700">{p.module_action}</td>
-                  {ROLES.map((r) => {
-                    const cellKey = `${p.module_action}::${r}`
+                  {roles.map((r) => {
+                    const cellKey = `${p.module_action}::${r.id}`
+                    const droit = p.droits[r.id] ?? 'aucun'
                     return (
-                      <td key={r} className="px-4 py-3 text-center">
+                      <td key={r.id} className="px-4 py-3 text-center">
                         <select
-                          value={p.droits[r]}
+                          value={droit}
                           disabled={savingCell === cellKey}
-                          onChange={(e) => handlePermissionChange(p.module_action, r, e.target.value as DroitAcces)}
-                          className={`rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50 ${DROIT_SELECT_TONE[p.droits[r]]}`}
+                          onChange={(e) => handlePermissionChange(p.module_action, r.id, e.target.value as DroitAcces)}
+                          className={`rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-50 ${DROIT_SELECT_TONE[droit]}`}
                         >
                           {DROITS.map((d) => (
                             <option key={d} value={d}>
@@ -358,7 +476,7 @@ export default function Utilisateurs() {
                 <SearchableSelect
                   value={form.role}
                   onChange={(v) => setForm({ ...form, role: v as Role })}
-                  options={ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+                  options={roles.map((r) => ({ value: r.id, label: r.libelle }))}
                   required
                 />
               </div>
@@ -424,6 +542,99 @@ export default function Utilisateurs() {
           confirmLabel="Supprimer"
           onConfirm={() => handleDelete(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {showRoleModal && (
+        <Modal
+          title={roleEditing ? `Modifier ${roleEditing.libelle}` : 'Ajouter un rôle'}
+          onClose={() => {
+            setRoleCreating(false)
+            setRoleEditing(null)
+          }}
+        >
+          <form onSubmit={handleRoleSubmit} className="space-y-4">
+            {!roleEditing && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Identifiant</label>
+                <input
+                  value={roleForm.id}
+                  onChange={(e) => setRoleForm({ ...roleForm, id: e.target.value.toLowerCase() })}
+                  placeholder="Ex : livreur"
+                  pattern="^[a-z][a-z0-9_]{1,39}$"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+                <p className="mt-1 text-xs text-slate-400">
+                  Minuscules, chiffres et underscore uniquement — non modifiable après création.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Libellé</label>
+              <input
+                value={roleForm.libelle}
+                onChange={(e) => setRoleForm({ ...roleForm, libelle: e.target.value })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Portée</label>
+              {roleEditing?.systeme ? (
+                <>
+                  <div className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                    {PORTEE_LABELS[roleForm.portee]}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">La portée d'un rôle système ne peut pas être modifiée.</p>
+                </>
+              ) : (
+                <SearchableSelect
+                  value={roleForm.portee}
+                  onChange={(v) => setRoleForm({ ...roleForm, portee: v as 'boutique' | 'reseau' })}
+                  options={[
+                    { value: 'boutique', label: 'Boutique — accès limité à ses boutiques de rattachement' },
+                    { value: 'reseau', label: 'Réseau / siège — accès à toutes les boutiques' },
+                  ]}
+                  required
+                />
+              )}
+            </div>
+
+            {roleError && <p className="text-sm text-red-600">{roleError}</p>}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRoleCreating(false)
+                  setRoleEditing(null)
+                }}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={roleSaving}
+                className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+              >
+                {roleSaving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {confirmDeleteRole && (
+        <ConfirmDialog
+          title="Supprimer le rôle"
+          message={`Supprimer le rôle "${confirmDeleteRole.libelle}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDeleteRole(confirmDeleteRole)}
+          onCancel={() => setConfirmDeleteRole(null)}
         />
       )}
     </div>

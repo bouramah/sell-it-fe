@@ -28,6 +28,7 @@ import type {
   ReferentielItem,
   Remboursement,
   ReportingIntelligent,
+  RoleInfo,
   SuggestionAvecProduit,
   TransfertStock,
   Utilisateur,
@@ -56,6 +57,8 @@ import type {
   ReceptionInput,
   ReferentielInput,
   RemboursementInput,
+  RoleCreate,
+  RoleUpdate,
   StockLigneInput,
   TokenResponse,
   TransfertInput,
@@ -168,6 +171,11 @@ export const api = {
   supprimerUtilisateur: (id: string) => sendJson<void>('DELETE', `/utilisateurs/${id}`),
   permissions: () => getJson<PermissionLigne[]>('/permissions'),
   modifierPermission: (payload: PermissionUpdate) => sendJson<PermissionLigne>('PUT', '/permissions', payload),
+
+  roles: () => getJson<RoleInfo[]>('/roles'),
+  creerRole: (payload: RoleCreate) => sendJson<RoleInfo>('POST', '/roles', payload),
+  modifierRole: (id: string, payload: RoleUpdate) => sendJson<RoleInfo>('PUT', `/roles/${id}`, payload),
+  supprimerRole: (id: string) => sendJson<void>('DELETE', `/roles/${id}`),
 
   produits: (q?: string) => getJson<Produit[]>(`/produits${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   produit: (id: string) => getJson<Produit>(`/produits/${id}`),

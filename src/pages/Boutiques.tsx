@@ -11,7 +11,8 @@ import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
-import { ROLE_LABELS, STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
+import { useRoles } from '../lib/useRoles'
+import { STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
 import type { BoutiqueInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
@@ -49,6 +50,7 @@ export function BoutiquesListe() {
   const [confirmDelete, setConfirmDelete] = useState<Boutique | null>(null)
   const [responsables, setResponsables] = useState<Utilisateur[]>([])
   const { secteurs, nomSecteur } = useSecteurs()
+  const { nomRole } = useRoles()
   const { reseau: canGererReseau } = usePermissions()
 
   function refresh() {
@@ -314,7 +316,7 @@ export function BoutiquesListe() {
                   onChange={(v) => setForm({ ...form, responsable: v })}
                   options={responsables.map((u) => ({
                     value: `${u.prenom} ${u.nom}`,
-                    label: `${u.prenom} ${u.nom} — ${ROLE_LABELS[u.role]} — ${u.contact}`,
+                    label: `${u.prenom} ${u.nom} — ${nomRole(u.role)} — ${u.contact}`,
                   }))}
                   required
                 />

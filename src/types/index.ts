@@ -1,6 +1,9 @@
 export type Secteur = string
 export type StatutBoutique = 'active' | 'fermee' | 'en_creation'
-export type Role = 'vendeur' | 'caissier' | 'gerant' | 'responsable_achats' | 'administrateur'
+// Les rôles sont des données (table `roles`, gérable depuis Utilisateurs & droits), pas un
+// type fixe — voir RoleInfo pour le schéma complet (id, libellé, portée).
+export type Role = string
+export type PorteeRole = 'boutique' | 'reseau'
 export type DroitAcces = 'complet' | 'lecture_seule' | 'partiel' | 'aucun'
 export type SegmentClient = 'nouveau' | 'regulier' | 'fidele' | 'a_risque'
 export type StatutDette = 'en_cours' | 'en_retard' | 'soldee'
@@ -61,6 +64,13 @@ export interface Utilisateur {
 export interface PermissionLigne {
   module_action: string
   droits: Record<Role, DroitAcces>
+}
+
+export interface RoleInfo {
+  id: string
+  libelle: string
+  portee: PorteeRole
+  systeme: boolean
 }
 
 export interface Client {
@@ -436,14 +446,6 @@ export const STATUT_BOUTIQUE_LABELS: Record<StatutBoutique, string> = {
   active: 'Active',
   fermee: 'Fermée',
   en_creation: 'En création',
-}
-
-export const ROLE_LABELS: Record<Role, string> = {
-  vendeur: 'Vendeur',
-  caissier: 'Caissier',
-  gerant: 'Gérant',
-  responsable_achats: 'Responsable achats',
-  administrateur: 'Administrateur',
 }
 
 export const SEGMENT_LABELS: Record<SegmentClient, string> = {

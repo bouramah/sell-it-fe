@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import ConfirmDialog from './ConfirmDialog'
 import { useAuth } from '../lib/AuthContext'
 import { type Permissions, usePermissions } from '../lib/permissions'
-import { ROLE_LABELS } from '../types'
+import { useRoles } from '../lib/useRoles'
 
 interface NavItem {
   to: string
@@ -74,6 +74,7 @@ const sections: NavSection[] = [
 export default function Layout() {
   const { user, logout } = useAuth()
   const permissions = usePermissions()
+  const { nomRole } = useRoles()
   const navigate = useNavigate()
   const [confirmLogout, setConfirmLogout] = useState(false)
 
@@ -130,7 +131,7 @@ export default function Layout() {
             <div className="text-sm font-semibold text-slate-900">
               {user ? `${user.prenom} ${user.nom}` : '—'}
             </div>
-            <div className="text-xs text-slate-500">{user ? ROLE_LABELS[user.role] : ''}</div>
+            <div className="text-xs text-slate-500">{user ? nomRole(user.role) : ''}</div>
             <button
               onClick={() => setConfirmLogout(true)}
               className="mt-2 text-xs font-medium text-slate-500 hover:text-red-600"

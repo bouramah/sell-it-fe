@@ -57,6 +57,17 @@ export interface PermissionUpdate {
   droit: DroitAcces
 }
 
+export interface RoleCreate {
+  id: string
+  libelle: string
+  portee: 'boutique' | 'reseau'
+}
+
+export interface RoleUpdate {
+  libelle?: string
+  portee?: 'boutique' | 'reseau'
+}
+
 export interface FournisseurInput {
   nom: string
   secteur: Secteur
