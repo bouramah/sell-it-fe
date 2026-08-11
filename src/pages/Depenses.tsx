@@ -7,7 +7,7 @@ import SearchInput from '../components/SearchInput'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_VALIDATION_DEPENSE_LABELS, type Caisse, type Depense, type ReferentielItem, type StatutValidationDepense } from '../types'
+import { STATUT_VALIDATION_DEPENSE_LABELS, type Caisse, type Depense, type ReferentielItem, type StatutValidationDepense, type Utilisateur } from '../types'
 import type { DepenseInput } from '../types/write'
 import { useAuth } from '../lib/AuthContext'
 
@@ -32,6 +32,7 @@ export default function Depenses() {
   const { boutiques, nomBoutique } = useBoutiques()
   const [categories, setCategories] = useState<ReferentielItem[]>([])
   const [caisses, setCaisses] = useState<Caisse[]>([])
+  const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<DepenseInput>(emptyForm(''))
@@ -39,6 +40,7 @@ export default function Depenses() {
   const [saving, setSaving] = useState(false)
   const [validatingId, setValidatingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [auteurManuel, setAuteurManuel] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<string | null>(null)
 
@@ -50,6 +52,7 @@ export default function Depenses() {
   useEffect(refresh, [])
   useEffect(() => {
     api.referentiels().then((r) => setCategories(r.categories_depenses ?? []))
+    api.utilisateurs().then(setUtilisateurs)
   }, [])
 
   const preFiltrees = boutiqueId ? depenses.filter((d) => d.boutique_id === boutiqueId) : depenses
@@ -70,6 +73,7 @@ export default function Depenses() {
   function openCreate() {
     setForm(emptyForm(user ? `${user.prenom} ${user.nom}` : ''))
     setError(null)
+    setAuteurManuel(false)
     setCreating(true)
   }
 
@@ -283,13 +287,34 @@ export default function Depenses() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Auteur</label>
-                <input
-                  value={form.auteur}
-                  onChange={(e) => setForm({ ...form, auteur: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
-                />
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">Auteur (optionnel)</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuteurManuel((m) => !m)
+                      setForm({ ...form, auteur: '' })
+                    }}
+                    className="text-xs font-medium text-teal-700 hover:underline"
+                  >
+                    {auteurManuel ? 'Liste' : 'Manuel'}
+                  </button>
+                </div>
+                {auteurManuel ? (
+                  <input
+                    value={form.auteur}
+                    onChange={(e) => setForm({ ...form, auteur: e.target.value })}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                ) : (
+                  <SearchableSelect
+                    value={form.auteur}
+                    onChange={(v) => setForm({ ...form, auteur: v })}
+                    options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
+                    allowEmpty="Non renseigné"
+                    placeholder="Non renseigné"
+                  />
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Date</label>
