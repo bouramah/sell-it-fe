@@ -12,14 +12,23 @@ export default function Securite() {
   const [audit, setAudit] = useState<JournalAuditEntry[]>([])
   const [parametres, setParametres] = useState<ParametreSecurite[]>([])
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [denied, setDenied] = useState(false)
   const { nomBoutique } = useBoutiques()
 
   function refresh() {
-    api.audit().then(setAudit)
-    api.parametresSecurite().then(setParametres)
+    api.audit().then(setAudit).catch(() => setDenied(true))
+    api.parametresSecurite().then(setParametres).catch(() => setDenied(true))
   }
 
   useEffect(refresh, [])
+
+  if (denied) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+        Le journal d'audit et les paramètres de sécurité sont réservés à l'administrateur.
+      </div>
+    )
+  }
 
   async function handleToggle(p: ParametreSecurite) {
     setTogglingId(p.id)

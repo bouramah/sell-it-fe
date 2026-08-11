@@ -242,9 +242,9 @@ export default function CommandesClients() {
                         Modifier
                       </button>
                     )}
-                    <a href={api.urlFacture(c.id)} className="font-medium text-slate-500 hover:underline">
+                    <button onClick={() => api.telechargerFacture(c.id)} className="font-medium text-slate-500 hover:underline">
                       Facture
-                    </a>
+                    </button>
                   </div>
                 </td>
               </tr>

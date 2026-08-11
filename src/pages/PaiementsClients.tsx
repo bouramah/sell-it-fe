@@ -217,9 +217,12 @@ export default function PaiementsClients() {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <a href={api.urlRecu(p.id)} className="font-medium text-teal-700 hover:underline">
+                  <button
+                    onClick={() => api.telechargerRecu(p.id)}
+                    className="font-medium text-teal-700 hover:underline"
+                  >
                     Reçu
-                  </a>
+                  </button>
                 </td>
               </tr>
             ))}

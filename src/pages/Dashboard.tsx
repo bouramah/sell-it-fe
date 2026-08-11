@@ -27,7 +27,9 @@ export default function Dashboard() {
   const period = useMemo(() => periodFromPreset(preset, customDebut, customFin), [preset, customDebut, customFin])
 
   useEffect(() => {
-    api.dashboard().then(setData).catch((e) => setError(String(e)))
+    // Vue consolidée réseau — réservée au siège (responsable achats / administrateur) ; les autres
+    // rôles n'ont accès qu'à leurs KPIs de boutique ci-dessous, ce qui est attendu (403 silencieux).
+    api.dashboard().then(setData).catch(() => setData(null))
   }, [])
 
   useEffect(() => {
@@ -35,14 +37,16 @@ export default function Dashboard() {
   }, [period.debut, period.fin])
 
   if (error) return <div className="text-red-600">{error}</div>
-  if (!data || !kpis) return <div className="text-slate-400">Chargement…</div>
+  if (!kpis) return <div className="text-slate-400">Chargement…</div>
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Tableau de bord</h1>
-          <p className="text-sm text-slate-500">Vue consolidée du réseau KFSTORE</p>
+          <p className="text-sm text-slate-500">
+            {data ? 'Vue consolidée du réseau KFSTORE' : 'Vue de votre / vos boutique(s)'}
+          </p>
         </div>
         <button
           onClick={() => exportDashboardCsv(kpis, PRESET_LABELS[preset])}
@@ -171,50 +175,52 @@ export default function Dashboard() {
         <GuineaMap boutiques={kpis.boutiques} />
       </section>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">
-            Comparatif par boutique — aujourd'hui
-          </h2>
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="pb-2 font-medium">Boutique</th>
-                <th className="pb-2 font-medium">Secteur</th>
-                <th className="pb-2 text-right font-medium">CA jour</th>
-                <th className="pb-2 text-right font-medium">Stock alerte</th>
-                <th className="pb-2 text-right font-medium">Dettes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data.comparatif_boutiques.map((b) => (
-                <tr key={b.boutique_id}>
-                  <td className="py-2 font-medium text-slate-900">{b.nom}</td>
-                  <td className="py-2 text-slate-500">{b.secteurs.map((s) => nomSecteur(s)).join(', ')}</td>
-                  <td className="py-2 text-right text-slate-900">{formatGNF(b.ca_jour)}</td>
-                  <td className={`py-2 text-right font-medium ${b.stock_en_alerte > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                    {b.stock_en_alerte}
-                  </td>
-                  <td className="py-2 text-right text-slate-900">{formatGNF(b.dettes_en_cours)}</td>
+      {data && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">
+              Comparatif par boutique — aujourd'hui
+            </h2>
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-slate-400">
+                <tr>
+                  <th className="pb-2 font-medium">Boutique</th>
+                  <th className="pb-2 font-medium">Secteur</th>
+                  <th className="pb-2 text-right font-medium">CA jour</th>
+                  <th className="pb-2 text-right font-medium">Stock alerte</th>
+                  <th className="pb-2 text-right font-medium">Dettes</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.comparatif_boutiques.map((b) => (
+                  <tr key={b.boutique_id}>
+                    <td className="py-2 font-medium text-slate-900">{b.nom}</td>
+                    <td className="py-2 text-slate-500">{b.secteurs.map((s) => nomSecteur(s)).join(', ')}</td>
+                    <td className="py-2 text-right text-slate-900">{formatGNF(b.ca_jour)}</td>
+                    <td className={`py-2 text-right font-medium ${b.stock_en_alerte > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                      {b.stock_en_alerte}
+                    </td>
+                    <td className="py-2 text-right text-slate-900">{formatGNF(b.dettes_en_cours)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Alertes réseau</h2>
-          <ul className="space-y-3">
-            {data.alertes.map((a, i) => (
-              <li key={i} className="border-l-2 border-amber-400 pl-3">
-                <div className="text-sm font-semibold text-slate-900">{a.titre}</div>
-                <div className="text-xs text-slate-500">{a.description}</div>
-              </li>
-            ))}
-            {data.alertes.length === 0 && <p className="text-sm text-slate-400">Aucune alerte en cours.</p>}
-          </ul>
-        </section>
-      </div>
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Alertes réseau</h2>
+            <ul className="space-y-3">
+              {data.alertes.map((a, i) => (
+                <li key={i} className="border-l-2 border-amber-400 pl-3">
+                  <div className="text-sm font-semibold text-slate-900">{a.titre}</div>
+                  <div className="text-xs text-slate-500">{a.description}</div>
+                </li>
+              ))}
+              {data.alertes.length === 0 && <p className="text-sm text-slate-400">Aucune alerte en cours.</p>}
+            </ul>
+          </section>
+        </div>
+      )}
     </div>
   )
 }

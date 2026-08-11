@@ -10,10 +10,11 @@ import type { ComptabiliteConsolidee, CompteResultatBoutique } from '../types'
 
 export default function Comptabilite() {
   const [data, setData] = useState<ComptabiliteConsolidee | null>(null)
+  const [denied, setDenied] = useState(false)
   const { nomBoutique } = useBoutiques()
 
   useEffect(() => {
-    api.comptabilite().then(setData)
+    api.comptabilite().then(setData).catch(() => setDenied(true))
   }, [])
 
   const getFields = useCallback((c: CompteResultatBoutique) => [nomBoutique(c.boutique_id)], [nomBoutique])
@@ -36,6 +37,13 @@ export default function Comptabilite() {
     downloadCsv('kfstore-comptabilite', lines)
   }
 
+  if (denied) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+        La comptabilité consolidée du réseau est réservée au siège (responsable achats / administrateur).
+      </div>
+    )
+  }
   if (!data) return <div className="text-slate-400">Chargement…</div>
 
   return (

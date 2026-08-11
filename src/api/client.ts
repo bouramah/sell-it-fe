@@ -119,6 +119,29 @@ async function sendFile<T>(path: string, file: File): Promise<T> {
   return handle<T>(res, path)
 }
 
+async function downloadPdf(path: string, filename: string): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() })
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const body = await res.json()
+      detail = body.detail ?? ''
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, detail || `Erreur API ${res.status} sur ${path}`)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 export const api = {
   login: (payload: LoginRequest) => sendJson<TokenResponse>('POST', '/auth/login', payload),
   moi: () => getJson<UtilisateurConnecte>('/auth/moi'),
@@ -223,10 +246,14 @@ export const api = {
   creerPromotion: (payload: PromotionInput) => sendJson<Promotion>('POST', '/promotions', payload),
   modifierStatutPromotion: (id: string, statut: string) => sendJson<Promotion>('PUT', `/promotions/${id}/statut`, { statut }),
 
-  urlBonCommande: (commandeId: string) => `${API_BASE}/commandes-fournisseurs/${commandeId}/bon-commande.pdf`,
-  urlBonReception: (commandeId: string) => `${API_BASE}/commandes-fournisseurs/${commandeId}/bon-reception.pdf`,
-  urlFacture: (commandeId: string) => `${API_BASE}/commandes-clients/${commandeId}/facture.pdf`,
-  urlRecu: (paiementId: string) => `${API_BASE}/paiements-clients/${paiementId}/recu.pdf`,
+  telechargerBonCommande: (commandeId: string) =>
+    downloadPdf(`/commandes-fournisseurs/${commandeId}/bon-commande.pdf`, `bon-commande-${commandeId}.pdf`),
+  telechargerBonReception: (commandeId: string) =>
+    downloadPdf(`/commandes-fournisseurs/${commandeId}/bon-reception.pdf`, `bon-reception-${commandeId}.pdf`),
+  telechargerFacture: (commandeId: string) =>
+    downloadPdf(`/commandes-clients/${commandeId}/facture.pdf`, `facture-${commandeId}.pdf`),
+  telechargerRecu: (paiementId: string) =>
+    downloadPdf(`/paiements-clients/${paiementId}/recu.pdf`, `recu-${paiementId}.pdf`),
 
   previsions: () => getJson<SuggestionAvecProduit[]>('/ia/previsions'),
   reporting: () => getJson<ReportingIntelligent>('/ia/reporting'),

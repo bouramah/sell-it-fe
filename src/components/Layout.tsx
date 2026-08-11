@@ -2,12 +2,16 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import ConfirmDialog from './ConfirmDialog'
 import { useAuth } from '../lib/AuthContext'
-import { ROLE_LABELS } from '../types'
+import { ROLE_LABELS, type Role } from '../types'
+
+const ROLES_PORTEE_RESEAU: Role[] = ['responsable_achats', 'administrateur']
 
 interface NavItem {
   to: string
   label: string
   end?: boolean
+  /** Rôles autorisés à voir cet item. Omis = tous les rôles authentifiés. */
+  roles?: Role[]
 }
 
 interface NavSection {
@@ -50,7 +54,7 @@ const sections: NavSection[] = [
   {
     title: 'Finance & marketing',
     items: [
-      { to: '/comptabilite', label: 'Comptabilité' },
+      { to: '/comptabilite', label: 'Comptabilité', roles: ROLES_PORTEE_RESEAU },
       { to: '/promotions', label: 'Promotions & tarifs' },
     ],
   },
@@ -64,7 +68,7 @@ const sections: NavSection[] = [
   //     { to: '/reporting', label: 'Reporting intelligent' },
   //   ],
   // },
-  { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit' }] },
+  { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit', roles: ['administrateur'] }] },
   { title: 'Configuration', items: [{ to: '/parametres', label: 'Paramètres' }] },
 ]
 
@@ -92,31 +96,35 @@ export default function Layout() {
             </div>
           </div>
           <nav className="space-y-5">
-            {sections.map((section) => (
-              <div key={section.title}>
-                <div className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  {section.title}
+            {sections.map((section) => {
+              const items = section.items.filter((item) => !item.roles || (user && item.roles.includes(user.role)))
+              if (items.length === 0) return null
+              return (
+                <div key={section.title}>
+                  <div className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {section.title}
+                  </div>
+                  <div className="space-y-0.5">
+                    {items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={item.end}
+                        className={({ isActive }) =>
+                          `block rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-teal-50 text-teal-800'
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          }`
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  {section.items.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      end={item.end}
-                      className={({ isActive }) =>
-                        `block rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                          isActive
-                            ? 'bg-teal-50 text-teal-800'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                        }`
-                      }
-                    >
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </nav>
           <div className="mt-6 border-t border-slate-100 pt-4 px-2">
             <div className="text-sm font-semibold text-slate-900">

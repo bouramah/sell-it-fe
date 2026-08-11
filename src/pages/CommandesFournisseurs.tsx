@@ -337,13 +337,13 @@ export default function CommandesFournisseurs() {
                         Corriger la réception
                       </button>
                     )}
-                    <a href={api.urlBonCommande(c.id)} className="font-medium text-slate-500 hover:underline">
+                    <button onClick={() => api.telechargerBonCommande(c.id)} className="font-medium text-slate-500 hover:underline">
                       Bon de commande
-                    </a>
+                    </button>
                     {c.statut !== 'brouillon' && c.statut !== 'validee' && c.statut !== 'envoyee' && (
-                      <a href={api.urlBonReception(c.id)} className="font-medium text-slate-500 hover:underline">
+                      <button onClick={() => api.telechargerBonReception(c.id)} className="font-medium text-slate-500 hover:underline">
                         Bon de réception
-                      </a>
+                      </button>
                     )}
                   </div>
                 </td>
