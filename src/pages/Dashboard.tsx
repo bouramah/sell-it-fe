@@ -162,7 +162,7 @@ export default function Dashboard() {
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">Réseau de boutiques — Guinée</h2>
         <p className="mb-4 text-xs text-slate-400">
-          Taille du marqueur = CA sur la période · orange = alerte stock en cours. Carte illustrative, pas une frontière officielle.
+          Taille du marqueur = CA sur la période · orange = alerte stock en cours. Cliquez un marqueur pour les détails.
         </p>
         <GuineaMap boutiques={kpis.boutiques} />
       </section>
