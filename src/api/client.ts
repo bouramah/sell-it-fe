@@ -144,6 +144,11 @@ async function downloadPdf(path: string, filename: string): Promise<void> {
 
 export const api = {
   login: (payload: LoginRequest) => sendJson<TokenResponse>('POST', '/auth/login', payload),
+  motDePasseOublie: (contact: string) => sendJson<{ message: string }>('POST', '/auth/mot-de-passe-oublie', { contact }),
+  reinitialiserMotDePasse: (contact: string, code: string, nouveauMotDePasse: string) =>
+    sendJson<{ message: string }>('POST', '/auth/reinitialiser-mot-de-passe', {
+      contact, code, nouveau_mot_de_passe: nouveauMotDePasse,
+    }),
   moi: () => getJson<UtilisateurConnecte>('/auth/moi'),
 
   boutiques: () => getJson<Boutique[]>('/boutiques'),
@@ -236,6 +241,7 @@ export const api = {
   encaisserRemboursement: (detteId: string, payload: RemboursementInput) =>
     sendJson<LigneDette>('POST', `/dettes/${detteId}/remboursements`, payload),
   remboursements: (detteId?: string) => getJson<Remboursement[]>(`/dettes/remboursements${detteId ? `?dette_id=${detteId}` : ''}`),
+  envoyerRappelSms: (detteId: string) => sendJson<LigneDette>('POST', `/dettes/${detteId}/rappel-sms`, undefined),
 
   transferts: () => getJson<TransfertStock[]>('/transferts'),
   creerTransfert: (payload: TransfertInput) => sendJson<TransfertStock>('POST', '/transferts', payload),

@@ -90,6 +90,21 @@ export default function Dettes() {
     }
   }
 
+  const [rappelEnvoiId, setRappelEnvoiId] = useState<string | null>(null)
+  const [rappelErreurId, setRappelErreurId] = useState<string | null>(null)
+
+  async function handleRappelSms(d: LigneDette) {
+    setRappelEnvoiId(d.id)
+    setRappelErreurId(null)
+    try {
+      await api.envoyerRappelSms(d.id)
+    } catch {
+      setRappelErreurId(d.id)
+    } finally {
+      setRappelEnvoiId(null)
+    }
+  }
+
   const [encaissant, setEncaissant] = useState<LigneDette | null>(null)
   const [remb, setRemb] = useState<RemboursementInput>({ caisse_id: '', montant: 0, mode_paiement: 'especes', operateur: '' })
   const [rembError, setRembError] = useState<string | null>(null)
@@ -200,12 +215,23 @@ export default function Dettes() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   {d.statut !== 'soldee' && (
-                    <button
-                      onClick={() => openEncaisser(d)}
-                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      Encaisser
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {rappelErreurId === d.id && <span className="text-xs text-red-600">Échec de l'envoi</span>}
+                      <button
+                        onClick={() => handleRappelSms(d)}
+                        disabled={rappelEnvoiId === d.id}
+                        title="Envoyer un rappel SMS de relance d'échéance"
+                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        {rappelEnvoiId === d.id ? 'Envoi…' : 'Rappel SMS'}
+                      </button>
+                      <button
+                        onClick={() => openEncaisser(d)}
+                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Encaisser
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
