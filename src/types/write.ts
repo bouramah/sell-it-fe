@@ -187,6 +187,7 @@ export interface PaiementCaisseInput {
 export interface LivraisonInput {
   commande_id: string
   livreur: string
+  livreur_user_id?: string | null
   boutique_id: string
   adresse: string
   creneau: string

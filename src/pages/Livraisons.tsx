@@ -9,7 +9,7 @@ import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
-import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type ReferentielItem, type StatutLivraison } from '../types'
+import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type ReferentielItem, type StatutLivraison, type Utilisateur } from '../types'
 import type { LivraisonInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutLivraison, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -21,7 +21,15 @@ const STATUT_TONE: Record<StatutLivraison, 'default' | 'success' | 'warning' | '
 
 const STATUTS: StatutLivraison[] = ['preparee', 'en_cours', 'livree', 'echec']
 
-const EMPTY_FORM: LivraisonInput = { commande_id: '', livreur: '', boutique_id: '', adresse: '', creneau: '' }
+const EMPTY_FORM: LivraisonInput = { commande_id: '', livreur: '', livreur_user_id: null, boutique_id: '', adresse: '', creneau: '' }
+
+type LivreurMode = 'compte' | 'referentiel' | 'manuel'
+
+const LIVREUR_MODE_LABELS: Record<LivreurMode, string> = {
+  compte: 'Compte livreur',
+  referentiel: 'Liste',
+  manuel: 'Saisie libre',
+}
 
 export default function Livraisons() {
   const [livraisons, setLivraisons] = useState<Livraison[]>([])
@@ -31,10 +39,11 @@ export default function Livraisons() {
   const { livraisonGestion: canGererLivraison } = usePermissions()
   const [livreursRef, setLivreursRef] = useState<ReferentielItem[]>([])
   const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
+  const [livreursComptes, setLivreursComptes] = useState<Utilisateur[]>([])
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<LivraisonInput>(EMPTY_FORM)
-  const [livreurManuel, setLivreurManuel] = useState(false)
+  const [livreurMode, setLivreurMode] = useState<LivreurMode>('referentiel')
   const [quartier, setQuartier] = useState('')
   const [details, setDetails] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -54,6 +63,7 @@ export default function Livraisons() {
       setLivreursRef(r.livreurs ?? [])
       setQuartiersRef(r.quartiers ?? [])
     })
+    api.utilisateurs().then((users) => setLivreursComptes(users.filter((u) => u.role === 'livreur')))
   }, [])
 
   const preFiltrees = boutiqueId ? livraisons.filter((l) => l.boutique_id === boutiqueId) : livraisons
@@ -65,7 +75,7 @@ export default function Livraisons() {
 
   function openCreate() {
     setForm(EMPTY_FORM)
-    setLivreurManuel(false)
+    setLivreurMode(livreursComptes.length > 0 ? 'compte' : 'referentiel')
     setQuartier('')
     setDetails('')
     setError(null)
@@ -271,25 +281,34 @@ export default function Livraisons() {
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <label className="block text-sm font-medium text-slate-700">Livreur (optionnel)</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLivreurManuel((m) => !m)
-                    setForm({ ...form, livreur: '' })
-                  }}
-                  className="text-xs font-medium text-teal-700 hover:underline"
-                >
-                  {livreurManuel ? 'Choisir dans la liste' : 'Saisir manuellement'}
-                </button>
+                <div className="flex gap-2">
+                  {(['compte', 'referentiel', 'manuel'] as LivreurMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        setLivreurMode(mode)
+                        setForm({ ...form, livreur: '', livreur_user_id: null })
+                      }}
+                      className={`text-xs font-medium hover:underline ${
+                        livreurMode === mode ? 'text-teal-700' : 'text-slate-400'
+                      }`}
+                    >
+                      {LIVREUR_MODE_LABELS[mode]}
+                    </button>
+                  ))}
+                </div>
               </div>
-              {livreurManuel ? (
-                <input
-                  value={form.livreur}
-                  onChange={(e) => setForm({ ...form, livreur: e.target.value })}
-                  placeholder="Nom du livreur"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              {livreurMode === 'compte' && (
+                <SearchableSelect
+                  value={form.livreur_user_id ?? ''}
+                  onChange={(v) => setForm({ ...form, livreur_user_id: v || null })}
+                  options={livreursComptes.map((u) => ({ value: u.id, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
+                  allowEmpty="Non affecté"
+                  placeholder={livreursComptes.length ? 'Non affecté' : 'Aucun compte avec le rôle Livreur'}
                 />
-              ) : (
+              )}
+              {livreurMode === 'referentiel' && (
                 <SearchableSelect
                   value={form.livreur}
                   onChange={(v) => setForm({ ...form, livreur: v })}
@@ -297,6 +316,19 @@ export default function Livraisons() {
                   allowEmpty="Non affecté"
                   placeholder="Non affecté"
                 />
+              )}
+              {livreurMode === 'manuel' && (
+                <input
+                  value={form.livreur}
+                  onChange={(e) => setForm({ ...form, livreur: e.target.value })}
+                  placeholder="Nom du livreur"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              )}
+              {livreurMode === 'compte' && (
+                <p className="mt-1 text-xs text-slate-400">
+                  Un compte livreur permet de le voir affecté sur l'app mobile.
+                </p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
