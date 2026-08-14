@@ -19,8 +19,6 @@ const STATUT_TONE: Record<StatutTransfert, 'default' | 'warning' | 'success'> = 
   recu: 'success',
 }
 
-const STATUTS: StatutTransfert[] = ['demande', 'valide', 'en_transit', 'recu']
-
 const EMPTY_FORM: TransfertInput = { produit_id: '', boutique_source_id: '', boutique_destination_id: '', quantite: 1, demandeur: '' }
 
 export default function Transferts() {
@@ -39,6 +37,12 @@ export default function Transferts() {
   const [demandeurManuel, setDemandeurManuel] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const [receptionnant, setReceptionnant] = useState<TransfertStock | null>(null)
+  const [quantiteRecue, setQuantiteRecue] = useState(0)
+  const [motifEcart, setMotifEcart] = useState('')
+  const [receptionError, setReceptionError] = useState<string | null>(null)
+  const [receptionSaving, setReceptionSaving] = useState(false)
 
   function refresh() {
     api.transferts().then(setTransferts)
@@ -87,12 +91,43 @@ export default function Transferts() {
   }
 
   async function handleStatutChange(t: TransfertStock, statut: StatutTransfert) {
+    if (statut === 'recu') {
+      setReceptionnant(t)
+      setQuantiteRecue(t.quantite)
+      setMotifEcart('')
+      setReceptionError(null)
+      return
+    }
     try {
       await api.modifierStatutTransfert(t.id, statut)
       refresh()
     } catch {
       window.alert("Échec de la mise à jour — le stock source est peut-être insuffisant pour la réception.")
       refresh()
+    }
+  }
+
+  async function handleConfirmerReception(e: FormEvent) {
+    e.preventDefault()
+    if (!receptionnant) return
+    if (quantiteRecue < 0 || quantiteRecue > receptionnant.quantite) {
+      setReceptionError(`La quantité reçue doit être comprise entre 0 et ${receptionnant.quantite}.`)
+      return
+    }
+    if (quantiteRecue < receptionnant.quantite && !motifEcart.trim()) {
+      setReceptionError("Motif obligatoire : indiquez la raison de l'écart (casse, perte…).")
+      return
+    }
+    setReceptionSaving(true)
+    setReceptionError(null)
+    try {
+      await api.modifierStatutTransfert(receptionnant.id, 'recu', quantiteRecue, motifEcart.trim() || undefined)
+      setReceptionnant(null)
+      refresh()
+    } catch (err) {
+      setReceptionError(err instanceof Error && err.message ? err.message : "Échec de l'enregistrement.")
+    } finally {
+      setReceptionSaving(false)
     }
   }
 
@@ -243,6 +278,49 @@ export default function Transferts() {
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
                 {saving ? 'Création…' : 'Créer le transfert'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {receptionnant && (
+        <Modal title={`Confirmer la réception — ${nomProduit(receptionnant.produit_id)}`} onClose={() => setReceptionnant(null)}>
+          <form onSubmit={handleConfirmerReception} className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Quantité expédiée : <span className="font-semibold text-slate-900">{receptionnant.quantite}</span>
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Quantité réellement reçue</label>
+              <input
+                type="number"
+                min={0}
+                max={receptionnant.quantite}
+                value={quantiteRecue}
+                onChange={(e) => setQuantiteRecue(Number(e.target.value))}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            {quantiteRecue < receptionnant.quantite && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Motif de l'écart (casse, perte en transit…)</label>
+                <input
+                  value={motifEcart}
+                  onChange={(e) => setMotifEcart(e.target.value)}
+                  placeholder="Ex : 2 unités cassées pendant le transport"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+            )}
+            {receptionError && <p className="text-sm text-red-600">{receptionError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setReceptionnant(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={receptionSaving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {receptionSaving ? 'Confirmation…' : 'Confirmer la réception'}
               </button>
             </div>
           </form>

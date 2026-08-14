@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { api } from '../api/client'
+import PasswordInput from '../components/PasswordInput'
 import { useAuth } from '../lib/AuthContext'
 
 type Vue = 'connexion' | 'demande-code' | 'reinitialisation'
@@ -71,11 +72,8 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-sm font-bold text-white">
-            K
-          </div>
-          <div className="text-sm font-bold tracking-tight text-slate-900">KFSTORE</div>
+        <div className="mb-6">
+          <img src="/logo.jpeg" alt="KFSTORE" className="h-9 w-auto" />
         </div>
 
         {vue === 'connexion' && (
@@ -96,14 +94,7 @@ export default function Login() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Mot de passe</label>
-                <input
-                  type="password"
-                  value={motDePasse}
-                  onChange={(e) => setMotDePasse(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
-                />
+                <PasswordInput value={motDePasse} onChange={setMotDePasse} placeholder="••••••••" autoComplete="current-password" required />
               </div>
 
               {info && <p className="text-sm text-teal-700">{info}</p>}
@@ -193,15 +184,7 @@ export default function Login() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Nouveau mot de passe</label>
-                <input
-                  type="password"
-                  value={nouveauMotDePasse}
-                  onChange={(e) => setNouveauMotDePasse(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
-                  minLength={6}
-                />
+                <PasswordInput value={nouveauMotDePasse} onChange={setNouveauMotDePasse} placeholder="••••••••" autoComplete="new-password" required minLength={6} />
               </div>
 
               {error && <p className="text-sm text-red-600">{error}</p>}

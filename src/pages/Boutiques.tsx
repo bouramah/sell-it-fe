@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
+import GeoPicker, { type GeoResolved } from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
@@ -12,7 +13,7 @@ import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
 import { useRoles } from '../lib/useRoles'
-import { STATUT_BOUTIQUE_LABELS, type Boutique, type ReferentielItem, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
+import { STATUT_BOUTIQUE_LABELS, type Boutique, type Secteur, type StatutBoutique, type Utilisateur } from '../types'
 import type { BoutiqueInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutBoutique, 'success' | 'default' | 'warning'> = {
@@ -33,6 +34,7 @@ const EMPTY_FORM: BoutiqueInput = {
   telephone: '',
   latitude: null,
   longitude: null,
+  secteur_geo_id: null,
 }
 
 export function BoutiquesListe() {
@@ -44,9 +46,7 @@ export function BoutiquesListe() {
   const [form, setForm] = useState<BoutiqueInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [villesRef, setVillesRef] = useState<ReferentielItem[]>([])
-  const [communesRef, setCommunesRef] = useState<ReferentielItem[]>([])
-  const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
+  const [geoResolved, setGeoResolved] = useState<GeoResolved | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Boutique | null>(null)
   const [responsables, setResponsables] = useState<Utilisateur[]>([])
   const { secteurs, nomSecteur } = useSecteurs()
@@ -60,11 +60,6 @@ export function BoutiquesListe() {
   useEffect(refresh, [])
 
   useEffect(() => {
-    api.referentiels().then((r) => {
-      setVillesRef(r.villes ?? [])
-      setCommunesRef(r.communes ?? [])
-      setQuartiersRef(r.quartiers ?? [])
-    })
     api.utilisateurs().then((users) =>
       setResponsables(users.filter((u) => u.role === 'gerant' || u.role === 'administrateur'))
     )
@@ -84,6 +79,7 @@ export function BoutiquesListe() {
 
   function openCreate() {
     setForm(EMPTY_FORM)
+    setGeoResolved(null)
     setError(null)
     setCreating(true)
   }
@@ -101,7 +97,9 @@ export function BoutiquesListe() {
       telephone: b.telephone,
       latitude: b.latitude,
       longitude: b.longitude,
+      secteur_geo_id: b.secteur_geo_id,
     })
+    setGeoResolved(null)
     setError(null)
     setEditing(b)
   }
@@ -119,13 +117,23 @@ export function BoutiquesListe() {
       setError('Sélectionnez au moins un secteur.')
       return
     }
+    if (!form.secteur_geo_id && !geoResolved) {
+      setError('Sélectionnez la localisation complète (région → secteur).')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
+      const payload: BoutiqueInput = {
+        ...form,
+        quartier: geoResolved?.quartierNom ?? form.quartier,
+        commune: geoResolved?.communeNom ?? form.commune,
+        ville: geoResolved?.villeNom ?? form.ville,
+      }
       if (editing) {
-        await api.modifierBoutique(editing.id, form)
+        await api.modifierBoutique(editing.id, payload)
       } else {
-        await api.creerBoutique(form)
+        await api.creerBoutique(payload)
       }
       setEditing(null)
       setCreating(false)
@@ -275,38 +283,15 @@ export function BoutiquesListe() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Quartier</label>
-                <SearchableSelect
-                  value={form.quartier}
-                  onChange={(v) => setForm({ ...form, quartier: v })}
-                  options={quartiersRef.map((q) => ({ value: q.nom, label: q.nom }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Commune</label>
-                <SearchableSelect
-                  value={form.commune}
-                  onChange={(v) => setForm({ ...form, commune: v })}
-                  options={communesRef.map((c) => ({ value: c.nom, label: c.nom }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Ville</label>
-                <SearchableSelect
-                  value={form.ville}
-                  onChange={(v) => setForm({ ...form, ville: v })}
-                  options={villesRef.map((v) => ({ value: v.nom, label: v.nom }))}
-                  required
-                />
-              </div>
-            </div>
-            <p className="-mt-2 text-xs text-slate-400">
-              Ces listes se gèrent depuis Configuration → Paramètres.
-            </p>
+            <GeoPicker
+              value={form.secteur_geo_id ?? null}
+              onChange={(id, resolved) => {
+                setForm({ ...form, secteur_geo_id: id })
+                setGeoResolved(resolved ?? null)
+              }}
+              label="Localisation"
+              required
+            />
 
             <div className="grid grid-cols-2 gap-3">
               <div>

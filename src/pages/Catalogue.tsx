@@ -52,7 +52,7 @@ export default function Catalogue() {
             <div className="text-xs text-slate-500">
               <Badge>{nomSecteur(p.secteur)}</Badge>
             </div>
-            <div className="mt-2 text-sm font-semibold text-slate-900">{formatGNF(p.prix)}</div>
+            <div className="mt-2 text-sm font-semibold text-slate-900">{formatGNF(p.prix_detail)} <span className="font-normal text-slate-400">détail</span></div>
           </Link>
         ))}
         {produits.length === 0 && <p className="text-sm text-slate-400">Aucun produit ne correspond à la recherche.</p>}

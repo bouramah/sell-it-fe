@@ -136,7 +136,7 @@ export default function CommandesFournisseurs() {
 
   function selectProduitForLigne(key: number, produitId: string) {
     const p = produits.find((x) => x.id === produitId)
-    updateLigne(key, { produit_id: produitId, prix_unitaire: p ? p.prix : 0 })
+    updateLigne(key, { produit_id: produitId, prix_unitaire: p ? p.prix_detail : 0 })
   }
 
   function addLigne() {

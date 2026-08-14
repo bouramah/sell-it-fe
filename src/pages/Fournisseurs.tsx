@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
+import GeoPicker from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
@@ -13,7 +14,7 @@ import { useSecteurs } from '../lib/useSecteurs'
 import type { Fournisseur } from '../types'
 import type { FournisseurInput } from '../types/write'
 
-const EMPTY_FORM: FournisseurInput = { nom: '', secteur: '', conditions_paiement: '', contact: '' }
+const EMPTY_FORM: FournisseurInput = { nom: '', secteur: '', conditions_paiement: '', contact: '', secteur_geo_id: null }
 
 export default function Fournisseurs() {
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
@@ -43,7 +44,7 @@ export default function Fournisseurs() {
   }
 
   function openEdit(f: Fournisseur) {
-    setForm({ nom: f.nom, secteur: f.secteur, conditions_paiement: f.conditions_paiement, contact: f.contact })
+    setForm({ nom: f.nom, secteur: f.secteur, conditions_paiement: f.conditions_paiement, contact: f.contact, secteur_geo_id: f.secteur_geo_id })
     setError(null)
     setEditing(f)
   }
@@ -178,6 +179,11 @@ export default function Fournisseurs() {
                 required
               />
             </div>
+            <GeoPicker
+              value={form.secteur_geo_id ?? null}
+              onChange={(id) => setForm({ ...form, secteur_geo_id: id })}
+              label="Localisation (facultatif)"
+            />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => { setCreating(false); setEditing(null) }} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">

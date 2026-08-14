@@ -2,74 +2,9 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import ConfirmDialog from './ConfirmDialog'
 import { useAuth } from '../lib/AuthContext'
-import { type Permissions, usePermissions } from '../lib/permissions'
+import { sections } from '../lib/navSections'
+import { usePermissions } from '../lib/permissions'
 import { useRoles } from '../lib/useRoles'
-
-interface NavItem {
-  to: string
-  label: string
-  end?: boolean
-  /** Si fourni, l'item n'est affiché que si ce champ de la matrice des droits est vrai. */
-  visible?: (p: Permissions) => boolean
-}
-
-interface NavSection {
-  title: string
-  items: NavItem[]
-}
-
-const sections: NavSection[] = [
-  { title: 'Pilotage', items: [{ to: '/', label: 'Tableau de bord', end: true, visible: (p) => p.dashboard }] },
-  {
-    title: 'Réseau',
-    items: [
-      { to: '/boutiques', label: 'Boutiques' },
-      { to: '/produits', label: 'Produits' },
-      { to: '/fournisseurs', label: 'Fournisseurs' },
-      { to: '/utilisateurs', label: 'Utilisateurs & droits', visible: (p) => p.utilisateurs },
-    ],
-  },
-  {
-    title: 'Clients & paiements',
-    items: [
-      { to: '/clients', label: 'Clients' },
-      { to: '/paiements-clients', label: 'Paiements clients' },
-      { to: '/paiements-fournisseurs', label: 'Paiements fournisseurs' },
-    ],
-  },
-  {
-    title: 'Opérations',
-    items: [
-      { to: '/stock', label: 'Stocks' },
-      { to: '/caisse', label: 'Caisse' },
-      { to: '/commandes-clients', label: 'Commandes clients' },
-      { to: '/commandes-fournisseurs', label: 'Commandes fournisseurs' },
-      { to: '/livraisons', label: 'Livraisons' },
-      { to: '/depenses', label: 'Dépenses' },
-      { to: '/dettes', label: 'Dettes & créances' },
-      { to: '/transferts', label: 'Transferts de stock' },
-    ],
-  },
-  {
-    title: 'Finance & marketing',
-    items: [
-      { to: '/comptabilite', label: 'Comptabilité', visible: (p) => p.comptabilite },
-      { to: '/promotions', label: 'Promotions & tarifs' },
-    ],
-  },
-  // Masqué temporairement le temps de valider cette phase — routes toujours actives, juste retirées du menu.
-  // {
-  //   title: 'Intelligence artificielle',
-  //   items: [
-  //     { to: '/catalogue', label: 'Catalogue & recherche' },
-  //     { to: '/chatbot', label: 'Chatbot service client' },
-  //     { to: '/previsions', label: 'Prévisions de demande' },
-  //     { to: '/reporting', label: 'Reporting intelligent' },
-  //   ],
-  // },
-  { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit', visible: (p) => p.securite }] },
-  { title: 'Configuration', items: [{ to: '/parametres', label: 'Paramètres' }] },
-]
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -87,14 +22,8 @@ export default function Layout() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex">
         <aside className="w-64 shrink-0 border-r border-slate-200 bg-white sticky top-0 h-screen overflow-y-auto p-4">
-          <div className="mb-6 flex items-center gap-2 px-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-700 text-sm font-bold text-white">
-              K
-            </div>
-            <div>
-              <div className="text-sm font-bold tracking-tight text-slate-900">KFSTORE</div>
-              <div className="text-[11px] text-slate-500">GROUPE SKF SARL</div>
-            </div>
+          <div className="mb-6 px-2">
+            <img src="/logo.jpeg" alt="KFSTORE" className="h-8 w-auto" />
           </div>
           <nav className="space-y-5">
             {sections.map((section) => {

@@ -3,8 +3,8 @@ import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './lib/AuthContext'
 import { PermissionsProvider } from './lib/permissions'
+import Home from './components/Home'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
 import { BoutiqueFiche, BoutiquesListe } from './pages/Boutiques'
 import { ProduitFiche, ProduitsListe } from './pages/Produits'
 import Fournisseurs from './pages/Fournisseurs'
@@ -28,6 +28,8 @@ import Previsions from './pages/Previsions'
 import Reporting from './pages/Reporting'
 import Securite from './pages/Securite'
 import Parametres from './pages/Parametres'
+import Geographie from './pages/Geographie'
+import NotificationsPush from './pages/NotificationsPush'
 
 export default function App() {
   return (
@@ -37,7 +39,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Layout />}>
-              <Route index element={<Dashboard />} />
+              <Route index element={<Home />} />
               <Route path="boutiques" element={<BoutiquesListe />} />
               <Route path="boutiques/:id" element={<BoutiqueFiche />} />
               <Route path="produits" element={<ProduitsListe />} />
@@ -63,6 +65,8 @@ export default function App() {
               <Route path="reporting" element={<Reporting />} />
               <Route path="securite" element={<Securite />} />
               <Route path="parametres" element={<Parametres />} />
+              <Route path="geographie" element={<Geographie />} />
+              <Route path="notifications-push" element={<NotificationsPush />} />
             </Route>
           </Route>
         </Routes>

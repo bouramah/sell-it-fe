@@ -12,6 +12,7 @@ interface SearchableSelectProps {
   placeholder?: string
   required?: boolean
   allowEmpty?: string // label for a "clear selection" option, e.g. "Toutes les boutiques"
+  disabled?: boolean
 }
 
 export default function SearchableSelect({
@@ -21,6 +22,7 @@ export default function SearchableSelect({
   placeholder = 'Sélectionner…',
   required,
   allowEmpty,
+  disabled,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -79,6 +81,7 @@ export default function SearchableSelect({
         ref={inputRef}
         type="text"
         required={required && !value}
+        disabled={disabled}
         value={open ? query : selectedLabel}
         onChange={(e) => {
           setQuery(e.target.value)
@@ -86,13 +89,14 @@ export default function SearchableSelect({
           if (!open) setOpen(true)
         }}
         onFocus={() => {
+          if (disabled) return
           setOpen(true)
           setQuery('')
           setHighlight(0)
         }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
       />
       {open && (
         <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">

@@ -13,21 +13,34 @@ import type { PermissionLigne, Role } from '../types'
  * le contournement administrateur (voir hasAccess ci-dessous).
  */
 
-const PermissionsContext = createContext<PermissionLigne[]>([])
+interface PermissionsState {
+  matrix: PermissionLigne[]
+  loading: boolean
+}
+
+const PermissionsContext = createContext<PermissionsState>({ matrix: [], loading: true })
 
 export function PermissionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  const [matrix, setMatrix] = useState<PermissionLigne[]>([])
+  const [state, setState] = useState<PermissionsState>({ matrix: [], loading: true })
 
   useEffect(() => {
     if (!user) {
-      setMatrix([])
+      setState({ matrix: [], loading: false })
       return
     }
-    api.permissions().then(setMatrix).catch(() => setMatrix([]))
+    setState((s) => ({ ...s, loading: true }))
+    api.permissions()
+      .then((matrix) => setState({ matrix, loading: false }))
+      .catch(() => setState({ matrix: [], loading: false }))
   }, [user?.id])
 
-  return <PermissionsContext.Provider value={matrix}>{children}</PermissionsContext.Provider>
+  return <PermissionsContext.Provider value={state}>{children}</PermissionsContext.Provider>
+}
+
+/** true tant que la matrice des droits du rôle courant n'a pas encore été chargée depuis l'API. */
+export function usePermissionsLoading(): boolean {
+  return useContext(PermissionsContext).loading
 }
 
 function hasAccess(matrix: PermissionLigne[], role: Role | null, ...moduleActions: string[]): boolean {
@@ -65,11 +78,12 @@ export interface Permissions {
   utilisateurs: boolean
   securite: boolean
   referentiels: boolean
+  remiseValidation: boolean
 }
 
 export function usePermissions(): Permissions {
   const { user } = useAuth()
-  const matrix = useContext(PermissionsContext)
+  const { matrix } = useContext(PermissionsContext)
   const role = user?.role ?? null
   const has = (...actions: string[]) => hasAccess(matrix, role, ...actions)
 
@@ -99,5 +113,6 @@ export function usePermissions(): Permissions {
     utilisateurs: has(MODULE_ACTIONS.UTILISATEURS_GESTION),
     securite: has(MODULE_ACTIONS.SECURITE_GESTION),
     referentiels: has(MODULE_ACTIONS.REFERENTIELS_GESTION),
+    remiseValidation: has(MODULE_ACTIONS.REMISE_VALIDATION),
   }
 }

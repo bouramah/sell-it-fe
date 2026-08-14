@@ -23,17 +23,25 @@ import type {
   PaiementFournisseur,
   ParametreSecurite,
   PermissionLigne,
+  PrixAchat,
+  PrixPeriode,
+  NotificationPushResult,
   Produit,
   Promotion,
+  QuartierGeo,
   ReferentielItem,
+  Region,
   Remboursement,
   ReportingIntelligent,
   RoleInfo,
+  SecteurGeo,
   SuggestionAvecProduit,
   TransfertStock,
   Utilisateur,
+  Ville,
+  Commune,
 } from '../types'
-import { getToken } from '../lib/auth'
+import { clearToken, getToken } from '../lib/auth'
 import type {
   BoutiqueInput,
   CaisseInput,
@@ -51,15 +59,24 @@ import type {
   PaiementCaisseInput,
   PaiementClientInput,
   PaiementFournisseurInput,
+  NotificationPushInput,
   PermissionUpdate,
-  ProduitInput,
+  PrixAchatInput,
+  PrixPeriodeInput,
+  ProduitCreateInput,
+  ProduitUpdateInput,
   PromotionInput,
+  QuartierGeoInput,
   ReceptionInput,
   ReferentielInput,
+  RegionInput,
   RemboursementInput,
   RoleCreate,
   RoleUpdate,
+  SecteurGeoInput,
   StockLigneInput,
+  VilleInput,
+  CommuneInput,
   TokenResponse,
   TransfertInput,
   UtilisateurConnecte,
@@ -82,14 +99,34 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+// FastAPI renvoie `detail` en string pour les erreurs métier (400/403/404/409…) mais en
+// tableau d'objets {msg, loc, type} pour les erreurs de validation (422) — sans ce
+// formatage, une 422 affichait "[object Object]" à l'utilisateur au lieu du vrai message.
+function formatDetail(detail: unknown): string {
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map((e) => (e && typeof e === 'object' && 'msg' in e ? String((e as { msg: unknown }).msg) : JSON.stringify(e)))
+      .join(' ; ')
+  }
+  return ''
+}
+
 async function handle<T>(res: Response, path: string): Promise<T> {
   if (!res.ok) {
     let detail = ''
     try {
       const body = await res.json()
-      detail = body.detail ?? ''
+      detail = formatDetail(body.detail)
     } catch {
       // ignore
+    }
+    // Session expirée ou token invalide : sans ça, chaque écran échoue silencieusement (listes
+    // vides sans erreur visible) au lieu de renvoyer l'utilisateur se reconnecter — cf. rapport
+    // "connecté en admin mais je ne vois aucune livraison", en réalité un jeton expiré.
+    if (res.status === 401) {
+      clearToken()
+      if (window.location.pathname !== '/login') window.location.href = '/login'
     }
     throw new ApiError(res.status, detail || `Erreur API ${res.status} sur ${path}`)
   }
@@ -169,6 +206,7 @@ export const api = {
   creerUtilisateur: (payload: UtilisateurInput) => sendJson<Utilisateur>('POST', '/utilisateurs', payload),
   modifierUtilisateur: (id: string, payload: Partial<UtilisateurInput>) => sendJson<Utilisateur>('PUT', `/utilisateurs/${id}`, payload),
   supprimerUtilisateur: (id: string) => sendJson<void>('DELETE', `/utilisateurs/${id}`),
+  reinitialiserMotDePasseAdmin: (id: string) => sendJson<{ message: string }>('POST', `/utilisateurs/${id}/reinitialiser-mot-de-passe`),
   permissions: () => getJson<PermissionLigne[]>('/permissions'),
   modifierPermission: (payload: PermissionUpdate) => sendJson<PermissionLigne>('PUT', '/permissions', payload),
 
@@ -179,11 +217,29 @@ export const api = {
 
   produits: (q?: string) => getJson<Produit[]>(`/produits${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   produit: (id: string) => getJson<Produit>(`/produits/${id}`),
-  creerProduit: (payload: ProduitInput) => sendJson<Produit>('POST', '/produits', payload),
-  modifierProduit: (id: string, payload: Partial<ProduitInput>) => sendJson<Produit>('PUT', `/produits/${id}`, payload),
+  creerProduit: (payload: ProduitCreateInput) => sendJson<Produit>('POST', '/produits', payload),
+  modifierProduit: (id: string, payload: ProduitUpdateInput) => sendJson<Produit>('PUT', `/produits/${id}`, payload),
   supprimerProduit: (id: string) => sendJson<void>('DELETE', `/produits/${id}`),
   ajouterImageProduit: (id: string, file: File) => sendFile<Produit>(`/produits/${id}/images`, file),
   supprimerImageProduit: (produitId: string, imageId: string) => sendJson<Produit>('DELETE', `/produits/${produitId}/images/${imageId}`),
+  prixPeriodes: (produitId: string, boutiqueId?: string, palier?: string) =>
+    getJson<PrixPeriode[]>(`/produits/${produitId}/prix-periodes?${boutiqueId ? `boutique_id=${boutiqueId}&` : ''}${palier ? `palier=${palier}` : ''}`),
+  prixADate: (produitId: string, aDate: string, boutiqueId?: string) =>
+    getJson<Record<string, number | null>>(`/produits/${produitId}/prix-a-date?a_date=${aDate}${boutiqueId ? `&boutique_id=${boutiqueId}` : ''}`),
+  creerPrixPeriode: (produitId: string, payload: PrixPeriodeInput) =>
+    sendJson<PrixPeriode>('POST', `/produits/${produitId}/prix-periodes`, payload),
+  modifierPrixPeriode: (produitId: string, periodeId: string, payload: PrixPeriodeInput) =>
+    sendJson<PrixPeriode>('PUT', `/produits/${produitId}/prix-periodes/${periodeId}`, payload),
+  supprimerPrixPeriode: (produitId: string, periodeId: string) =>
+    sendJson<void>('DELETE', `/produits/${produitId}/prix-periodes/${periodeId}`),
+  prixAchat: (produitId: string, fournisseurId?: string) =>
+    getJson<PrixAchat[]>(`/produits/${produitId}/prix-achat${fournisseurId ? `?fournisseur_id=${fournisseurId}` : ''}`),
+  creerPrixAchat: (produitId: string, payload: PrixAchatInput) =>
+    sendJson<PrixAchat>('POST', `/produits/${produitId}/prix-achat`, payload),
+  modifierPrixAchat: (produitId: string, achatId: string, payload: PrixAchatInput) =>
+    sendJson<PrixAchat>('PUT', `/produits/${produitId}/prix-achat/${achatId}`, payload),
+  supprimerPrixAchat: (produitId: string, achatId: string) =>
+    sendJson<void>('DELETE', `/produits/${produitId}/prix-achat/${achatId}`),
 
   clients: (boutiqueId?: string) => getJson<ClientEntity[]>(`/clients${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
   creerClient: (payload: ClientInput) => sendJson<ClientEntity>('POST', '/clients', payload),
@@ -220,6 +276,7 @@ export const api = {
   modifierCommandeClient: (id: string, statut: string) => sendJson<CommandeClient>('PUT', `/commandes-clients/${id}`, { statut }),
   modifierArticlesCommandeClient: (id: string, payload: Omit<CommandeClientInput, 'statut'>) =>
     sendJson<CommandeClientDetail>('PUT', `/commandes-clients/${id}`, payload),
+  validerRemiseCommandeClient: (id: string) => sendJson<CommandeClientDetail>('PUT', `/commandes-clients/${id}/valider-remise`),
 
   commandesFournisseurs: () => getJson<LigneCommandeFournisseur[]>('/commandes-fournisseurs'),
   commandeFournisseur: (id: string) => getJson<CommandeFournisseurDetail>(`/commandes-fournisseurs/${id}`),
@@ -253,7 +310,8 @@ export const api = {
 
   transferts: () => getJson<TransfertStock[]>('/transferts'),
   creerTransfert: (payload: TransfertInput) => sendJson<TransfertStock>('POST', '/transferts', payload),
-  modifierStatutTransfert: (id: string, statut: string) => sendJson<TransfertStock>('PUT', `/transferts/${id}/statut`, { statut }),
+  modifierStatutTransfert: (id: string, statut: string, quantiteRecue?: number, motifEcart?: string) =>
+    sendJson<TransfertStock>('PUT', `/transferts/${id}/statut`, { statut, quantite_recue: quantiteRecue, motif_ecart: motifEcart }),
 
   comptabilite: () => getJson<ComptabiliteConsolidee>('/comptabilite'),
   promotions: () => getJson<Promotion[]>('/promotions'),
@@ -285,6 +343,29 @@ export const api = {
     sendJson<ReferentielItem>('PUT', `/parametres/referentiels/${categorie}/${id}`, payload),
   supprimerReferentiel: (categorie: string, id: string) =>
     sendJson<void>('DELETE', `/parametres/referentiels/${categorie}/${id}`),
+
+  regions: () => getJson<Region[]>('/regions'),
+  creerRegion: (payload: RegionInput) => sendJson<Region>('POST', '/regions', payload),
+  supprimerRegion: (id: string) => sendJson<void>('DELETE', `/regions/${id}`),
+
+  villes: (regionId?: string) => getJson<Ville[]>(`/villes${regionId ? `?region_id=${regionId}` : ''}`),
+  creerVille: (payload: VilleInput) => sendJson<Ville>('POST', '/villes', payload),
+  supprimerVille: (id: string) => sendJson<void>('DELETE', `/villes/${id}`),
+
+  communes: (villeId?: string) => getJson<Commune[]>(`/communes${villeId ? `?ville_id=${villeId}` : ''}`),
+  creerCommune: (payload: CommuneInput) => sendJson<Commune>('POST', '/communes', payload),
+  supprimerCommune: (id: string) => sendJson<void>('DELETE', `/communes/${id}`),
+
+  quartiersGeo: (communeId?: string) => getJson<QuartierGeo[]>(`/quartiers-geo${communeId ? `?commune_id=${communeId}` : ''}`),
+  creerQuartierGeo: (payload: QuartierGeoInput) => sendJson<QuartierGeo>('POST', '/quartiers-geo', payload),
+  supprimerQuartierGeo: (id: string) => sendJson<void>('DELETE', `/quartiers-geo/${id}`),
+
+  secteursGeo: (quartierId?: string) => getJson<SecteurGeo[]>(`/secteurs-geo${quartierId ? `?quartier_id=${quartierId}` : ''}`),
+  creerSecteurGeo: (payload: SecteurGeoInput) => sendJson<SecteurGeo>('POST', '/secteurs-geo', payload),
+  supprimerSecteurGeo: (id: string) => sendJson<void>('DELETE', `/secteurs-geo/${id}`),
+
+  envoyerNotificationPush: (payload: NotificationPushInput) =>
+    sendJson<NotificationPushResult>('POST', '/notifications/push', payload),
 
   dashboard: () => getJson<DashboardConsolide>('/dashboard'),
   dashboardKpis: (debut: string, fin: string, boutiqueId?: string) => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
+import GeoPicker from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
@@ -46,6 +47,7 @@ const EMPTY_FORM: UtilisateurInput = {
   role: '',
   boutique_ids: [],
   statut: 'actif',
+  secteur_geo_id: null,
 }
 
 const EMPTY_ROLE_FORM: RoleCreate = {
@@ -66,6 +68,7 @@ export default function Utilisateurs() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Utilisateur | null>(null)
+  const [confirmResetPassword, setConfirmResetPassword] = useState<Utilisateur | null>(null)
   const [savingCell, setSavingCell] = useState<string | null>(null)
   const { roles, nomRole, recharger: rechargerRoles } = useRoles()
   const [roleCreating, setRoleCreating] = useState(false)
@@ -127,6 +130,7 @@ export default function Utilisateurs() {
       role: u.role,
       boutique_ids: u.boutique_ids,
       statut: u.statut,
+      secteur_geo_id: u.secteur_geo_id,
     })
     setError(null)
     setEditing(u)
@@ -169,6 +173,16 @@ export default function Utilisateurs() {
     await api.supprimerUtilisateur(u.id)
     setConfirmDelete(null)
     refresh()
+  }
+
+  async function handleResetPassword(u: Utilisateur) {
+    setConfirmResetPassword(null)
+    try {
+      await api.reinitialiserMotDePasseAdmin(u.id)
+      window.alert(`Nouveau mot de passe envoyé par SMS à ${u.prenom} ${u.nom}.`)
+    } catch {
+      window.alert("Échec de l'envoi du SMS — le mot de passe n'a pas été modifié.")
+    }
   }
 
   function openRoleCreate() {
@@ -278,6 +292,12 @@ export default function Utilisateurs() {
                       <div className="flex gap-3">
                         <button onClick={() => openEdit(u)} className="font-medium text-teal-700 hover:underline">
                           Modifier
+                        </button>
+                        <button
+                          onClick={() => setConfirmResetPassword(u)}
+                          className="font-medium text-amber-700 hover:underline"
+                        >
+                          Réinitialiser MDP
                         </button>
                         <button onClick={() => setConfirmDelete(u)} className="font-medium text-red-600 hover:underline">
                           Suppr.
@@ -510,6 +530,12 @@ export default function Utilisateurs() {
               </div>
             </div>
 
+            <GeoPicker
+              value={form.secteur_geo_id ?? null}
+              onChange={(id) => setForm({ ...form, secteur_geo_id: id })}
+              label="Localisation (facultatif)"
+            />
+
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
@@ -542,6 +568,17 @@ export default function Utilisateurs() {
           confirmLabel="Supprimer"
           onConfirm={() => handleDelete(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {confirmResetPassword && (
+        <ConfirmDialog
+          title="Réinitialiser le mot de passe"
+          message={`Un nouveau mot de passe sera généré et envoyé par SMS au ${confirmResetPassword.contact} (${confirmResetPassword.prenom} ${confirmResetPassword.nom}).`}
+          confirmLabel="Réinitialiser et envoyer"
+          danger={false}
+          onConfirm={() => handleResetPassword(confirmResetPassword)}
+          onCancel={() => setConfirmResetPassword(null)}
         />
       )}
 

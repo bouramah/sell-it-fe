@@ -3,6 +3,7 @@ import type {
   DroitAcces,
   ModePaiement,
   MotifMouvementStock,
+  PalierPrix,
   Role,
   Secteur,
   SegmentClient,
@@ -25,6 +26,31 @@ export interface BoutiqueInput {
   telephone: string
   latitude?: number | null
   longitude?: number | null
+  secteur_geo_id?: string | null
+}
+
+export interface RegionInput {
+  nom: string
+}
+
+export interface VilleInput {
+  nom: string
+  region_id: string
+}
+
+export interface CommuneInput {
+  nom: string
+  ville_id: string
+}
+
+export interface QuartierGeoInput {
+  nom: string
+  commune_id: string
+}
+
+export interface SecteurGeoInput {
+  nom: string
+  quartier_id: string
 }
 
 export interface UtilisateurInput {
@@ -35,16 +61,57 @@ export interface UtilisateurInput {
   role: Role
   boutique_ids: string[]
   statut: string
+  secteur_geo_id?: string | null
 }
 
-export interface ProduitInput {
+export interface ProduitCreateInput {
   nom: string
   secteur: Secteur
   categorie: string
-  prix: number
+  // Prix de départ — crée la première période de validité réseau (aujourd'hui, sans fin).
+  prix_detail: number
+  prix_semi_gros: number
+  prix_gros: number
+  seuil_semi_gros: number
+  seuil_gros: number
   unite: string
   code_barres: string
   date_peremption: string | null
+}
+
+export interface ProduitUpdateInput {
+  // Pas de champs de prix ici : un changement de prix passe par prix-periodes (période datée,
+  // traçable, sans chevauchement) — jamais par une simple modification de fiche produit.
+  nom?: string
+  secteur?: Secteur
+  categorie?: string
+  seuil_semi_gros?: number
+  seuil_gros?: number
+  unite?: string
+  code_barres?: string
+  date_peremption?: string | null
+}
+
+export interface PrixPeriodeInput {
+  boutique_id: string | null
+  palier: PalierPrix
+  prix: number
+  date_debut: string
+  date_fin: string | null
+}
+
+export interface PrixAchatInput {
+  fournisseur_id: string
+  palier: PalierPrix
+  prix: number
+  date_debut: string
+  date_fin: string | null
+}
+
+export interface PrixBoutiqueInput {
+  prix_detail?: number | null
+  prix_semi_gros?: number | null
+  prix_gros?: number | null
 }
 
 export interface ReferentielInput {
@@ -73,6 +140,7 @@ export interface FournisseurInput {
   secteur: Secteur
   conditions_paiement: string
   contact: string
+  secteur_geo_id?: string | null
 }
 
 export interface ClientInput {
@@ -84,6 +152,7 @@ export interface ClientInput {
   quartier?: string | null
   commune?: string | null
   ville?: string | null
+  secteur_geo_id?: string | null
 }
 
 export interface StockLigneInput {
@@ -120,6 +189,7 @@ export interface MouvementCaisseInput {
 export interface ArticleCommandeInput {
   produit_id: string
   quantite: number
+  palier?: PalierPrix
   prix_unitaire?: number | null
 }
 
@@ -130,6 +200,7 @@ export interface CommandeClientInput {
   mode_paiement: ModePaiement
   statut: StatutCommandeClient
   articles: ArticleCommandeInput[]
+  remise_motif?: string | null
 }
 
 export interface CommandeFournisseurInput {
@@ -230,6 +301,14 @@ export interface TransfertInput {
   boutique_destination_id: string
   quantite: number
   demandeur: string
+}
+
+export interface NotificationPushInput {
+  cible: 'utilisateur' | 'boutique'
+  utilisateur_id?: string | null
+  boutique_id?: string | null
+  titre: string
+  message: string
 }
 
 export interface LoginRequest {

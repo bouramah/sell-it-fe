@@ -40,6 +40,41 @@ export interface Boutique {
   telephone: string
   latitude: number | null
   longitude: number | null
+  secteur_geo_id: string | null
+}
+
+export interface Region {
+  id: string
+  nom: string
+}
+
+export interface Ville {
+  id: string
+  nom: string
+  region_id: string
+}
+
+export interface Commune {
+  id: string
+  nom: string
+  ville_id: string
+}
+
+export interface QuartierGeo {
+  id: string
+  nom: string
+  commune_id: string
+}
+
+export interface SecteurGeo {
+  id: string
+  nom: string
+  quartier_id: string
+}
+
+export interface NotificationPushResult {
+  destinataires: number
+  notifies: number
 }
 
 export interface Fournisseur {
@@ -48,6 +83,7 @@ export interface Fournisseur {
   secteur: Secteur
   conditions_paiement: string
   contact: string
+  secteur_geo_id: string | null
 }
 
 export interface Utilisateur {
@@ -59,6 +95,7 @@ export interface Utilisateur {
   boutique_ids: string[]
   statut: string
   derniere_connexion: string | null
+  secteur_geo_id: string | null
 }
 
 export interface PermissionLigne {
@@ -84,6 +121,7 @@ export interface Client {
   quartier: string | null
   commune: string | null
   ville: string | null
+  secteur_geo_id: string | null
 }
 
 export interface PaiementClient {
@@ -117,16 +155,52 @@ export interface ProduitImage {
   position: number
 }
 
+export type PalierPrix = 'detail' | 'semi_gros' | 'gros'
+
+export const PALIER_PRIX_LABELS: Record<PalierPrix, string> = {
+  detail: 'Détail',
+  semi_gros: 'Semi-gros',
+  gros: 'Gros',
+}
+
 export interface Produit {
   id: string
   nom: string
   secteur: Secteur
   categorie: string
-  prix: number
+  prix_detail: number
+  prix_semi_gros: number
+  prix_gros: number
+  seuil_semi_gros: number
+  seuil_gros: number
   unite: string
   code_barres: string
   date_peremption: string | null
   images: ProduitImage[]
+}
+
+export interface PrixPeriode {
+  id: string
+  produit_id: string
+  boutique_id: string | null
+  palier: PalierPrix
+  prix: number
+  date_debut: string
+  date_fin: string | null
+  modifie_par: string
+  cree_le: string
+}
+
+export interface PrixAchat {
+  id: string
+  produit_id: string
+  fournisseur_id: string
+  palier: PalierPrix
+  prix: number
+  date_debut: string
+  date_fin: string | null
+  modifie_par: string
+  cree_le: string
 }
 
 export interface LigneStock {
@@ -139,6 +213,21 @@ export interface LigneStock {
   seuil_alerte: number
   statut: StatutStock
   derniere_mouvement: string
+  prix_detail: number
+  prix_semi_gros: number
+  prix_gros: number
+}
+
+export function prixPourPalier(ligne: { prix_detail: number; prix_semi_gros: number; prix_gros: number }, palier: PalierPrix): number {
+  if (palier === 'gros') return ligne.prix_gros
+  if (palier === 'semi_gros') return ligne.prix_semi_gros
+  return ligne.prix_detail
+}
+
+export function palierSuggere(quantite: number, produit: { seuil_semi_gros: number; seuil_gros: number }): PalierPrix {
+  if (quantite >= produit.seuil_gros) return 'gros'
+  if (quantite >= produit.seuil_semi_gros) return 'semi_gros'
+  return 'detail'
 }
 
 export interface LigneMouvementStock {
@@ -185,6 +274,8 @@ export interface LigneMouvementCaisse {
   montant: number
 }
 
+export type StatutValidationRemise = 'aucune' | 'en_attente' | 'validee'
+
 export interface CommandeClient {
   id: string
   client_nom: string
@@ -193,6 +284,10 @@ export interface CommandeClient {
   mode_paiement: ModePaiement
   montant: number
   statut: StatutCommandeClient
+  remise_statut: StatutValidationRemise
+  remise_motif: string | null
+  remise_validee_par: string | null
+  remise_validee_le: string | null
 }
 
 export interface ArticleCommande {
@@ -200,7 +295,9 @@ export interface ArticleCommande {
   produit_id: string
   produit_nom: string
   quantite: number
+  palier: PalierPrix
   prix_unitaire: number
+  prix_catalogue_a_la_vente: number | null
 }
 
 export interface CommandeClientDetail extends CommandeClient {
@@ -216,7 +313,12 @@ export interface LigneCommandeFournisseur {
   statut: StatutCommandeFournisseur
 }
 
-export interface ArticleCommandeFournisseur extends ArticleCommande {
+export interface ArticleCommandeFournisseur {
+  id: string
+  produit_id: string
+  produit_nom: string
+  quantite: number
+  prix_unitaire: number
   quantite_recue: number
 }
 
@@ -276,6 +378,8 @@ export interface TransfertStock {
   quantite: number
   demandeur: string
   statut: StatutTransfert
+  quantite_recue: number | null
+  motif_ecart: string | null
 }
 
 export interface CompteResultatBoutique {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
+import GeoPicker, { type GeoResolved } from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
@@ -11,7 +12,7 @@ import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
-import { SEGMENT_LABELS, type Client, type ReferentielItem, type SegmentClient } from '../types'
+import { SEGMENT_LABELS, type Client, type SegmentClient } from '../types'
 import type { ClientInput } from '../types/write'
 
 const SEGMENT_TONE: Record<SegmentClient, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -32,6 +33,7 @@ const EMPTY_FORM: ClientInput = {
   quartier: '',
   commune: '',
   ville: '',
+  secteur_geo_id: null,
 }
 
 export default function Clients() {
@@ -45,9 +47,7 @@ export default function Clients() {
   const [form, setForm] = useState<ClientInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [villesRef, setVillesRef] = useState<ReferentielItem[]>([])
-  const [communesRef, setCommunesRef] = useState<ReferentielItem[]>([])
-  const [quartiersRef, setQuartiersRef] = useState<ReferentielItem[]>([])
+  const [geoResolved, setGeoResolved] = useState<GeoResolved | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Client | null>(null)
 
   function refresh() {
@@ -56,20 +56,13 @@ export default function Clients() {
 
   useEffect(refresh, [boutiqueId])
 
-  useEffect(() => {
-    api.referentiels().then((r) => {
-      setVillesRef(r.villes ?? [])
-      setCommunesRef(r.communes ?? [])
-      setQuartiersRef(r.quartiers ?? [])
-    })
-  }, [])
-
   const getFields = useCallback((c: Client) => [c.nom, c.contact], [])
   const { query, setQuery, filtered } = useSearch(clients, getFields)
   const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
     setForm(EMPTY_FORM)
+    setGeoResolved(null)
     setError(null)
     setCreating(true)
   }
@@ -84,7 +77,9 @@ export default function Clients() {
       quartier: c.quartier ?? '',
       commune: c.commune ?? '',
       ville: c.ville ?? '',
+      secteur_geo_id: c.secteur_geo_id,
     })
+    setGeoResolved(null)
     setError(null)
     setEditing(c)
   }
@@ -105,10 +100,16 @@ export default function Clients() {
     setSaving(true)
     setError(null)
     try {
+      const payload: ClientInput = {
+        ...form,
+        quartier: geoResolved?.quartierNom ?? form.quartier,
+        commune: geoResolved?.communeNom ?? form.commune,
+        ville: geoResolved?.villeNom ?? form.ville,
+      }
       if (editing) {
-        await api.modifierClient(editing.id, form)
+        await api.modifierClient(editing.id, payload)
       } else {
-        await api.creerClient(form)
+        await api.creerClient(payload)
       }
       setEditing(null)
       setCreating(false)
@@ -249,35 +250,14 @@ export default function Clients() {
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Quartier</label>
-                <SearchableSelect
-                  value={form.quartier ?? ''}
-                  onChange={(v) => setForm({ ...form, quartier: v })}
-                  options={quartiersRef.map((q) => ({ value: q.nom, label: q.nom }))}
-                  allowEmpty="Non renseigné"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Commune</label>
-                <SearchableSelect
-                  value={form.commune ?? ''}
-                  onChange={(v) => setForm({ ...form, commune: v })}
-                  options={communesRef.map((c) => ({ value: c.nom, label: c.nom }))}
-                  allowEmpty="Non renseigné"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Ville</label>
-                <SearchableSelect
-                  value={form.ville ?? ''}
-                  onChange={(v) => setForm({ ...form, ville: v })}
-                  options={villesRef.map((v) => ({ value: v.nom, label: v.nom }))}
-                  allowEmpty="Non renseigné"
-                />
-              </div>
-            </div>
+            <GeoPicker
+              value={form.secteur_geo_id ?? null}
+              onChange={(id, resolved) => {
+                setForm({ ...form, secteur_geo_id: id })
+                setGeoResolved(resolved ?? null)
+              }}
+              label="Localisation (facultatif)"
+            />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Segment</label>
