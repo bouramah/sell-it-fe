@@ -87,8 +87,11 @@ import type {
   Verifier2FARequest,
 } from '../types/write'
 
-const API_BASE = 'http://localhost:8000/api/v1'
-export const SERVER_BASE = 'http://localhost:8000'
+// En dev, VITE_SERVER_BASE pointe vers l'API locale (http://localhost:8000). En prod, laissé
+// vide : nginx sert le build et proxy /api + /uploads vers le backend sur la même origine,
+// donc des chemins relatifs suffisent — pas besoin de connaître l'IP/domaine au moment du build.
+export const SERVER_BASE = import.meta.env.VITE_SERVER_BASE ?? ''
+const API_BASE = `${SERVER_BASE}/api/v1`
 
 class ApiError extends Error {
   status: number
