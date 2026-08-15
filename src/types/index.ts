@@ -398,6 +398,33 @@ export interface ComptabiliteConsolidee {
   comptes: CompteResultatBoutique[]
 }
 
+export interface EcritureComptable {
+  id: string
+  date: string
+  boutique_id: string
+  nature: string
+  sens: string
+  montant: number
+  libelle: string
+  auteur: string | null
+  operation_source_type: string
+  operation_source_id: string
+}
+
+export interface LigneStockValorise {
+  boutique_id: string
+  produit_id: string
+  produit_nom: string
+  quantite: number
+  cout_unitaire_moyen: number | null
+  valeur: number
+}
+
+export interface EtatStockValorise {
+  lignes: LigneStockValorise[]
+  valeur_totale: number
+}
+
 export interface Promotion {
   id: string
   nom: string
@@ -442,6 +469,12 @@ export interface JournalAuditEntry {
 }
 
 export interface ParametreSecurite {
+  id: string
+  label: string
+  actif: boolean
+}
+
+export interface ParametreApplication {
   id: string
   label: string
   actif: boolean

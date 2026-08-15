@@ -4,16 +4,18 @@ import { api } from '../api/client'
 import PasswordInput from '../components/PasswordInput'
 import { useAuth } from '../lib/AuthContext'
 
-type Vue = 'connexion' | 'demande-code' | 'reinitialisation'
+type Vue = 'connexion' | 'verification-2fa' | 'demande-code' | 'reinitialisation'
 
 export default function Login() {
-  const { user, login } = useAuth()
+  const { user, login, verifier2FA } = useAuth()
   const [vue, setVue] = useState<Vue>('connexion')
 
   const [contact, setContact] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const [code2FA, setCode2FA] = useState('')
 
   const [resetContact, setResetContact] = useState('')
   const [resetCode, setResetCode] = useState('')
@@ -27,9 +29,23 @@ export default function Login() {
     setError(null)
     setSubmitting(true)
     try {
-      await login(contact, motDePasse)
+      const { otpRequis } = await login(contact, motDePasse)
+      if (otpRequis) setVue('verification-2fa')
     } catch {
       setError('Numéro ou mot de passe incorrect.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleVerifier2FA(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setSubmitting(true)
+    try {
+      await verifier2FA(contact, code2FA)
+    } catch {
+      setError('Code invalide ou expiré.')
     } finally {
       setSubmitting(false)
     }
@@ -118,6 +134,51 @@ export default function Login() {
                 className="w-full text-center text-xs font-medium text-slate-500 hover:text-teal-700"
               >
                 Mot de passe oublié ?
+              </button>
+            </form>
+          </>
+        )}
+
+        {vue === 'verification-2fa' && (
+          <>
+            <h1 className="text-xl font-bold text-slate-900">Vérification en deux étapes</h1>
+            <p className="mb-6 text-sm text-slate-500">
+              Un code de vérification vous a été envoyé par SMS au {contact}.
+            </p>
+
+            <form onSubmit={handleVerifier2FA} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Code reçu par SMS</label>
+                <input
+                  value={code2FA}
+                  onChange={(e) => setCode2FA(e.target.value)}
+                  placeholder="123456"
+                  inputMode="numeric"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-md bg-teal-700 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+              >
+                {submitting ? 'Vérification…' : 'Valider'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null)
+                  setCode2FA('')
+                  setVue('connexion')
+                }}
+                className="w-full text-center text-xs font-medium text-slate-500 hover:text-teal-700"
+              >
+                Retour à la connexion
               </button>
             </form>
           </>

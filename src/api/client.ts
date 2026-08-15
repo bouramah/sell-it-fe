@@ -7,6 +7,8 @@ import type {
   CommandeFournisseurDetail,
   ComptabiliteConsolidee,
   ConversationMessage,
+  EcritureComptable,
+  EtatStockValorise,
   DashboardConsolide,
   DashboardKpis,
   Depense,
@@ -21,6 +23,7 @@ import type {
   Livraison,
   PaiementClient,
   PaiementFournisseur,
+  ParametreApplication,
   ParametreSecurite,
   PermissionLigne,
   PrixAchat,
@@ -81,6 +84,7 @@ import type {
   TransfertInput,
   UtilisateurConnecte,
   UtilisateurInput,
+  Verifier2FARequest,
 } from '../types/write'
 
 const API_BASE = 'http://localhost:8000/api/v1'
@@ -159,7 +163,7 @@ async function sendFile<T>(path: string, file: File): Promise<T> {
   return handle<T>(res, path)
 }
 
-async function downloadPdf(path: string, filename: string): Promise<void> {
+async function downloadFile(path: string, filename: string): Promise<void> {
   const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() })
   if (!res.ok) {
     let detail = ''
@@ -184,6 +188,7 @@ async function downloadPdf(path: string, filename: string): Promise<void> {
 
 export const api = {
   login: (payload: LoginRequest) => sendJson<TokenResponse>('POST', '/auth/login', payload),
+  verifier2FA: (payload: Verifier2FARequest) => sendJson<TokenResponse>('POST', '/auth/verifier-2fa', payload),
   motDePasseOublie: (contact: string) => sendJson<{ message: string }>('POST', '/auth/mot-de-passe-oublie', { contact }),
   reinitialiserMotDePasse: (contact: string, code: string, nouveauMotDePasse: string) =>
     sendJson<{ message: string }>('POST', '/auth/reinitialiser-mot-de-passe', {
@@ -314,18 +319,23 @@ export const api = {
     sendJson<TransfertStock>('PUT', `/transferts/${id}/statut`, { statut, quantite_recue: quantiteRecue, motif_ecart: motifEcart }),
 
   comptabilite: () => getJson<ComptabiliteConsolidee>('/comptabilite'),
+  journalComptable: (boutiqueId?: string) =>
+    getJson<EcritureComptable[]>(`/comptabilite/journal${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
+  stockValorise: (boutiqueId?: string) =>
+    getJson<EtatStockValorise>(`/comptabilite/stock-valorise${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
+  exporterComptabiliteXlsx: () => downloadFile('/comptabilite/export.xlsx', 'comptabilite-kfstore.xlsx'),
   promotions: () => getJson<Promotion[]>('/promotions'),
   creerPromotion: (payload: PromotionInput) => sendJson<Promotion>('POST', '/promotions', payload),
   modifierStatutPromotion: (id: string, statut: string) => sendJson<Promotion>('PUT', `/promotions/${id}/statut`, { statut }),
 
   telechargerBonCommande: (commandeId: string) =>
-    downloadPdf(`/commandes-fournisseurs/${commandeId}/bon-commande.pdf`, `bon-commande-${commandeId}.pdf`),
+    downloadFile(`/commandes-fournisseurs/${commandeId}/bon-commande.pdf`, `bon-commande-${commandeId}.pdf`),
   telechargerBonReception: (commandeId: string) =>
-    downloadPdf(`/commandes-fournisseurs/${commandeId}/bon-reception.pdf`, `bon-reception-${commandeId}.pdf`),
+    downloadFile(`/commandes-fournisseurs/${commandeId}/bon-reception.pdf`, `bon-reception-${commandeId}.pdf`),
   telechargerFacture: (commandeId: string) =>
-    downloadPdf(`/commandes-clients/${commandeId}/facture.pdf`, `facture-${commandeId}.pdf`),
+    downloadFile(`/commandes-clients/${commandeId}/facture.pdf`, `facture-${commandeId}.pdf`),
   telechargerRecu: (paiementId: string) =>
-    downloadPdf(`/paiements-clients/${paiementId}/recu.pdf`, `recu-${paiementId}.pdf`),
+    downloadFile(`/paiements-clients/${paiementId}/recu.pdf`, `recu-${paiementId}.pdf`),
 
   previsions: () => getJson<SuggestionAvecProduit[]>('/ia/previsions'),
   reporting: () => getJson<ReportingIntelligent>('/ia/reporting'),
@@ -335,6 +345,8 @@ export const api = {
   audit: () => getJson<JournalAuditEntry[]>('/securite/audit'),
   parametresSecurite: () => getJson<ParametreSecurite[]>('/securite/parametres'),
   modifierParametreSecurite: (id: string, actif: boolean) => sendJson<ParametreSecurite>('PUT', `/securite/parametres/${id}`, { actif }),
+  parametresApplication: () => getJson<ParametreApplication[]>('/parametres/application'),
+  modifierParametreApplication: (id: string, actif: boolean) => sendJson<ParametreApplication>('PUT', `/parametres/application/${id}`, { actif }),
 
   referentiels: () => getJson<Record<string, ReferentielItem[]>>('/parametres/referentiels'),
   creerReferentiel: (categorie: string, payload: ReferentielInput) =>

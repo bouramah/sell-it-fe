@@ -2,39 +2,57 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
-import { csvRow, downloadCsv } from '../lib/csv'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import type { ComptabiliteConsolidee, CompteResultatBoutique } from '../types'
+import type { ComptabiliteConsolidee, CompteResultatBoutique, EcritureComptable, EtatStockValorise } from '../types'
+
+type Onglet = 'resultat' | 'journal' | 'stock'
+
+const NATURE_LABELS: Record<string, string> = {
+  vente: 'Vente',
+  achat: 'Achat',
+  depense: 'Dépense',
+  remboursement: 'Remboursement',
+}
 
 export default function Comptabilite() {
+  const [onglet, setOnglet] = useState<Onglet>('resultat')
   const [data, setData] = useState<ComptabiliteConsolidee | null>(null)
+  const [journal, setJournal] = useState<EcritureComptable[] | null>(null)
+  const [stock, setStock] = useState<EtatStockValorise | null>(null)
   const [denied, setDenied] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const { nomBoutique } = useBoutiques()
 
   useEffect(() => {
     api.comptabilite().then(setData).catch(() => setDenied(true))
   }, [])
 
-  const getFields = useCallback((c: CompteResultatBoutique) => [nomBoutique(c.boutique_id)], [nomBoutique])
-  const { query, setQuery, filtered } = useSearch(data?.comptes ?? [], getFields)
+  useEffect(() => {
+    if (onglet === 'journal' && !journal) api.journalComptable().then(setJournal).catch(() => setDenied(true))
+    if (onglet === 'stock' && !stock) api.stockValorise().then(setStock).catch(() => setDenied(true))
+  }, [onglet, journal, stock])
 
-  function handleExport() {
-    if (!data) return
-    const lines: string[] = []
-    lines.push(csvRow('Comptabilité KFSTORE — cumulé depuis le début'))
-    lines.push('')
-    lines.push(csvRow('CA consolidé', data.ca_consolide))
-    lines.push(csvRow('Marge nette consolidée', data.marge_nette_consolidee))
-    lines.push(csvRow('Dépenses consolidées', data.depenses_consolidees))
-    lines.push(csvRow('Marge nette moyenne (%)', data.marge_nette_moyenne_pct))
-    lines.push('')
-    lines.push(csvRow('Boutique', 'Chiffre d\'affaires', 'Achats', 'Dépenses', 'Marge nette'))
-    for (const c of data.comptes) {
-      lines.push(csvRow(nomBoutique(c.boutique_id), c.chiffre_affaires, c.achats, c.depenses, c.marge_nette))
+  const getFieldsComptes = useCallback((c: CompteResultatBoutique) => [nomBoutique(c.boutique_id)], [nomBoutique])
+  const { query, setQuery, filtered } = useSearch(data?.comptes ?? [], getFieldsComptes)
+
+  const getFieldsJournal = useCallback(
+    (e: EcritureComptable) => [nomBoutique(e.boutique_id), e.libelle, e.auteur ?? ''],
+    [nomBoutique],
+  )
+  const { query: queryJournal, setQuery: setQueryJournal, filtered: journalFiltre } = useSearch(journal ?? [], getFieldsJournal)
+
+  const getFieldsStock = useCallback((l: { boutique_id: string; produit_nom: string }) => [nomBoutique(l.boutique_id), l.produit_nom], [nomBoutique])
+  const { query: queryStock, setQuery: setQueryStock, filtered: stockFiltre } = useSearch(stock?.lignes ?? [], getFieldsStock)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      await api.exporterComptabiliteXlsx()
+    } finally {
+      setExporting(false)
     }
-    downloadCsv('kfstore-comptabilite', lines)
   }
 
   if (denied) {
@@ -51,13 +69,14 @@ export default function Comptabilite() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Comptabilité</h1>
-          <p className="text-sm text-slate-500">Résultats par boutique et consolidation réseau</p>
+          <p className="text-sm text-slate-500">Résultats, journal des opérations et stock valorisé — sans double saisie</p>
         </div>
         <button
           onClick={handleExport}
-          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          disabled={exporting}
+          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
         >
-          Exporter (Excel)
+          {exporting ? 'Export…' : 'Exporter (Excel)'}
         </button>
       </div>
 
@@ -68,43 +87,168 @@ export default function Comptabilite() {
         <StatCard label="Marge nette moyenne" value={`${data.marge_nette_moyenne_pct} %`} />
       </div>
 
-      <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Compte de résultat par boutique — cumulé depuis le début
-        </h2>
-        <p className="mb-3 text-xs text-slate-400">
-          Calculé en temps réel à partir des commandes, réceptions fournisseurs et dépenses enregistrées — non modifiable
-        </p>
-        <div className="mb-3">
-          <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une boutique…" />
-        </div>
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Boutique</th>
-                <th className="px-4 py-3 text-right">Chiffre d'affaires</th>
-                <th className="px-4 py-3 text-right">Achats</th>
-                <th className="px-4 py-3 text-right">Dépenses</th>
-                <th className="px-4 py-3 text-right">Marge nette</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((c) => (
-                <tr key={c.boutique_id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{nomBoutique(c.boutique_id)}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{formatGNF(c.chiffre_affaires)}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{formatGNF(c.achats)}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{formatGNF(c.depenses)}</td>
-                  <td className={`px-4 py-3 text-right font-medium ${c.marge_nette < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                    {formatGNF(c.marge_nette)}
-                  </td>
+      <div className="flex gap-1 border-b border-slate-200">
+        {(
+          [
+            ['resultat', 'Compte de résultat'],
+            ['journal', 'Journal des opérations'],
+            ['stock', 'Stock valorisé'],
+          ] as [Onglet, string][]
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setOnglet(id)}
+            className={`px-3 py-2 text-sm font-medium ${
+              onglet === id ? 'border-b-2 border-teal-700 text-teal-800' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {onglet === 'resultat' && (
+        <section>
+          <p className="mb-3 text-xs text-slate-400">
+            Calculé en temps réel à partir des commandes, réceptions fournisseurs et dépenses enregistrées — non modifiable
+          </p>
+          <div className="mb-3">
+            <SearchInput value={query} onChange={setQuery} placeholder="Rechercher une boutique…" />
+          </div>
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Boutique</th>
+                  <th className="px-4 py-3 text-right">Chiffre d'affaires</th>
+                  <th className="px-4 py-3 text-right">Achats</th>
+                  <th className="px-4 py-3 text-right">Dépenses</th>
+                  <th className="px-4 py-3 text-right">Marge nette</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((c) => (
+                  <tr key={c.boutique_id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-slate-900">{nomBoutique(c.boutique_id)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatGNF(c.chiffre_affaires)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatGNF(c.achats)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatGNF(c.depenses)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${c.marge_nette < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                      {formatGNF(c.marge_nette)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {onglet === 'journal' && (
+        <section>
+          <p className="mb-3 text-xs text-slate-400">
+            Chaque écriture est dérivée d'une opération déjà enregistrée (vente, achat, dépense, remboursement) — aucune
+            saisie comptable manuelle
+          </p>
+          <div className="mb-3">
+            <SearchInput value={queryJournal} onChange={setQueryJournal} placeholder="Rechercher (boutique, libellé, auteur)…" />
+          </div>
+          {!journal ? (
+            <div className="text-slate-400">Chargement…</div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Boutique</th>
+                    <th className="px-4 py-3">Nature</th>
+                    <th className="px-4 py-3">Libellé</th>
+                    <th className="px-4 py-3">Auteur</th>
+                    <th className="px-4 py-3 text-right">Montant</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {journalFiltre.map((e) => (
+                    <tr key={`${e.operation_source_type}-${e.id}`} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 text-slate-500">{new Date(e.date).toLocaleString('fr-FR')}</td>
+                      <td className="px-4 py-3 text-slate-600">{nomBoutique(e.boutique_id)}</td>
+                      <td className="px-4 py-3 text-slate-600">{NATURE_LABELS[e.nature] ?? e.nature}</td>
+                      <td className="px-4 py-3 text-slate-900">{e.libelle}</td>
+                      <td className="px-4 py-3 text-slate-500">{e.auteur ?? '—'}</td>
+                      <td className={`px-4 py-3 text-right font-medium ${e.sens === 'credit' ? 'text-teal-700' : 'text-red-600'}`}>
+                        {e.sens === 'credit' ? '+' : '-'}
+                        {formatGNF(e.montant)}
+                      </td>
+                    </tr>
+                  ))}
+                  {journalFiltre.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                        Aucune écriture.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {onglet === 'stock' && (
+        <section>
+          <p className="mb-3 text-xs text-slate-400">
+            Valorisé au coût moyen d'achat (prix fournisseurs actifs) — un produit sans prix d'achat renseigné apparaît à 0,
+            plutôt que d'inventer une valeur
+          </p>
+          <div className="mb-3">
+            <SearchInput value={queryStock} onChange={setQueryStock} placeholder="Rechercher (boutique, produit)…" />
+          </div>
+          {!stock ? (
+            <div className="text-slate-400">Chargement…</div>
+          ) : (
+            <>
+              <div className="mb-3">
+                <StatCard label="Valeur totale du stock" value={formatGNF(stock.valeur_totale)} />
+              </div>
+              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">Boutique</th>
+                      <th className="px-4 py-3">Produit</th>
+                      <th className="px-4 py-3 text-right">Quantité</th>
+                      <th className="px-4 py-3 text-right">Coût unitaire moyen</th>
+                      <th className="px-4 py-3 text-right">Valeur</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {stockFiltre.map((l) => (
+                      <tr key={`${l.boutique_id}-${l.produit_id}`} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 text-slate-600">{nomBoutique(l.boutique_id)}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">{l.produit_nom}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{l.quantite}</td>
+                        <td className="px-4 py-3 text-right text-slate-500">
+                          {l.cout_unitaire_moyen ? formatGNF(l.cout_unitaire_moyen) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-900">{formatGNF(l.valeur)}</td>
+                      </tr>
+                    ))}
+                    {stockFiltre.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                          Aucune ligne de stock.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      )}
     </div>
   )
 }
