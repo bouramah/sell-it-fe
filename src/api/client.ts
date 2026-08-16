@@ -13,7 +13,8 @@ import type {
   DashboardKpis,
   Depense,
   Fournisseur,
-  JournalAuditEntry,
+  JournalAuditFiltres,
+  JournalAuditPage,
   LigneCommandeFournisseur,
   LigneDette,
   LigneEcartInventaire,
@@ -101,9 +102,11 @@ class ApiError extends Error {
   }
 }
 
+// Distingue ce canal (back-office web) de l'appli mobile interne dans le journal d'audit —
+// les deux tapent le même backend/mêmes routes, seul cet en-tête les différencie.
 function authHeaders(): Record<string, string> {
   const token = getToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  return { 'X-Client-Canal': 'web', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
 }
 
 // FastAPI renvoie `detail` en string pour les erreurs métier (400/403/404/409…) mais en
@@ -139,6 +142,15 @@ async function handle<T>(res: Response, path: string): Promise<T> {
   }
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
+}
+
+// URLSearchParams stringifie `undefined`/`null` en la chaîne littérale "undefined" — sans ce
+// filtre, un filtre optionnel non choisi serait envoyé comme "?canal=undefined".
+function buildQuery(params?: Record<string, string | number | undefined>): string {
+  if (!params) return ''
+  const entries = Object.entries(params).filter((e): e is [string, string | number] => e[1] !== undefined && e[1] !== '')
+  if (entries.length === 0) return ''
+  return `?${new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()}`
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -345,7 +357,7 @@ export const api = {
   chatbotConfig: () => getJson<Record<string, boolean>>('/ia/chatbot/config'),
   chatbotDemo: () => getJson<ConversationMessage[]>('/ia/chatbot/conversation-demo'),
 
-  audit: () => getJson<JournalAuditEntry[]>('/securite/audit'),
+  audit: (filtres?: JournalAuditFiltres) => getJson<JournalAuditPage>(`/securite/audit${buildQuery(filtres)}`),
   parametresSecurite: () => getJson<ParametreSecurite[]>('/securite/parametres'),
   modifierParametreSecurite: (id: string, actif: boolean) => sendJson<ParametreSecurite>('PUT', `/securite/parametres/${id}`, { actif }),
   parametresApplication: () => getJson<ParametreApplication[]>('/parametres/application'),

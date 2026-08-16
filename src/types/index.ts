@@ -466,6 +466,30 @@ export interface JournalAuditEntry {
   action: string
   auteur: string
   boutique_id: string | null
+  utilisateur_id: string | null
+  client_id: string | null
+  canal: string | null
+  methode: string | null
+  chemin: string | null
+  statut_code: number | null
+}
+
+export interface JournalAuditPage {
+  items: JournalAuditEntry[]
+  total: number
+}
+
+export interface JournalAuditFiltres {
+  boutique_id?: string
+  utilisateur_id?: string
+  client_id?: string
+  canal?: string
+  methode?: string
+  q?: string
+  date_debut?: string
+  date_fin?: string
+  page?: number
+  taille?: number
 }
 
 export interface ParametreSecurite {
