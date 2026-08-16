@@ -159,9 +159,31 @@ export default function CommandesFournisseurs() {
     setLignes((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)))
   }
 
-  function selectProduitForLigne(key: number, produitId: string) {
-    const p = produits.find((x) => x.id === produitId)
-    updateLigne(key, { produit_id: produitId, prix_unitaire: p ? p.prix_detail : 0 })
+  // Prix d'achat réel négocié avec CE fournisseur pour CE produit à la date du jour — jamais le
+  // prix de détail (prix de vente au client, structurellement plus élevé que le prix d'achat).
+  // Peut légitimement renvoyer null si aucun prix d'achat n'a encore été enregistré pour cette
+  // paire produit/fournisseur : dans ce cas la saisie manuelle reste nécessaire.
+  async function resolvePrixAchat(produitId: string, fournisseurId: string): Promise<number | null> {
+    if (!produitId || !fournisseurId) return null
+    const periodes = await api.prixAchat(produitId, fournisseurId)
+    const aujourdhui = todayIso()
+    const valide = periodes.find((p) => p.date_debut <= aujourdhui && (!p.date_fin || p.date_fin >= aujourdhui))
+    return valide ? valide.prix : null
+  }
+
+  async function selectProduitForLigne(key: number, produitId: string) {
+    updateLigne(key, { produit_id: produitId })
+    const prix = await resolvePrixAchat(produitId, form.fournisseur_id)
+    if (prix !== null) updateLigne(key, { prix_unitaire: prix })
+  }
+
+  async function selectFournisseur(fournisseurId: string) {
+    setForm((f) => ({ ...f, fournisseur_id: fournisseurId }))
+    for (const l of lignes) {
+      if (!l.produit_id) continue
+      const prix = await resolvePrixAchat(l.produit_id, fournisseurId)
+      if (prix !== null) updateLigne(l.key, { prix_unitaire: prix })
+    }
   }
 
   function addLigne() {
@@ -398,7 +420,7 @@ export default function CommandesFournisseurs() {
               <label className="mb-1 block text-sm font-medium text-slate-700">Fournisseur</label>
               <SearchableSelect
                 value={form.fournisseur_id}
-                onChange={(v) => setForm({ ...form, fournisseur_id: v })}
+                onChange={selectFournisseur}
                 options={fournisseurs.map((f) => ({ value: f.id, label: f.nom }))}
                 required
               />
