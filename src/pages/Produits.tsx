@@ -13,7 +13,7 @@ import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
-import { PALIER_PRIX_LABELS, type Fournisseur, type PalierPrix, type PrixAchat, type PrixPeriode, type Produit, type ReferentielItem } from '../types'
+import { PALIER_PRIX_LABELS, type Fournisseur, type PalierPrix, type PrixAchat, type PrixPeriode, type Produit, type ProduitRecommande, type ReferentielItem } from '../types'
 import type { PrixAchatInput, PrixPeriodeInput, ProduitCreateInput } from '../types/write'
 
 const PALIERS: PalierPrix[] = ['detail', 'semi_gros', 'gros']
@@ -409,6 +409,8 @@ export function ProduitFiche() {
   const [uploading, setUploading] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [current, setCurrent] = useState(0)
+  const [similaires, setSimilaires] = useState<ProduitRecommande[]>([])
+  const [complementaires, setComplementaires] = useState<ProduitRecommande[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { boutiques, nomBoutique } = useBoutiques()
   const { nomSecteur } = useSecteurs()
@@ -420,6 +422,8 @@ export function ProduitFiche() {
     api.stock().then((rows) => setStock(rows.filter((r) => r.produit_id === id)))
     api.prixPeriodes(id).then(setPeriodes)
     api.prixAchat(id).then(setAchats)
+    api.iaSimilaires(id).then(setSimilaires)
+    api.iaComplementaires(id).then(setComplementaires)
   }
 
   useEffect(refresh, [id])
@@ -579,6 +583,43 @@ export function ProduitFiche() {
           <Badge>{nomSecteur(produit.secteur)}</Badge>
         </div>
       </div>
+
+      {(similaires.length > 0 || complementaires.length > 0) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {similaires.length > 0 && (
+            <section className="rounded-lg border border-teal-100 bg-teal-50/40 p-4">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-800">IA — Produits similaires</h2>
+              <div className="flex flex-wrap gap-2">
+                {similaires.map((p) => (
+                  <Link
+                    key={p.id}
+                    to={`/produits/${p.id}`}
+                    className="rounded-full border border-teal-200 bg-white px-3 py-1 text-xs text-slate-700 hover:border-teal-400"
+                  >
+                    {p.nom}
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+          {complementaires.length > 0 && (
+            <section className="rounded-lg border border-teal-100 bg-teal-50/40 p-4">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-800">IA — Souvent acheté avec</h2>
+              <div className="flex flex-wrap gap-2">
+                {complementaires.map((p) => (
+                  <Link
+                    key={p.id}
+                    to={`/produits/${p.id}`}
+                    className="rounded-full border border-teal-200 bg-white px-3 py-1 text-xs text-slate-700 hover:border-teal-400"
+                  >
+                    {p.nom}
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:col-span-1">

@@ -442,6 +442,19 @@ export interface SuggestionAvecProduit {
   stock_actuel: number
   ventes_prevues_14j: number
   quantite_suggeree: number
+  confiance: 'faible' | 'moyenne' | 'haute'
+}
+
+export interface ProduitRecommande {
+  id: string
+  nom: string
+  secteur: string
+  categorie: string
+  unite: string
+  images: string[]
+  prix_detail: number
+  disponible: number
+  raison: string
 }
 
 export interface AnomalieReporting {

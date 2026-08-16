@@ -57,16 +57,17 @@ export const sections: NavSection[] = [
       { to: '/promotions', label: 'Promotions & tarifs' },
     ],
   },
-  // Masqué temporairement le temps de valider cette phase — routes toujours actives, juste retirées du menu.
-  // {
-  //   title: 'Intelligence artificielle',
-  //   items: [
-  //     { to: '/catalogue', label: 'Catalogue & recherche' },
-  //     { to: '/chatbot', label: 'Chatbot service client' },
-  //     { to: '/previsions', label: 'Prévisions de demande' },
-  //     { to: '/reporting', label: 'Reporting intelligent' },
-  //   ],
-  // },
+  {
+    // Catalogue et Prévisions sont réels (recherche floue, co-achat, tendances, vitesse de
+    // vente — CDC §4.2/§4.3, phase 1 MVP). Chatbot et Reporting restent masqués : ils
+    // nécessitent un fournisseur LLM (§4.4/§4.7, phase suivante) — routes toujours actives
+    // en fixtures, juste retirées du menu tant que ce n'est pas branché.
+    title: 'Intelligence artificielle',
+    items: [
+      { to: '/catalogue', label: 'Catalogue & recherche' },
+      { to: '/previsions', label: 'Prévisions de demande' },
+    ],
+  },
   { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit', visible: (p) => p.securite }] },
   {
     title: 'Communication',

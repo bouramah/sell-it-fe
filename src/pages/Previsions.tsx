@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
+import Badge from '../components/Badge'
 import Pagination from '../components/Pagination'
 import SearchInput from '../components/SearchInput'
 import { useBoutiques } from '../lib/useBoutiques'
@@ -7,9 +9,19 @@ import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
 import type { SuggestionAvecProduit } from '../types'
 
+const CONFIANCE_TONE = { faible: 'warning', moyenne: 'default', haute: 'success' } as const
+const CONFIANCE_LABEL = { faible: 'Faible — historique court', moyenne: 'Moyenne', haute: 'Haute' } as const
+
 export default function Previsions() {
   const [suggestions, setSuggestions] = useState<SuggestionAvecProduit[]>([])
   const { nomBoutique } = useBoutiques()
+  const navigate = useNavigate()
+
+  function creerCommande(s: SuggestionAvecProduit) {
+    navigate('/commandes-fournisseurs', {
+      state: { prefill: { boutique_id: s.boutique_id, produit_id: s.produit_id, quantite: s.quantite_suggeree } },
+    })
+  }
 
   useEffect(() => {
     api.previsions().then(setSuggestions)
@@ -29,7 +41,8 @@ export default function Previsions() {
       <section className="rounded-lg border border-teal-100 bg-teal-50/50 p-4">
         <h2 className="text-sm font-semibold text-teal-900">IA — Prévision de la demande</h2>
         <p className="text-sm text-teal-800">
-          Suggestions de réapprovisionnement basées sur les ventes des 30 derniers jours, par boutique et par produit.
+          Suggestions de réapprovisionnement basées sur la vitesse de vente réelle de chaque produit, par boutique.
+          La confiance reflète la profondeur d'historique disponible — elle s'améliore avec l'usage.
         </p>
       </section>
 
@@ -44,6 +57,7 @@ export default function Previsions() {
               <th className="px-4 py-3 text-right">Stock actuel</th>
               <th className="px-4 py-3 text-right">Ventes prévues (14j)</th>
               <th className="px-4 py-3 text-right">Quantité suggérée</th>
+              <th className="px-4 py-3">Confiance</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
@@ -56,7 +70,12 @@ export default function Previsions() {
                 <td className="px-4 py-3 text-right text-slate-600">{s.ventes_prevues_14j}</td>
                 <td className="px-4 py-3 text-right font-medium text-slate-900">{s.quantite_suggeree} unités</td>
                 <td className="px-4 py-3">
-                  <button className="text-sm font-medium text-teal-700 hover:underline">Créer commande fournisseur</button>
+                  <Badge tone={CONFIANCE_TONE[s.confiance]}>{CONFIANCE_LABEL[s.confiance]}</Badge>
+                </td>
+                <td className="px-4 py-3">
+                  <button onClick={() => creerCommande(s)} className="text-sm font-medium text-teal-700 hover:underline">
+                    Créer commande fournisseur
+                  </button>
                 </td>
               </tr>
             ))}

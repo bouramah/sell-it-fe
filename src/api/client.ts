@@ -15,6 +15,7 @@ import type {
   Fournisseur,
   JournalAuditFiltres,
   JournalAuditPage,
+  ProduitRecommande,
   LigneCommandeFournisseur,
   LigneDette,
   LigneEcartInventaire,
@@ -352,7 +353,15 @@ export const api = {
   telechargerRecu: (paiementId: string) =>
     downloadFile(`/paiements-clients/${paiementId}/recu.pdf`, `recu-${paiementId}.pdf`),
 
-  previsions: () => getJson<SuggestionAvecProduit[]>('/ia/previsions'),
+  previsions: (boutiqueId?: string) => getJson<SuggestionAvecProduit[]>(`/ia/previsions${buildQuery({ boutique_id: boutiqueId })}`),
+  iaRecherche: (q: string, boutiqueId?: string, secteur?: string) =>
+    getJson<ProduitRecommande[]>(`/ia/recherche${buildQuery({ q, boutique_id: boutiqueId, secteur })}`),
+  iaTendances: (boutiqueId?: string, secteur?: string) =>
+    getJson<ProduitRecommande[]>(`/ia/tendances${buildQuery({ boutique_id: boutiqueId, secteur })}`),
+  iaSimilaires: (produitId: string, boutiqueId?: string) =>
+    getJson<ProduitRecommande[]>(`/ia/produits/${produitId}/similaires${buildQuery({ boutique_id: boutiqueId })}`),
+  iaComplementaires: (produitId: string, boutiqueId?: string) =>
+    getJson<ProduitRecommande[]>(`/ia/produits/${produitId}/complementaires${buildQuery({ boutique_id: boutiqueId })}`),
   reporting: () => getJson<ReportingIntelligent>('/ia/reporting'),
   chatbotConfig: () => getJson<Record<string, boolean>>('/ia/chatbot/config'),
   chatbotDemo: () => getJson<ConversationMessage[]>('/ia/chatbot/conversation-demo'),

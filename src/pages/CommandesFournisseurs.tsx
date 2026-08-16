@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
@@ -61,8 +62,16 @@ const EMPTY_FORM = {
   date_attendue: todayIso(),
 }
 
+export interface PrefillCommandeFournisseur {
+  boutique_id: string
+  produit_id: string
+  quantite: number
+}
+
 export default function CommandesFournisseurs() {
   const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { commandeFournisseur: canGererCommande } = usePermissions()
   const [commandes, setCommandes] = useState<LigneCommandeFournisseur[]>([])
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
@@ -97,6 +106,22 @@ export default function CommandesFournisseurs() {
   }
 
   useEffect(refresh, [])
+
+  // Arrivée depuis "Prévisions de demande" avec une suggestion à concrétiser (§4.3) — pré-remplit
+  // boutique/produit/quantité, le fournisseur reste à choisir (une suggestion ne sait pas
+  // laquelle utiliser, un produit pouvant en avoir plusieurs). État nettoyé après lecture pour
+  // ne pas rouvrir le formulaire sur un retour arrière du navigateur.
+  useEffect(() => {
+    const prefill = (location.state as { prefill?: PrefillCommandeFournisseur } | null)?.prefill
+    if (!prefill) return
+    setEditingId(null)
+    setForm({ ...EMPTY_FORM, boutique_id: prefill.boutique_id })
+    setLignes([{ key: ++ligneKeySeq, produit_id: prefill.produit_id, quantite: prefill.quantite, prix_unitaire: 0 }])
+    setError(null)
+    setCreating(true)
+    navigate(location.pathname, { replace: true, state: {} })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   const nomFournisseur = useCallback((id: string) => fournisseurs.find((f) => f.id === id)?.nom ?? id, [fournisseurs])
   const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
