@@ -480,6 +480,7 @@ export interface JournalAuditPage {
 }
 
 export interface JournalAuditFiltres {
+  [key: string]: string | number | undefined
   boutique_id?: string
   utilisateur_id?: string
   client_id?: string
