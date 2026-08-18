@@ -54,9 +54,12 @@ export default function Chatbot() {
           <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">
             Testeur — contexte de compte fictif
           </h2>
-          <p className="mb-4 text-xs text-slate-400">
+          <p className="mb-1 text-xs text-slate-400">
             Simule une conversation avec un client de test (commande #CMD-1042, dette 210 000 GNF) — pour vérifier le
             comportement réel de l'assistant sans compte client.
+          </p>
+          <p className="mb-4 text-xs font-medium text-amber-700">
+            ⚠ Réponses générées par une IA — peuvent contenir des erreurs, à vérifier avant de s'y fier.
           </p>
           <div className="flex-1 space-y-3 overflow-y-auto" style={{ maxHeight: 420, minHeight: 200 }}>
             {conversation.length === 0 && (
