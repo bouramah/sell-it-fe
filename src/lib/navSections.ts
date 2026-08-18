@@ -58,14 +58,14 @@ export const sections: NavSection[] = [
     ],
   },
   {
-    // Catalogue et Prévisions sont réels (recherche floue, co-achat, tendances, vitesse de
-    // vente — CDC §4.2/§4.3, phase 1 MVP). Chatbot et Reporting restent masqués : ils
-    // nécessitent un fournisseur LLM (§4.4/§4.7, phase suivante) — routes toujours actives
-    // en fixtures, juste retirées du menu tant que ce n'est pas branché.
+    // Recherche floue, co-achat, tendances, vitesse de vente (§4.2/§4.3), et depuis le
+    // 2026-08-17 chatbot + reporting réels via OpenAI (§4.4/§4.7, cf. IaProvider).
     title: 'Intelligence artificielle',
     items: [
       { to: '/catalogue', label: 'Catalogue & recherche' },
       { to: '/previsions', label: 'Prévisions de demande' },
+      { to: '/chatbot', label: 'Chatbot service client' },
+      { to: '/reporting', label: 'Reporting intelligent' },
     ],
   },
   { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit', visible: (p) => p.securite }] },

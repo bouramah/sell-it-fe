@@ -20,7 +20,7 @@ export default function Reporting() {
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">
-          Synthèse automatique — semaine du 3 au 9 août
+          Synthèse automatique — 7 derniers jours
         </h2>
         <p className="text-sm leading-relaxed text-slate-700">{data.synthese}</p>
       </section>

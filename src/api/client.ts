@@ -364,7 +364,8 @@ export const api = {
     getJson<ProduitRecommande[]>(`/ia/produits/${produitId}/complementaires${buildQuery({ boutique_id: boutiqueId })}`),
   reporting: () => getJson<ReportingIntelligent>('/ia/reporting'),
   chatbotConfig: () => getJson<Record<string, boolean>>('/ia/chatbot/config'),
-  chatbotDemo: () => getJson<ConversationMessage[]>('/ia/chatbot/conversation-demo'),
+  chatbotTester: (message: string, historique: ConversationMessage[]) =>
+    sendJson<{ reponse: string }>('POST', '/ia/chatbot/tester', { message, historique }),
 
   audit: (filtres?: JournalAuditFiltres) => getJson<JournalAuditPage>(`/securite/audit${buildQuery(filtres)}`),
   parametresSecurite: () => getJson<ParametreSecurite[]>('/securite/parametres'),
