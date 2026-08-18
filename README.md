@@ -1,32 +1,60 @@
-# React + TypeScript + Vite
+# KFSTORE — Back-office web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interface web (React + TypeScript + Vite) pour le personnel de GROUPE SKF SARL : gestion du
+réseau de boutiques, stock, caisse, commandes, clients, sécurité, IA... Consomme l'API du
+backend (`../backend`).
 
-Currently, two official plugins are available:
+Production : https://admin.kfstore-gn.com
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Démarrage
 
-## React Compiler
+1. **Prérequis** : Node.js 18+.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. **Installer les dépendances** :
+   ```bash
+   npm install
+   ```
 
-## Expanding the Oxlint configuration
+3. **Configurer l'API cible** — `.env.development.local` (déjà présent en dev) ou `.env.local`
+   à créer, en s'inspirant de `.env.example` :
+   ```bash
+   VITE_SERVER_BASE=http://localhost:8000
+   ```
+   Pointer vers le backend local (voir `../backend/README.md` pour le lancer) ou vers la prod.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+4. **Lancer le serveur de dev** :
+   ```bash
+   npm run dev
+   ```
+   Disponible sur http://localhost:5173.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Autres commandes
+
+```bash
+npm run build     # tsc -b (vérification stricte des types) + build de production dans dist/
+npm run preview   # sert le build de production en local
+npm run lint       # oxlint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+⚠️ `npm run build` (via `tsc -b`, incrémental) est plus strict que `tsc --noEmit` seul et peut
+détecter des erreurs invisibles avec un cache incrémental périmé. En cas de doute :
+```bash
+rm -rf node_modules/.tmp dist && npx tsc -b
+```
+
+## Structure
+
+- `src/api/client.ts` — client HTTP unique (fetch), auth par Bearer token, un objet `api` avec
+  une méthode par endpoint.
+- `src/pages/` — une page par écran, routées dans `src/App.tsx`.
+- `src/components/` — composants réutilisables (tableaux, badges, sélecteurs...).
+- `src/lib/` — contextes (auth), matrice de droits (`permissions.ts`), navigation
+  (`navSections.ts`, source unique pour le menu latéral et les redirections par rôle), hooks
+  utilitaires (pagination, recherche, debounce...).
+- `src/types/index.ts` — types TypeScript miroir des schémas Pydantic du backend.
+
+## Déploiement (production)
+
+Sur le VPS : `git pull && npm run build`, puis `rsync -a --delete dist/ /var/www/kfstore/web/`.
+Nginx sert les fichiers statiques et proxy `/api` + `/uploads` vers le backend sur la même
+origine (voir `VITE_SERVER_BASE` vide en prod).
