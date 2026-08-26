@@ -4,7 +4,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import Tabs from '../components/Tabs'
 import { usePermissions } from '../lib/permissions'
-import type { ReferentielItem } from '../types'
+import type { ParametreFiscal, ReferentielItem } from '../types'
 
 const CATEGORIE_LABELS: Record<string, string> = {
   secteurs: 'Secteurs',
@@ -41,15 +41,36 @@ export default function Parametres() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<ReferentielItem | null>(null)
-  const { referentiels: canGererReferentiels } = usePermissions()
+  const { referentiels: canGererReferentiels, securite: canGererFiscal } = usePermissions()
+
+  const [fiscal, setFiscal] = useState<ParametreFiscal | null>(null)
+  const [fiscalTaux, setFiscalTaux] = useState('18')
+  const [fiscalActif, setFiscalActif] = useState(true)
+  const [savingFiscal, setSavingFiscal] = useState(false)
 
   function refresh() {
     api.referentiels().then(setReferentiels)
+    api.parametreFiscal().then((p) => {
+      setFiscal(p)
+      setFiscalTaux(String(Math.round(p.taux * 100)))
+      setFiscalActif(p.actif)
+    })
   }
 
   useEffect(refresh, [])
 
-  const categories = CATEGORIE_ORDER.filter((c) => c in referentiels)
+  async function handleSubmitFiscal(e: FormEvent) {
+    e.preventDefault()
+    setSavingFiscal(true)
+    try {
+      const p = await api.modifierParametreFiscal(Number(fiscalTaux) / 100, fiscalActif)
+      setFiscal(p)
+    } finally {
+      setSavingFiscal(false)
+    }
+  }
+
+  const categories = [...CATEGORIE_ORDER.filter((c) => c in referentiels), 'fiscalite']
   const items = referentiels[categorie] ?? []
 
   function openCreate() {
@@ -99,7 +120,7 @@ export default function Parametres() {
           <h1 className="text-2xl font-bold text-slate-900">Paramètres</h1>
           <p className="text-sm text-slate-500">Référentiels : secteurs, zones, canaux, paiements, dépenses, caisses</p>
         </div>
-        {canGererReferentiels && (
+        {canGererReferentiels && categorie !== 'fiscalite' && (
           <button
             onClick={openCreate}
             className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
@@ -110,7 +131,7 @@ export default function Parametres() {
       </div>
 
       <Tabs
-        tabs={categories.map((c) => ({ key: c, label: CATEGORIE_LABELS[c] ?? c }))}
+        tabs={categories.map((c) => ({ key: c, label: CATEGORIE_LABELS[c] ?? (c === 'fiscalite' ? 'Fiscalité (TVA)' : c) }))}
         active={categorie}
         onChange={setCategorie}
       />
@@ -121,6 +142,56 @@ export default function Parametres() {
         </p>
       )}
 
+      {categorie === 'fiscalite' && (
+        <div className="max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">TVA</h2>
+          <p className="mb-4 text-xs text-slate-400">
+            Les prix enregistrés dans KFSTORE sont toujours TTC. Ce réglage détermine si la ventilation HT / TVA
+            apparaît sur les documents commerciaux (factures, reçus, bons de commande/réception).
+          </p>
+          <form onSubmit={handleSubmitFiscal} className="space-y-4">
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-slate-700">Appliquer la TVA sur les documents</span>
+              <input
+                type="checkbox"
+                checked={fiscalActif}
+                disabled={!canGererFiscal}
+                onChange={(e) => setFiscalActif(e.target.checked)}
+                className="h-5 w-5 accent-teal-700"
+              />
+            </label>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Taux (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={fiscalTaux}
+                disabled={!canGererFiscal || !fiscalActif}
+                onChange={(e) => setFiscalTaux(e.target.value)}
+                className="w-32 rounded-md border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50 disabled:text-slate-400"
+              />
+            </div>
+            {canGererFiscal && (
+              <button
+                type="submit"
+                disabled={savingFiscal}
+                className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+              >
+                {savingFiscal ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            )}
+            {fiscal && (
+              <p className="text-xs text-slate-400">
+                Actuellement : {fiscal.actif ? `TVA ${Math.round(fiscal.taux * 100)} % appliquée` : 'TVA non appliquée (documents en TTC seul)'}
+              </p>
+            )}
+          </form>
+        </div>
+      )}
+
+      {categorie !== 'fiscalite' && (
       <div className="space-y-3">
         {items.map((item) => (
           <div key={item.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -142,6 +213,7 @@ export default function Parametres() {
         ))}
         {items.length === 0 && <p className="text-sm text-slate-400">Aucun élément dans ce référentiel.</p>}
       </div>
+      )}
 
       {showModal && (
         <Modal

@@ -9,6 +9,7 @@ import type {
   ConversationMessage,
   EcritureComptable,
   EtatStockValorise,
+  MargeProduits,
   DashboardConsolide,
   DashboardKpis,
   Depense,
@@ -26,6 +27,7 @@ import type {
   PaiementClient,
   PaiementFournisseur,
   ParametreApplication,
+  ParametreFiscal,
   ParametreSecurite,
   PermissionLigne,
   PrixAchat,
@@ -41,6 +43,8 @@ import type {
   RoleInfo,
   SecteurGeo,
   SuggestionAvecProduit,
+  TopClient,
+  TopFournisseur,
   TransfertStock,
   Utilisateur,
   Ville,
@@ -57,6 +61,7 @@ import type {
   DepenseInput,
   DetteInput,
   FournisseurInput,
+  LigneReceptionInput,
   LivraisonInput,
   LoginRequest,
   MouvementCaisseInput,
@@ -219,6 +224,8 @@ export const api = {
   supprimerBoutique: (id: string) => sendJson<void>('DELETE', `/boutiques/${id}`),
 
   fournisseurs: () => getJson<Fournisseur[]>('/fournisseurs'),
+  topFournisseurs: (boutiqueId?: string, limite?: number) =>
+    getJson<TopFournisseur[]>(`/fournisseurs/top${buildQuery({ boutique_id: boutiqueId, limite })}`),
   creerFournisseur: (payload: FournisseurInput) => sendJson<Fournisseur>('POST', '/fournisseurs', payload),
   modifierFournisseur: (id: string, payload: Partial<FournisseurInput>) => sendJson<Fournisseur>('PUT', `/fournisseurs/${id}`, payload),
   supprimerFournisseur: (id: string) => sendJson<void>('DELETE', `/fournisseurs/${id}`),
@@ -263,6 +270,8 @@ export const api = {
     sendJson<void>('DELETE', `/produits/${produitId}/prix-achat/${achatId}`),
 
   clients: (boutiqueId?: string) => getJson<ClientEntity[]>(`/clients${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
+  topClients: (boutiqueId?: string, limite?: number) =>
+    getJson<TopClient[]>(`/clients/top${buildQuery({ boutique_id: boutiqueId, limite })}`),
   creerClient: (payload: ClientInput) => sendJson<ClientEntity>('POST', '/clients', payload),
   modifierClient: (id: string, payload: Partial<ClientInput>) => sendJson<ClientEntity>('PUT', `/clients/${id}`, payload),
   supprimerClient: (id: string) => sendJson<void>('DELETE', `/clients/${id}`),
@@ -331,14 +340,20 @@ export const api = {
 
   transferts: () => getJson<TransfertStock[]>('/transferts'),
   creerTransfert: (payload: TransfertInput) => sendJson<TransfertStock>('POST', '/transferts', payload),
-  modifierStatutTransfert: (id: string, statut: string, quantiteRecue?: number, motifEcart?: string) =>
-    sendJson<TransfertStock>('PUT', `/transferts/${id}/statut`, { statut, quantite_recue: quantiteRecue, motif_ecart: motifEcart }),
+  modifierStatutTransfert: (id: string, statut: string, lignes?: LigneReceptionInput[]) =>
+    sendJson<TransfertStock>('PUT', `/transferts/${id}/statut`, { statut, lignes }),
 
   comptabilite: () => getJson<ComptabiliteConsolidee>('/comptabilite'),
   journalComptable: (boutiqueId?: string) =>
     getJson<EcritureComptable[]>(`/comptabilite/journal${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
   stockValorise: (boutiqueId?: string) =>
     getJson<EtatStockValorise>(`/comptabilite/stock-valorise${boutiqueId ? `?boutique_id=${boutiqueId}` : ''}`),
+  margeProduits: (debut: string, fin: string, boutiqueId?: string, produitId?: string) => {
+    const params = new URLSearchParams({ debut, fin })
+    if (boutiqueId) params.set('boutique_id', boutiqueId)
+    if (produitId) params.set('produit_id', produitId)
+    return getJson<MargeProduits>(`/comptabilite/marge-produits?${params.toString()}`)
+  },
   exporterComptabiliteXlsx: () => downloadFile('/comptabilite/export.xlsx', 'comptabilite-kfstore.xlsx'),
   promotions: () => getJson<Promotion[]>('/promotions'),
   creerPromotion: (payload: PromotionInput) => sendJson<Promotion>('POST', '/promotions', payload),
@@ -372,6 +387,8 @@ export const api = {
   modifierParametreSecurite: (id: string, actif: boolean) => sendJson<ParametreSecurite>('PUT', `/securite/parametres/${id}`, { actif }),
   parametresApplication: () => getJson<ParametreApplication[]>('/parametres/application'),
   modifierParametreApplication: (id: string, actif: boolean) => sendJson<ParametreApplication>('PUT', `/parametres/application/${id}`, { actif }),
+  parametreFiscal: () => getJson<ParametreFiscal>('/parametres/fiscal'),
+  modifierParametreFiscal: (taux: number, actif: boolean) => sendJson<ParametreFiscal>('PUT', '/parametres/fiscal', { taux, actif }),
 
   referentiels: () => getJson<Record<string, ReferentielItem[]>>('/parametres/referentiels'),
   creerReferentiel: (categorie: string, payload: ReferentielInput) =>

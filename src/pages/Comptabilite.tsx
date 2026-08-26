@@ -1,19 +1,48 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { useSearch } from '../lib/useSearch'
-import type { ComptabiliteConsolidee, CompteResultatBoutique, EcritureComptable, EtatStockValorise } from '../types'
+import type { ComptabiliteConsolidee, CompteResultatBoutique, EcritureComptable, EtatStockValorise, MargeProduits, Produit } from '../types'
 
-type Onglet = 'resultat' | 'journal' | 'stock'
+type Onglet = 'resultat' | 'journal' | 'stock' | 'marge'
 
 const NATURE_LABELS: Record<string, string> = {
   vente: 'Vente',
   achat: 'Achat',
   depense: 'Dépense',
   remboursement: 'Remboursement',
+}
+
+type MargePreset = 'jour' | 'semaine' | 'annee' | 'personnalise'
+
+const MARGE_PRESET_LABELS: Record<MargePreset, string> = {
+  jour: "Aujourd'hui",
+  semaine: '7 derniers jours',
+  annee: '12 derniers mois',
+  personnalise: 'Période personnalisée',
+}
+
+function isoDateHeure(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function periodeMarge(preset: MargePreset, customDebut: string, customFin: string): { debut: string; fin: string } {
+  const maintenant = new Date()
+  if (preset === 'personnalise') {
+    const debut = customDebut ? new Date(`${customDebut}T00:00:00`) : new Date(maintenant.getTime() - 7 * 86400000)
+    const fin = customFin ? new Date(`${customFin}T23:59:59`) : maintenant
+    return { debut: isoDateHeure(debut), fin: isoDateHeure(fin) }
+  }
+  const debut = new Date(maintenant)
+  if (preset === 'jour') debut.setHours(0, 0, 0, 0)
+  if (preset === 'semaine') debut.setTime(maintenant.getTime() - 7 * 86400000)
+  if (preset === 'annee') debut.setFullYear(debut.getFullYear() - 1)
+  return { debut: isoDateHeure(debut), fin: isoDateHeure(maintenant) }
 }
 
 export default function Comptabilite() {
@@ -23,7 +52,16 @@ export default function Comptabilite() {
   const [stock, setStock] = useState<EtatStockValorise | null>(null)
   const [denied, setDenied] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const { nomBoutique } = useBoutiques()
+  const { boutiques, nomBoutique } = useBoutiques()
+
+  const [produits, setProduits] = useState<Produit[]>([])
+  const [margePreset, setMargePreset] = useState<MargePreset>('semaine')
+  const [margeCustomDebut, setMargeCustomDebut] = useState('')
+  const [margeCustomFin, setMargeCustomFin] = useState('')
+  const [margeBoutiqueId, setMargeBoutiqueId] = useState('')
+  const [margeProduitId, setMargeProduitId] = useState('')
+  const [marge, setMarge] = useState<MargeProduits | null>(null)
+  const [margeLoading, setMargeLoading] = useState(false)
 
   useEffect(() => {
     api.comptabilite().then(setData).catch(() => setDenied(true))
@@ -32,7 +70,19 @@ export default function Comptabilite() {
   useEffect(() => {
     if (onglet === 'journal' && !journal) api.journalComptable().then(setJournal).catch(() => setDenied(true))
     if (onglet === 'stock' && !stock) api.stockValorise().then(setStock).catch(() => setDenied(true))
-  }, [onglet, journal, stock])
+    if (onglet === 'marge' && produits.length === 0) api.produits().then(setProduits).catch(() => {})
+  }, [onglet, journal, stock, produits.length])
+
+  useEffect(() => {
+    if (onglet !== 'marge') return
+    const { debut, fin } = periodeMarge(margePreset, margeCustomDebut, margeCustomFin)
+    setMargeLoading(true)
+    api
+      .margeProduits(debut, fin, margeBoutiqueId || undefined, margeProduitId || undefined)
+      .then(setMarge)
+      .catch(() => setDenied(true))
+      .finally(() => setMargeLoading(false))
+  }, [onglet, margePreset, margeCustomDebut, margeCustomFin, margeBoutiqueId, margeProduitId])
 
   const getFieldsComptes = useCallback((c: CompteResultatBoutique) => [nomBoutique(c.boutique_id)], [nomBoutique])
   const { query, setQuery, filtered } = useSearch(data?.comptes ?? [], getFieldsComptes)
@@ -91,6 +141,7 @@ export default function Comptabilite() {
         {(
           [
             ['resultat', 'Compte de résultat'],
+            ['marge', 'Marge par produit'],
             ['journal', 'Journal des opérations'],
             ['stock', 'Stock valorisé'],
           ] as [Onglet, string][]
@@ -141,6 +192,110 @@ export default function Comptabilite() {
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {onglet === 'marge' && (
+        <section>
+          <p className="mb-3 text-xs text-slate-400">
+            Bénéfice = chiffre d'affaires − coût d'achat moyen (fournisseurs actifs à la date de chaque vente). Un produit
+            sans prix d'achat renseigné n'apparaît pas valorisable (marge « — »).
+          </p>
+
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <div className="flex gap-1">
+              {(Object.keys(MARGE_PRESET_LABELS) as MargePreset[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setMargePreset(p)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                    margePreset === p ? 'bg-teal-700 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {MARGE_PRESET_LABELS[p]}
+                </button>
+              ))}
+            </div>
+            {margePreset === 'personnalise' && (
+              <div className="flex items-center gap-2">
+                <input type="date" value={margeCustomDebut} onChange={(e) => setMargeCustomDebut(e.target.value)} className="rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                <span className="text-slate-400">→</span>
+                <input type="date" value={margeCustomFin} onChange={(e) => setMargeCustomFin(e.target.value)} className="rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+              </div>
+            )}
+            <div className="w-52">
+              <SearchableSelect
+                value={margeBoutiqueId}
+                onChange={setMargeBoutiqueId}
+                options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
+                placeholder="Toutes les boutiques"
+                allowEmpty="Toutes les boutiques"
+              />
+            </div>
+            <div className="w-60">
+              <SearchableSelect
+                value={margeProduitId}
+                onChange={setMargeProduitId}
+                options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                placeholder="Tous les produits"
+                allowEmpty="Tous les produits"
+              />
+            </div>
+          </div>
+
+          {margeLoading || !marge ? (
+            <div className="text-slate-400">Chargement…</div>
+          ) : (
+            <>
+              <div className="mb-3 grid grid-cols-2 gap-4 md:grid-cols-3">
+                <StatCard label="Chiffre d'affaires (période)" value={formatGNF(marge.chiffre_affaires_total)} />
+                <StatCard label="Marge (produits valorisés)" value={marge.marge_totale !== null ? formatGNF(marge.marge_totale) : '—'} />
+                <StatCard
+                  label="Marge moyenne"
+                  value={
+                    marge.marge_totale !== null && marge.chiffre_affaires_total
+                      ? `${Math.round((marge.marge_totale / marge.chiffre_affaires_total) * 100)} %`
+                      : '—'
+                  }
+                />
+              </div>
+              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">Produit</th>
+                      <th className="px-4 py-3 text-right">Quantité vendue</th>
+                      <th className="px-4 py-3 text-right">Chiffre d'affaires</th>
+                      <th className="px-4 py-3 text-right">Coût</th>
+                      <th className="px-4 py-3 text-right">Marge</th>
+                      <th className="px-4 py-3 text-right">Marge %</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {marge.lignes.map((l) => (
+                      <tr key={l.produit_id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-900">{l.produit_nom}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{l.quantite_vendue}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{formatGNF(l.chiffre_affaires)}</td>
+                        <td className="px-4 py-3 text-right text-slate-500">{l.cout_total !== null ? formatGNF(l.cout_total) : '—'}</td>
+                        <td className={`px-4 py-3 text-right font-medium ${l.marge !== null && l.marge < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                          {l.marge !== null ? formatGNF(l.marge) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-500">{l.marge_pct !== null ? `${l.marge_pct} %` : '—'}</td>
+                      </tr>
+                    ))}
+                    {marge.lignes.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                          Aucune vente sur cette période.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </section>
       )}
 

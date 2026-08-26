@@ -251,7 +251,9 @@ export default function Stock() {
                     <th className="px-4 py-3">Boutique</th>
                     <th className="px-4 py-3">Motif</th>
                     <th className="px-4 py-3">Opérateur</th>
+                    <th className="px-4 py-3 text-right">Stock avant</th>
                     <th className="px-4 py-3 text-right">Quantité</th>
+                    <th className="px-4 py-3 text-right">Stock après</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -262,9 +264,11 @@ export default function Stock() {
                       <td className="px-4 py-3 text-slate-600">{nomBoutique(m.boutique_id)}</td>
                       <td className="px-4 py-3 text-slate-600">{MOTIF_MOUVEMENT_LABELS[m.motif]}</td>
                       <td className="px-4 py-3 text-slate-600">{m.operateur || <span className="text-slate-400">—</span>}</td>
+                      <td className="px-4 py-3 text-right text-slate-500">{m.stock_avant}</td>
                       <td className={`px-4 py-3 text-right font-medium ${m.quantite >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                         {m.quantite >= 0 ? `+${m.quantite}` : m.quantite}
                       </td>
+                      <td className="px-4 py-3 text-right font-medium text-slate-700">{m.stock_apres}</td>
                     </tr>
                   ))}
                 </tbody>

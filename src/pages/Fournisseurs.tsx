@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import BarChartHorizontal from '../components/charts/BarChartHorizontal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import GeoPicker from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { formatGNFCompact } from '../lib/format'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { useSecteurs } from '../lib/useSecteurs'
-import type { Fournisseur } from '../types'
+import type { Fournisseur, TopFournisseur } from '../types'
 import type { FournisseurInput } from '../types/write'
 
 const EMPTY_FORM: FournisseurInput = { nom: '', secteur: '', conditions_paiement: '', contact: '', secteur_geo_id: null }
 
 export default function Fournisseurs() {
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
+  const [topFournisseurs, setTopFournisseurs] = useState<TopFournisseur[]>([])
   const [editing, setEditing] = useState<Fournisseur | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<FournisseurInput>(EMPTY_FORM)
@@ -29,6 +32,7 @@ export default function Fournisseurs() {
 
   function refresh() {
     api.fournisseurs().then(setFournisseurs)
+    api.topFournisseurs(undefined, 8).then(setTopFournisseurs).catch(() => {})
   }
 
   useEffect(refresh, [])
@@ -92,6 +96,17 @@ export default function Fournisseurs() {
       </div>
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un fournisseur…" />
+
+      {topFournisseurs.length > 0 && (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">Top fournisseurs — par montant d'achats</h2>
+          <p className="mb-4 text-xs text-slate-400">Commandes réceptionnées ou clôturées, cumulées depuis toujours</p>
+          <BarChartHorizontal
+            data={topFournisseurs.map((f) => ({ label: f.fournisseur_nom, sublabel: `${f.nombre_commandes} commande${f.nombre_commandes > 1 ? 's' : ''}`, value: f.montant_achats }))}
+            valueFormatter={formatGNFCompact}
+          />
+        </section>
+      )}
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">

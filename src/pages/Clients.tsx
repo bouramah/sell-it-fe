@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
+import BarChartHorizontal from '../components/charts/BarChartHorizontal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import GeoPicker, { type GeoResolved } from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
-import { formatGNF } from '../lib/format'
+import { formatGNF, formatGNFCompact } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
-import { SEGMENT_LABELS, type Client, type SegmentClient } from '../types'
+import { SEGMENT_LABELS, type Client, type SegmentClient, type TopClient } from '../types'
 import type { ClientInput } from '../types/write'
 
 const SEGMENT_TONE: Record<SegmentClient, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -39,6 +40,7 @@ const EMPTY_FORM: ClientInput = {
 export default function Clients() {
   const [clients, setClients] = useState<Client[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
+  const [topClients, setTopClients] = useState<TopClient[]>([])
   const { boutiques, nomBoutique } = useBoutiques()
   const { client: canGererClient } = usePermissions()
 
@@ -52,6 +54,7 @@ export default function Clients() {
 
   function refresh() {
     api.clients(boutiqueId || undefined).then(setClients)
+    api.topClients(boutiqueId || undefined, 8).then(setTopClients).catch(() => {})
   }
 
   useEffect(refresh, [boutiqueId])
@@ -155,6 +158,17 @@ export default function Clients() {
           />
         </div>
       </div>
+
+      {topClients.length > 0 && (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">Top clients — par chiffre d'affaires</h2>
+          <p className="mb-4 text-xs text-slate-400">Commandes non annulées, cumulées depuis toujours</p>
+          <BarChartHorizontal
+            data={topClients.map((c) => ({ label: c.client_nom, sublabel: `${c.nombre_commandes} commande${c.nombre_commandes > 1 ? 's' : ''}`, value: c.chiffre_affaires }))}
+            valueFormatter={formatGNFCompact}
+          />
+        </section>
+      )}
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">

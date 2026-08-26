@@ -86,6 +86,13 @@ export interface Fournisseur {
   secteur_geo_id: string | null
 }
 
+export interface TopFournisseur {
+  fournisseur_id: string
+  fournisseur_nom: string
+  montant_achats: number
+  nombre_commandes: number
+}
+
 export interface Utilisateur {
   id: string
   nom: string
@@ -122,6 +129,13 @@ export interface Client {
   commune: string | null
   ville: string | null
   secteur_geo_id: string | null
+}
+
+export interface TopClient {
+  client_id: string
+  client_nom: string
+  chiffre_affaires: number
+  nombre_commandes: number
 }
 
 export interface PaiementClient {
@@ -239,6 +253,8 @@ export interface LigneMouvementStock {
   motif: MotifMouvementStock
   operateur: string
   quantite: number
+  stock_avant: number
+  stock_apres: number
 }
 
 export interface LigneEcartInventaire {
@@ -272,6 +288,8 @@ export interface LigneMouvementCaisse {
   motif: string
   operateur: string
   montant: number
+  solde_avant: number
+  solde_apres: number
 }
 
 export type StatutValidationRemise = 'aucune' | 'en_attente' | 'validee'
@@ -370,16 +388,22 @@ export interface Remboursement {
   operateur: string
 }
 
-export interface TransfertStock {
+export interface LigneTransfertStock {
   id: string
   produit_id: string
-  boutique_source_id: string
-  boutique_destination_id: string
+  produit_nom: string
   quantite: number
-  demandeur: string
-  statut: StatutTransfert
   quantite_recue: number | null
   motif_ecart: string | null
+}
+
+export interface TransfertStock {
+  id: string
+  boutique_source_id: string
+  boutique_destination_id: string
+  demandeur: string
+  statut: StatutTransfert
+  lignes: LigneTransfertStock[]
 }
 
 export interface CompteResultatBoutique {
@@ -423,6 +447,25 @@ export interface LigneStockValorise {
 export interface EtatStockValorise {
   lignes: LigneStockValorise[]
   valeur_totale: number
+}
+
+export interface LigneMargeProduit {
+  produit_id: string
+  produit_nom: string
+  quantite_vendue: number
+  chiffre_affaires: number
+  cout_total: number | null
+  marge: number | null
+  marge_pct: number | null
+}
+
+export interface MargeProduits {
+  date_debut: string
+  date_fin: string
+  boutique_id: string | null
+  chiffre_affaires_total: number
+  marge_totale: number | null
+  lignes: LigneMargeProduit[]
 }
 
 export interface Promotion {
@@ -515,6 +558,11 @@ export interface ParametreSecurite {
 export interface ParametreApplication {
   id: string
   label: string
+  actif: boolean
+}
+
+export interface ParametreFiscal {
+  taux: number
   actif: boolean
 }
 

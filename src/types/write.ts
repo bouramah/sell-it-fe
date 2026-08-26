@@ -295,12 +295,22 @@ export interface PromotionInput {
   impact_estime: string
 }
 
-export interface TransfertInput {
+export interface LigneTransfertInput {
   produit_id: string
+  quantite: number
+}
+
+export interface TransfertInput {
   boutique_source_id: string
   boutique_destination_id: string
-  quantite: number
   demandeur: string
+  lignes: LigneTransfertInput[]
+}
+
+export interface LigneReceptionInput {
+  produit_id: string
+  quantite_recue?: number
+  motif_ecart?: string
 }
 
 export interface NotificationPushInput {

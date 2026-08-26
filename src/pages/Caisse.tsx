@@ -223,7 +223,9 @@ export default function Caisse() {
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Motif</th>
                 <th className="px-4 py-3">Opérateur</th>
+                <th className="px-4 py-3 text-right">Solde avant</th>
                 <th className="px-4 py-3 text-right">Montant</th>
+                <th className="px-4 py-3 text-right">Solde après</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -238,9 +240,11 @@ export default function Caisse() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{m.motif}</td>
                   <td className="px-4 py-3 text-slate-600">{m.operateur}</td>
+                  <td className="px-4 py-3 text-right text-slate-500">{formatGNF(m.solde_avant)}</td>
                   <td className={`px-4 py-3 text-right font-medium ${m.montant >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                     {m.montant >= 0 ? `+${formatGNF(m.montant)}` : `-${formatGNF(Math.abs(m.montant))}`}
                   </td>
+                  <td className="px-4 py-3 text-right font-medium text-slate-700">{formatGNF(m.solde_apres)}</td>
                 </tr>
               ))}
             </tbody>
