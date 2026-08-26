@@ -514,40 +514,40 @@ export default function CommandesFournisseurs() {
       )}
 
       {viewing && (
-        <Modal title={`Commande #${viewing.commande.id} — ${nomFournisseur(viewing.commande.fournisseur_id)}`} onClose={() => setViewing(null)}>
+        <Modal wide title={`Commande #${viewing.commande.id} — ${nomFournisseur(viewing.commande.fournisseur_id)}`} onClose={() => setViewing(null)}>
           {viewLoading ? (
             <p className="text-sm text-slate-500">Chargement…</p>
           ) : viewing.articles.length === 0 ? (
             <p className="text-sm text-slate-400">Aucun article enregistré pour cette commande.</p>
           ) : (
-            <div className="overflow-hidden rounded-md border border-slate-200">
+            <div className="overflow-x-auto rounded-md border border-slate-200">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-3 py-2">Produit</th>
-                    <th className="px-3 py-2 text-right">Commandé</th>
-                    <th className="px-3 py-2 text-right">Reçu</th>
-                    <th className="px-3 py-2 text-right">Prix unit.</th>
-                    <th className="px-3 py-2 text-right">Sous-total</th>
+                    <th className="whitespace-nowrap px-3 py-2">Produit</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Commandé</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Reçu</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Prix unit.</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Sous-total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {viewing.articles.map((a) => (
                     <tr key={a.id}>
                       <td className="px-3 py-2">{a.produit_nom || nomProduit(a.produit_id)}</td>
-                      <td className="px-3 py-2 text-right">{a.quantite}</td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="whitespace-nowrap px-3 py-2 text-right">{a.quantite}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right">
                         <span className={a.quantite_recue >= a.quantite ? 'text-emerald-700' : 'text-slate-600'}>{a.quantite_recue}</span>
                       </td>
-                      <td className="px-3 py-2 text-right">{formatGNF(a.prix_unitaire)}</td>
-                      <td className="px-3 py-2 text-right font-medium">{formatGNF(a.quantite * a.prix_unitaire)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right">{formatGNF(a.prix_unitaire)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-medium">{formatGNF(a.quantite * a.prix_unitaire)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-slate-200 bg-slate-50">
-                    <td colSpan={4} className="px-3 py-2 text-right font-semibold">Total</td>
-                    <td className="px-3 py-2 text-right font-semibold">{formatGNF(viewing.commande.montant)}</td>
+                    <td colSpan={4} className="whitespace-nowrap px-3 py-2 text-right font-semibold">Total</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right font-semibold">{formatGNF(viewing.commande.montant)}</td>
                   </tr>
                 </tfoot>
               </table>

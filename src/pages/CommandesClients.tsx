@@ -514,32 +514,32 @@ export default function CommandesClients() {
       )}
 
       {viewing && (
-        <Modal title={`Commande #${viewing.commande.id} — ${viewing.commande.client_nom}`} onClose={() => setViewing(null)}>
+        <Modal wide title={`Commande #${viewing.commande.id} — ${viewing.commande.client_nom}`} onClose={() => setViewing(null)}>
           {viewLoading ? (
             <p className="text-sm text-slate-500">Chargement…</p>
           ) : viewing.articles.length === 0 ? (
             <p className="text-sm text-slate-400">Aucun article enregistré pour cette commande.</p>
           ) : (
-            <div className="overflow-hidden rounded-md border border-slate-200">
+            <div className="overflow-x-auto rounded-md border border-slate-200">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="px-3 py-2">Produit</th>
-                    <th className="px-3 py-2">Palier</th>
-                    <th className="px-3 py-2 text-right">Qté</th>
-                    <th className="px-3 py-2 text-right">Prix facturé</th>
-                    <th className="px-3 py-2 text-right">Prix catalogue à la vente</th>
-                    <th className="px-3 py-2 text-right">Sous-total</th>
+                    <th className="whitespace-nowrap px-3 py-2">Produit</th>
+                    <th className="whitespace-nowrap px-3 py-2">Palier</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Qté</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Prix facturé</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Prix catalogue à la vente</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right">Sous-total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {viewing.articles.map((a) => (
                     <tr key={a.id}>
                       <td className="px-3 py-2">{a.produit_nom || nomProduit(a.produit_id)}</td>
-                      <td className="px-3 py-2 text-slate-500">{PALIER_PRIX_LABELS[a.palier]}</td>
-                      <td className="px-3 py-2 text-right">{a.quantite}</td>
-                      <td className="px-3 py-2 text-right">{formatGNF(a.prix_unitaire)}</td>
-                      <td className="px-3 py-2 text-right text-slate-500">
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-500">{PALIER_PRIX_LABELS[a.palier]}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right">{a.quantite}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right">{formatGNF(a.prix_unitaire)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right text-slate-500">
                         {a.prix_catalogue_a_la_vente === null ? (
                           '—'
                         ) : a.prix_catalogue_a_la_vente !== a.prix_unitaire ? (
@@ -548,14 +548,14 @@ export default function CommandesClients() {
                           formatGNF(a.prix_catalogue_a_la_vente)
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right font-medium">{formatGNF(a.quantite * a.prix_unitaire)}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-medium">{formatGNF(a.quantite * a.prix_unitaire)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-slate-200 bg-slate-50">
-                    <td colSpan={5} className="px-3 py-2 text-right font-semibold">Total</td>
-                    <td className="px-3 py-2 text-right font-semibold">{formatGNF(viewing.commande.montant)}</td>
+                    <td colSpan={5} className="whitespace-nowrap px-3 py-2 text-right font-semibold">Total</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-right font-semibold">{formatGNF(viewing.commande.montant)}</td>
                   </tr>
                 </tfoot>
               </table>
