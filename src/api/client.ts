@@ -1,4 +1,5 @@
 import type {
+  BaremeCreditEnseignant,
   Boutique,
   Caisse,
   Client as ClientEntity,
@@ -7,7 +8,10 @@ import type {
   CommandeFournisseurDetail,
   ComptabiliteConsolidee,
   ConversationMessage,
+  DemandeCredit,
+  Ecole,
   EcritureComptable,
+  Enseignant,
   EtatStockValorise,
   MargeProduits,
   DashboardConsolide,
@@ -47,19 +51,29 @@ import type {
   TopFournisseur,
   TransfertStock,
   Utilisateur,
+  ValidationGarantCredit,
+  ValidationGarantDetail,
+  VersementEcole,
   Ville,
   Commune,
+  SuiviEcole,
 } from '../types'
 import { clearToken, getToken } from '../lib/auth'
 import type {
+  BaremeCreditEnseignantInput,
   BoutiqueInput,
   CaisseInput,
   ClientInput,
   CommandeClientInput,
   CommandeFournisseurInput,
   CorrectionReceptionInput,
+  DemandeCreditEnseignantInput,
   DepenseInput,
   DetteInput,
+  EcoleInput,
+  EcoleUpdateInput,
+  EnseignantInput,
+  EnseignantUpdateInput,
   FournisseurInput,
   LigneReceptionInput,
   LivraisonInput,
@@ -91,7 +105,9 @@ import type {
   TransfertInput,
   UtilisateurConnecte,
   UtilisateurInput,
+  ValidationGarantDecisionInput,
   Verifier2FARequest,
+  VersementEcoleInput,
 } from '../types/write'
 
 // En dev, VITE_SERVER_BASE pointe vers l'API locale (http://localhost:8000). En prod, laissé
@@ -337,6 +353,41 @@ export const api = {
     sendJson<LigneDette>('POST', `/dettes/${detteId}/remboursements`, payload),
   remboursements: (detteId?: string) => getJson<Remboursement[]>(`/dettes/remboursements${detteId ? `?dette_id=${detteId}` : ''}`),
   envoyerRappelSms: (detteId: string) => sendJson<LigneDette>('POST', `/dettes/${detteId}/rappel-sms`, undefined),
+  demandesCredit: (boutiqueId?: string) => getJson<DemandeCredit[]>(`/dettes/demandes-credit${buildQuery({ boutique_id: boutiqueId })}`),
+  validerDemandeCredit: (id: string) => sendJson<DemandeCredit>('POST', `/dettes/demandes-credit/${id}/valider`, undefined),
+  refuserDemandeCredit: (id: string) => sendJson<DemandeCredit>('POST', `/dettes/demandes-credit/${id}/refuser`, undefined),
+  validationsGarantDemande: (id: string) => getJson<ValidationGarantCredit[]>(`/dettes/demandes-credit/${id}/validations-garant`),
+
+  // --- Aide aux Enseignants ---------------------------------------------------------
+  ecoles: () => getJson<Ecole[]>('/ecoles'),
+  creerEcole: (payload: EcoleInput) => sendJson<Ecole>('POST', '/ecoles', payload),
+  modifierEcole: (id: string, payload: EcoleUpdateInput) => sendJson<Ecole>('PUT', `/ecoles/${id}`, payload),
+  supprimerEcole: (id: string) => sendJson<void>('DELETE', `/ecoles/${id}`),
+
+  enseignants: (ecoleId?: string) => getJson<Enseignant[]>(`/enseignants${buildQuery({ ecole_id: ecoleId })}`),
+  enseignant: (id: string) => getJson<Enseignant>(`/enseignants/${id}`),
+  creerEnseignant: (payload: EnseignantInput) => sendJson<Enseignant>('POST', '/enseignants', payload),
+  modifierEnseignant: (id: string, payload: EnseignantUpdateInput) => sendJson<Enseignant>('PUT', `/enseignants/${id}`, payload),
+  uploaderEngagementEnseignant: (id: string, file: File) => sendFile<Enseignant>(`/enseignants/${id}/engagement`, file),
+  supprimerEngagementEnseignant: (id: string) => sendJson<Enseignant>('DELETE', `/enseignants/${id}/engagement`),
+  creerDemandeCreditEnseignant: (id: string, payload: DemandeCreditEnseignantInput) =>
+    sendJson<Enseignant>('POST', `/enseignants/${id}/demandes-credit`, payload),
+
+  baremeCreditEnseignants: (ecoleId?: string) =>
+    getJson<BaremeCreditEnseignant[]>(`/parametres/bareme-credit-enseignants${buildQuery({ ecole_id: ecoleId })}`),
+  creerBaremeCreditEnseignant: (payload: BaremeCreditEnseignantInput) =>
+    sendJson<BaremeCreditEnseignant>('POST', '/parametres/bareme-credit-enseignants', payload),
+  supprimerBaremeCreditEnseignant: (id: string) => sendJson<void>('DELETE', `/parametres/bareme-credit-enseignants/${id}`),
+
+  suiviAideEnseignants: () => getJson<SuiviEcole[]>('/aide-enseignants/dashboard'),
+  versementsEcoles: (ecoleId?: string) => getJson<VersementEcole[]>(`/aide-enseignants/versements${buildQuery({ ecole_id: ecoleId })}`),
+  creerVersementEcole: (payload: VersementEcoleInput) => sendJson<VersementEcole>('POST', '/aide-enseignants/versements', payload),
+  uploaderJustificatifVersement: (id: string, file: File) => sendFile<VersementEcole>(`/aide-enseignants/versements/${id}/justificatif`, file),
+
+  // Public — aucune authentification (le jeton SMS EST l'authentification)
+  consulterValidationGarant: (token: string) => getJson<ValidationGarantDetail>(`/validation-garant/${token}`),
+  repondreValidationGarant: (token: string, payload: ValidationGarantDecisionInput) =>
+    sendJson<ValidationGarantDetail>('POST', `/validation-garant/${token}`, payload),
 
   transferts: () => getJson<TransfertStock[]>('/transferts'),
   creerTransfert: (payload: TransfertInput) => sendJson<TransfertStock>('POST', '/transferts', payload),

@@ -79,6 +79,9 @@ export interface Permissions {
   securite: boolean
   referentiels: boolean
   remiseValidation: boolean
+  ecoleGestion: boolean
+  enseignantGestion: boolean
+  baremeCreditEnseignantGestion: boolean
 }
 
 export function usePermissions(): Permissions {
@@ -114,5 +117,8 @@ export function usePermissions(): Permissions {
     securite: has(MODULE_ACTIONS.SECURITE_GESTION),
     referentiels: has(MODULE_ACTIONS.REFERENTIELS_GESTION),
     remiseValidation: has(MODULE_ACTIONS.REMISE_VALIDATION),
+    ecoleGestion: has(MODULE_ACTIONS.ECOLE_GESTION),
+    enseignantGestion: has(MODULE_ACTIONS.ENSEIGNANT_GESTION),
+    baremeCreditEnseignantGestion: has(MODULE_ACTIONS.BAREME_CREDIT_ENSEIGNANT_GESTION),
   }
 }

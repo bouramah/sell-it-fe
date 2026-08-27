@@ -388,6 +388,105 @@ export interface Remboursement {
   operateur: string
 }
 
+export type StatutDemandeCredit = 'en_attente' | 'validee' | 'refusee'
+
+export interface DemandeCredit {
+  id: string
+  client_id: string
+  client_nom: string
+  boutique_id: string
+  montant_souhaite: number
+  motif: string
+  statut: StatutDemandeCredit
+  date_creation: string
+}
+
+// --- Aide aux Enseignants -----------------------------------------------------------
+
+export type StatutEcole = 'active' | 'inactive'
+export type TypeGarant = 'referent' | 'comptabilite'
+export type StatutValidationGarant = 'en_attente' | 'validee' | 'refusee'
+
+export interface Ecole {
+  id: string
+  nom: string
+  adresse: string | null
+  referent_nom: string
+  referent_contact: string
+  comptabilite_nom: string
+  comptabilite_contact: string
+  statut: StatutEcole
+}
+
+export interface Enseignant {
+  id: string
+  client_id: string
+  client_nom: string
+  client_contact: string
+  ecole_id: string
+  ecole_nom: string
+  grade_echelon: string
+  salaire_reference: number | null
+  engagement_signe_url: string | null
+  engagement_signe_date: string | null
+  plafond_suspendu: boolean
+  plafond_disponible: number
+  credit_autorise: boolean
+}
+
+export interface BaremeCreditEnseignant {
+  id: string
+  ecole_id: string | null
+  ecole_nom: string | null
+  grade_echelon: string
+  plafond: number
+  date_debut: string
+  date_fin: string | null
+}
+
+export interface ValidationGarantCredit {
+  id: string
+  type_garant: TypeGarant
+  nom_garant: string
+  statut: StatutValidationGarant
+  date_reponse: string | null
+  motif_refus: string | null
+}
+
+export interface ValidationGarantDetail {
+  enseignant_nom: string
+  ecole_nom: string
+  grade_echelon: string
+  montant_souhaite: number
+  motif: string
+  salaire_reference: number | null
+  type_garant: TypeGarant
+  statut: StatutValidationGarant
+  autre_garant_statut: StatutValidationGarant
+  expire_le: string
+}
+
+export interface VersementEcole {
+  id: string
+  ecole_id: string
+  ecole_nom: string
+  montant: number
+  date: string
+  reference: string | null
+  justificatif_url: string | null
+  note: string | null
+}
+
+export interface SuiviEcole {
+  ecole_id: string
+  ecole_nom: string
+  nombre_enseignants: number
+  credits_en_cours: number
+  credits_en_retard: number
+  montant_verse: number
+  ecart: number
+}
+
 export interface LigneTransfertStock {
   id: string
   produit_id: string

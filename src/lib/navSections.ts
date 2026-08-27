@@ -74,6 +74,14 @@ export const sections: NavSection[] = [
     items: [{ to: '/notifications-push', label: 'Notifications push', visible: (p) => p.utilisateurs }],
   },
   {
+    title: 'Aide aux Enseignants',
+    items: [
+      { to: '/ecoles', label: 'Écoles partenaires', visible: (p) => p.ecoleGestion },
+      { to: '/enseignants', label: 'Enseignants', visible: (p) => p.enseignantGestion },
+      { to: '/aide-enseignants', label: 'Suivi crédits enseignants', visible: (p) => p.enseignantGestion || p.ecoleGestion },
+    ],
+  },
+  {
     title: 'Configuration',
     items: [
       { to: '/parametres', label: 'Paramètres' },

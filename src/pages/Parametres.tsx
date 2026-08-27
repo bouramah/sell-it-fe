@@ -2,9 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
+import SearchableSelect from '../components/SearchableSelect'
 import Tabs from '../components/Tabs'
+import { formatGNF } from '../lib/format'
 import { usePermissions } from '../lib/permissions'
-import type { ParametreFiscal, ReferentielItem } from '../types'
+import type { BaremeCreditEnseignant, Ecole, ParametreFiscal, ReferentielItem } from '../types'
+import type { BaremeCreditEnseignantInput } from '../types/write'
 
 const CATEGORIE_LABELS: Record<string, string> = {
   secteurs: 'Secteurs',
@@ -41,12 +44,20 @@ export default function Parametres() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<ReferentielItem | null>(null)
-  const { referentiels: canGererReferentiels, securite: canGererFiscal } = usePermissions()
+  const { referentiels: canGererReferentiels, securite: canGererFiscal, baremeCreditEnseignantGestion: canGererBareme } = usePermissions()
 
   const [fiscal, setFiscal] = useState<ParametreFiscal | null>(null)
   const [fiscalTaux, setFiscalTaux] = useState('18')
   const [fiscalActif, setFiscalActif] = useState(true)
   const [savingFiscal, setSavingFiscal] = useState(false)
+
+  const [baremes, setBaremes] = useState<BaremeCreditEnseignant[]>([])
+  const [ecoles, setEcoles] = useState<Ecole[]>([])
+  const [creatingBareme, setCreatingBareme] = useState(false)
+  const [baremeForm, setBaremeForm] = useState<BaremeCreditEnseignantInput>({ ecole_id: null, grade_echelon: '', plafond: 0, date_debut: new Date().toISOString().slice(0, 10) })
+  const [baremeError, setBaremeError] = useState<string | null>(null)
+  const [savingBareme, setSavingBareme] = useState(false)
+  const [confirmDeleteBareme, setConfirmDeleteBareme] = useState<BaremeCreditEnseignant | null>(null)
 
   function refresh() {
     api.referentiels().then(setReferentiels)
@@ -55,9 +66,32 @@ export default function Parametres() {
       setFiscalTaux(String(Math.round(p.taux * 100)))
       setFiscalActif(p.actif)
     })
+    api.baremeCreditEnseignants().then(setBaremes)
+    api.ecoles().then(setEcoles)
   }
 
   useEffect(refresh, [])
+
+  async function handleSubmitBareme(e: FormEvent) {
+    e.preventDefault()
+    setSavingBareme(true)
+    setBaremeError(null)
+    try {
+      await api.creerBaremeCreditEnseignant(baremeForm)
+      setCreatingBareme(false)
+      refresh()
+    } catch (err) {
+      setBaremeError(err instanceof Error && err.message ? err.message : "Échec de l'enregistrement.")
+    } finally {
+      setSavingBareme(false)
+    }
+  }
+
+  async function handleDeleteBareme(b: BaremeCreditEnseignant) {
+    await api.supprimerBaremeCreditEnseignant(b.id)
+    setConfirmDeleteBareme(null)
+    refresh()
+  }
 
   async function handleSubmitFiscal(e: FormEvent) {
     e.preventDefault()
@@ -70,8 +104,9 @@ export default function Parametres() {
     }
   }
 
-  const categories = [...CATEGORIE_ORDER.filter((c) => c in referentiels), 'fiscalite']
+  const categories = [...CATEGORIE_ORDER.filter((c) => c in referentiels), 'fiscalite', 'bareme_enseignants']
   const items = referentiels[categorie] ?? []
+  const nomEcole = (id: string | null) => (id ? ecoles.find((e) => e.id === id)?.nom ?? id : 'Réseau (par défaut)')
 
   function openCreate() {
     setNom('')
@@ -120,7 +155,7 @@ export default function Parametres() {
           <h1 className="text-2xl font-bold text-slate-900">Paramètres</h1>
           <p className="text-sm text-slate-500">Référentiels : secteurs, zones, canaux, paiements, dépenses, caisses</p>
         </div>
-        {canGererReferentiels && categorie !== 'fiscalite' && (
+        {canGererReferentiels && categorie !== 'fiscalite' && categorie !== 'bareme_enseignants' && (
           <button
             onClick={openCreate}
             className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
@@ -131,7 +166,10 @@ export default function Parametres() {
       </div>
 
       <Tabs
-        tabs={categories.map((c) => ({ key: c, label: CATEGORIE_LABELS[c] ?? (c === 'fiscalite' ? 'Fiscalité (TVA)' : c) }))}
+        tabs={categories.map((c) => ({
+          key: c,
+          label: CATEGORIE_LABELS[c] ?? (c === 'fiscalite' ? 'Fiscalité (TVA)' : c === 'bareme_enseignants' ? 'Barème crédit enseignants' : c),
+        }))}
         active={categorie}
         onChange={setCategorie}
       />
@@ -191,7 +229,66 @@ export default function Parametres() {
         </div>
       )}
 
-      {categorie !== 'fiscalite' && (
+      {categorie === 'bareme_enseignants' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="max-w-2xl text-xs text-slate-400">
+              Plafond de crédit alimentaire accordé à un enseignant selon son grade/échelon. Une ligne sans école
+              (« Réseau ») sert de référence par défaut ; une ligne rattachée à une école la surcharge pour cette
+              école si sa période couvre la date du jour.
+            </p>
+            {canGererBareme && (
+              <button
+                onClick={() => { setBaremeForm({ ecole_id: null, grade_echelon: '', plafond: 0, date_debut: new Date().toISOString().slice(0, 10) }); setBaremeError(null); setCreatingBareme(true) }}
+                className="shrink-0 rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
+              >
+                + Ajouter un barème
+              </button>
+            )}
+          </div>
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Grade / échelon</th>
+                  <th className="px-4 py-3">Portée</th>
+                  <th className="px-4 py-3 text-right">Plafond</th>
+                  <th className="px-4 py-3">Période</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {baremes.map((b) => (
+                  <tr key={b.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-slate-900">{b.grade_echelon}</td>
+                    <td className="px-4 py-3 text-slate-600">{nomEcole(b.ecole_id)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-900">{formatGNF(b.plafond)}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {b.date_debut} → {b.date_fin ?? 'indéfini'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {canGererBareme && (
+                        <button onClick={() => setConfirmDeleteBareme(b)} className="font-medium text-red-600 hover:underline">
+                          Suppr.
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {baremes.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                      Aucun barème configuré.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {categorie !== 'fiscalite' && categorie !== 'bareme_enseignants' && (
       <div className="space-y-3">
         {items.map((item) => (
           <div key={item.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -267,6 +364,85 @@ export default function Parametres() {
           confirmLabel="Supprimer"
           onConfirm={() => handleDelete(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {creatingBareme && (
+        <Modal title="Ajouter un barème de crédit enseignant" onClose={() => setCreatingBareme(false)}>
+          <form onSubmit={handleSubmitBareme} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Grade / échelon</label>
+              <SearchableSelect
+                value={baremeForm.grade_echelon}
+                onChange={(v) => setBaremeForm({ ...baremeForm, grade_echelon: v })}
+                options={(referentiels.grades_enseignants ?? []).map((g) => ({ value: g.nom, label: g.nom }))}
+                placeholder="Sélectionner un grade…"
+                required
+              />
+              <p className="mt-1 text-xs text-slate-400">Géré dans l'onglet « grades_enseignants » ci-dessus.</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">École (facultatif — vide = réseau)</label>
+              <SearchableSelect
+                value={baremeForm.ecole_id ?? ''}
+                onChange={(v) => setBaremeForm({ ...baremeForm, ecole_id: v || null })}
+                options={ecoles.map((e) => ({ value: e.id, label: e.nom }))}
+                allowEmpty="Réseau (toutes les écoles)"
+                placeholder="Réseau (toutes les écoles)"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Plafond (GNF)</label>
+              <input
+                type="number"
+                min={1}
+                value={baremeForm.plafond}
+                onChange={(e) => setBaremeForm({ ...baremeForm, plafond: Number(e.target.value) })}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Date de début</label>
+                <input
+                  type="date"
+                  value={baremeForm.date_debut}
+                  onChange={(e) => setBaremeForm({ ...baremeForm, date_debut: e.target.value })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Date de fin (facultatif)</label>
+                <input
+                  type="date"
+                  value={baremeForm.date_fin ?? ''}
+                  onChange={(e) => setBaremeForm({ ...baremeForm, date_fin: e.target.value || null })}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            {baremeError && <p className="text-sm text-red-600">{baremeError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setCreatingBareme(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={savingBareme} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
+                {savingBareme ? 'Enregistrement…' : 'Ajouter'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {confirmDeleteBareme && (
+        <ConfirmDialog
+          title="Supprimer le barème"
+          message={`Supprimer le barème "${confirmDeleteBareme.grade_echelon}" (${nomEcole(confirmDeleteBareme.ecole_id)}) ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => handleDeleteBareme(confirmDeleteBareme)}
+          onCancel={() => setConfirmDeleteBareme(null)}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Fragment, useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Modal from '../components/Modal'
@@ -7,7 +7,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
 import StatCard from '../components/StatCard'
 import Tabs from '../components/Tabs'
-import { formatGNF, formatShortDate } from '../lib/format'
+import { formatDate, formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
@@ -17,12 +17,15 @@ import {
   STATUT_DETTE_LABELS,
   type Caisse,
   type Client,
+  type DemandeCredit,
+  type Enseignant,
   type Fournisseur,
   type LigneDette,
   type ModePaiement,
   type StatutDette,
   type TiersType,
   type Utilisateur,
+  type ValidationGarantCredit,
 } from '../types'
 import type { DetteInput, RemboursementInput } from '../types/write'
 
@@ -31,6 +34,11 @@ const STATUT_TONE: Record<StatutDette, 'success' | 'warning' | 'danger'> = {
   en_retard: 'danger',
   soldee: 'success',
 }
+
+const STATUT_DEMANDE_LABELS: Record<string, string> = { en_attente: 'En attente des garants', validee: 'Validée', refusee: 'Refusée' }
+const STATUT_DEMANDE_TONE: Record<string, 'success' | 'warning' | 'danger'> = { en_attente: 'warning', validee: 'success', refusee: 'danger' }
+const GARANT_LABELS: Record<string, string> = { referent: 'Référent', comptabilite: 'Comptabilité' }
+const STATUT_GARANT_LABELS: Record<string, string> = { en_attente: 'En attente', validee: 'Validée', refusee: 'Refusée' }
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -47,8 +55,21 @@ export default function Dettes() {
   const { boutiques, nomBoutique } = useBoutiques()
   const { detteCreation: canCreerDette, remboursement: canRembourser } = usePermissions()
 
+  const [demandesEnseignants, setDemandesEnseignants] = useState<DemandeCredit[]>([])
+  const [enseignants, setEnseignants] = useState<Enseignant[]>([])
+  const [expandedDemandeId, setExpandedDemandeId] = useState<string | null>(null)
+  const [validationsByDemande, setValidationsByDemande] = useState<Record<string, ValidationGarantCredit[]>>({})
+  const [loadingValidations, setLoadingValidations] = useState(false)
+
   function refresh() {
     api.dettes(tiers).then(setDettes)
+  }
+
+  function refreshDemandesEnseignants() {
+    api.demandesCredit().then((demandes) => {
+      const idsEnseignants = new Set(enseignants.map((e) => e.client_id))
+      setDemandesEnseignants(demandes.filter((d) => idsEnseignants.has(d.client_id)))
+    })
   }
 
   useEffect(refresh, [tiers])
@@ -57,7 +78,28 @@ export default function Dettes() {
     api.fournisseurs().then(setFournisseurs)
     api.caisses().then(setCaisses)
     api.utilisateurs().then(setUtilisateurs)
+    api.enseignants().then(setEnseignants)
   }, [])
+  useEffect(() => {
+    if (enseignants.length > 0) refreshDemandesEnseignants()
+  }, [enseignants])
+
+  async function toggleExpandDemande(id: string) {
+    if (expandedDemandeId === id) {
+      setExpandedDemandeId(null)
+      return
+    }
+    setExpandedDemandeId(id)
+    if (!validationsByDemande[id]) {
+      setLoadingValidations(true)
+      try {
+        const validations = await api.validationsGarantDemande(id)
+        setValidationsByDemande((prev) => ({ ...prev, [id]: validations }))
+      } finally {
+        setLoadingValidations(false)
+      }
+    }
+  }
 
   const preFiltrees = boutiqueId ? dettes.filter((d) => d.boutique_id === boutiqueId) : dettes
   const getFields = useCallback((d: LigneDette) => [d.tiers_nom], [])
@@ -255,6 +297,77 @@ export default function Dettes() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+
+      {tiers === 'client' && demandesEnseignants.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Demandes de crédit enseignants</h2>
+          <p className="mb-3 text-xs text-slate-400">
+            Validées par les garants (référent + comptabilité de l'école) via un lien SMS — le staff ne peut pas valider ces demandes ici.
+          </p>
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Enseignant</th>
+                  <th className="px-4 py-3 text-right">Montant souhaité</th>
+                  <th className="px-4 py-3">Motif</th>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Statut</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {demandesEnseignants.map((d) => (
+                  <Fragment key={d.id}>
+                    <tr className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{d.client_nom}</td>
+                      <td className="px-4 py-3 text-right text-slate-600">{formatGNF(d.montant_souhaite)}</td>
+                      <td className="px-4 py-3 text-slate-600">{d.motif}</td>
+                      <td className="px-4 py-3 text-slate-500">{formatDate(d.date_creation)}</td>
+                      <td className="px-4 py-3">
+                        <Badge tone={STATUT_DEMANDE_TONE[d.statut]}>{STATUT_DEMANDE_LABELS[d.statut]}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => toggleExpandDemande(d.id)}
+                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          {expandedDemandeId === d.id ? 'Masquer les garants' : 'Voir les garants'}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedDemandeId === d.id && (
+                      <tr>
+                        <td colSpan={6} className="bg-slate-50 px-4 py-3">
+                          {loadingValidations && !validationsByDemande[d.id] ? (
+                            <p className="text-xs text-slate-400">Chargement…</p>
+                          ) : (
+                            <div className="flex flex-wrap gap-4">
+                              {(validationsByDemande[d.id] ?? []).map((v) => (
+                                <div key={v.id} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs">
+                                  <p className="font-semibold text-slate-700">{GARANT_LABELS[v.type_garant] ?? v.type_garant}</p>
+                                  <p className="text-slate-600">{v.nom_garant}</p>
+                                  <p className="mt-1">
+                                    <Badge tone={v.statut === 'validee' ? 'success' : v.statut === 'refusee' ? 'danger' : 'warning'}>
+                                      {STATUT_GARANT_LABELS[v.statut] ?? v.statut}
+                                    </Badge>
+                                  </p>
+                                  {v.date_reponse && <p className="mt-1 text-slate-400">{formatDate(v.date_reponse)}</p>}
+                                  {v.motif_refus && <p className="mt-1 text-red-600">Motif : {v.motif_refus}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {creating && (
         <Modal title="Enregistrer une dette" onClose={() => setCreating(false)}>

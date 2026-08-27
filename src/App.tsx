@@ -30,6 +30,10 @@ import Securite from './pages/Securite'
 import Parametres from './pages/Parametres'
 import Geographie from './pages/Geographie'
 import NotificationsPush from './pages/NotificationsPush'
+import Ecoles from './pages/Ecoles'
+import Enseignants from './pages/Enseignants'
+import AideEnseignantsDashboard from './pages/AideEnseignantsDashboard'
+import ValidationGarant from './pages/ValidationGarant'
 
 export default function App() {
   return (
@@ -37,6 +41,7 @@ export default function App() {
       <PermissionsProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/validation-garant/:token" element={<ValidationGarant />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Layout />}>
               <Route index element={<Home />} />
@@ -67,6 +72,9 @@ export default function App() {
               <Route path="parametres" element={<Parametres />} />
               <Route path="geographie" element={<Geographie />} />
               <Route path="notifications-push" element={<NotificationsPush />} />
+              <Route path="ecoles" element={<Ecoles />} />
+              <Route path="enseignants" element={<Enseignants />} />
+              <Route path="aide-enseignants" element={<AideEnseignantsDashboard />} />
             </Route>
           </Route>
         </Routes>
