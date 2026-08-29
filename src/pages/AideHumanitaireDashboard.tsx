@@ -149,7 +149,7 @@ export default function AideHumanitaireDashboard() {
                   <td className="px-4 py-3 text-slate-500">{formatShortDate(v.date)}</td>
                   <td className="px-4 py-3 font-medium text-slate-900">{v.etablissement_nom}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{formatGNF(v.montant)}</td>
-                  <td className="px-4 py-3 text-slate-600">{v.reference ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{v.reference || '—'}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {v.beneficiaires_regles.length > 0 ? v.beneficiaires_regles.join(', ') : <span className="text-slate-400">Non détaillé</span>}
                   </td>
