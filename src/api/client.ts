@@ -381,6 +381,7 @@ export const api = {
   supprimerBaremeCreditBeneficiaire: (id: string) => sendJson<void>('DELETE', `/parametres/bareme-credit-beneficiaires/${id}`),
 
   suiviAideHumanitaire: () => getJson<SuiviEtablissement[]>('/aide-humanitaire/dashboard'),
+  dettesEnCoursEtablissement: (etablissementId: string) => getJson<LigneDette[]>(`/aide-humanitaire/etablissements/${etablissementId}/dettes-en-cours`),
   versementsEtablissements: (etablissementId?: string) => getJson<VersementEtablissement[]>(`/aide-humanitaire/versements${buildQuery({ etablissement_id: etablissementId })}`),
   creerVersementEtablissement: (payload: VersementEtablissementInput) => sendJson<VersementEtablissement>('POST', '/aide-humanitaire/versements', payload),
   uploaderJustificatifVersement: (id: string, file: File) => sendFile<VersementEtablissement>(`/aide-humanitaire/versements/${id}/justificatif`, file),

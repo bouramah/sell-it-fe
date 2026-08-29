@@ -477,6 +477,7 @@ export interface VersementEtablissement {
   reference: string | null
   justificatif_url: string | null
   note: string | null
+  beneficiaires_regles: string[]
 }
 
 export interface SuiviEtablissement {

@@ -3,7 +3,6 @@ import { api } from '../api/client'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
-import Tabs from '../components/Tabs'
 import { formatGNF } from '../lib/format'
 import { usePermissions } from '../lib/permissions'
 import type { BaremeCreditBeneficiaire, Etablissement, ParametreFiscal, ReferentielItem } from '../types'
@@ -108,7 +107,6 @@ export default function Parametres() {
     }
   }
 
-  const categories = [...CATEGORIE_ORDER.filter((c) => c in referentiels), 'fiscalite', 'bareme_beneficiaires']
   const items = referentiels[categorie] ?? []
   const nomEtablissement = (id: string | null) => (id ? etablissements.find((e) => e.id === id)?.nom ?? id : 'Réseau (par défaut)')
 
@@ -169,15 +167,39 @@ export default function Parametres() {
         )}
       </div>
 
-      <Tabs
-        tabs={categories.map((c) => ({
-          key: c,
-          label: CATEGORIE_LABELS[c] ?? (c === 'fiscalite' ? 'Fiscalité (TVA)' : c === 'bareme_beneficiaires' ? 'Barème crédit Aide Humanitaire' : c),
-        }))}
-        active={categorie}
-        onChange={setCategorie}
-      />
+      <div className="flex items-start gap-6">
+        <nav className="w-56 shrink-0 space-y-4">
+          <div className="space-y-0.5">
+            <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Référentiels</p>
+            {CATEGORIE_ORDER.filter((c) => c in referentiels).map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategorie(c)}
+                className={`block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors ${
+                  categorie === c ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {CATEGORIE_LABELS[c] ?? c}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-0.5 border-t border-slate-200 pt-3">
+            <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Configuration avancée</p>
+            {(['fiscalite', 'bareme_beneficiaires'] as const).map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategorie(c)}
+                className={`block w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors ${
+                  categorie === c ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {c === 'fiscalite' ? 'Fiscalité (TVA)' : 'Barème crédit Aide Humanitaire'}
+              </button>
+            ))}
+          </div>
+        </nav>
 
+        <div className="min-w-0 flex-1 space-y-6">
       {categorie === 'secteurs' && (
         <p className="text-xs text-slate-400">
           Les secteurs déterminent la classification des produits, boutiques et fournisseurs dans toute l'application.
@@ -315,6 +337,8 @@ export default function Parametres() {
         {items.length === 0 && <p className="text-sm text-slate-400">Aucun élément dans ce référentiel.</p>}
       </div>
       )}
+        </div>
+      </div>
 
       {showModal && (
         <Modal

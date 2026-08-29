@@ -408,6 +408,7 @@ export interface VersementEtablissementInput {
   date: string
   reference?: string | null
   note?: string | null
+  dette_ids?: string[]
 }
 
 export interface ValidationGarantDecisionInput {
