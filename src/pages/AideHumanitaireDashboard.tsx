@@ -91,7 +91,7 @@ export default function AideHumanitaireDashboard() {
         <StatCard label="Crédits en cours" value={formatGNF(totalEnCours)} />
         <StatCard label="Crédits en retard" value={formatGNF(totalEnRetard)} />
         <StatCard label="Versements reçus" value={formatGNF(totalVerse)} />
-        <StatCard label="Écart cumulé" value={formatGNF(totalEcart)} />
+        <StatCard label="Solde dû cumulé" value={formatGNF(totalEcart)} />
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -103,7 +103,7 @@ export default function AideHumanitaireDashboard() {
               <th className="px-4 py-3 text-right">En cours</th>
               <th className="px-4 py-3 text-right">En retard</th>
               <th className="px-4 py-3 text-right">Versé</th>
-              <th className="px-4 py-3 text-right">Écart</th>
+              <th className="px-4 py-3 text-right">Solde dû</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -116,9 +116,7 @@ export default function AideHumanitaireDashboard() {
                   {formatGNF(s.credits_en_retard)}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-600">{formatGNF(s.montant_verse)}</td>
-                <td className={`px-4 py-3 text-right font-medium ${s.ecart > 0 ? 'text-amber-700' : 'text-slate-600'}`}>
-                  {formatGNF(s.ecart)}
-                </td>
+                <td className="px-4 py-3 text-right font-medium text-slate-900">{formatGNF(s.ecart)}</td>
               </tr>
             ))}
             {suivi.length === 0 && (
