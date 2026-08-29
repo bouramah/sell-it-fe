@@ -30,9 +30,9 @@ import Securite from './pages/Securite'
 import Parametres from './pages/Parametres'
 import Geographie from './pages/Geographie'
 import NotificationsPush from './pages/NotificationsPush'
-import Ecoles from './pages/Ecoles'
-import Enseignants from './pages/Enseignants'
-import AideEnseignantsDashboard from './pages/AideEnseignantsDashboard'
+import Etablissements from './pages/Etablissements'
+import Beneficiaires from './pages/Beneficiaires'
+import AideHumanitaireDashboard from './pages/AideHumanitaireDashboard'
 import ValidationGarant from './pages/ValidationGarant'
 
 export default function App() {
@@ -72,9 +72,9 @@ export default function App() {
               <Route path="parametres" element={<Parametres />} />
               <Route path="geographie" element={<Geographie />} />
               <Route path="notifications-push" element={<NotificationsPush />} />
-              <Route path="ecoles" element={<Ecoles />} />
-              <Route path="enseignants" element={<Enseignants />} />
-              <Route path="aide-enseignants" element={<AideEnseignantsDashboard />} />
+              <Route path="etablissements" element={<Etablissements />} />
+              <Route path="beneficiaires" element={<Beneficiaires />} />
+              <Route path="aide-humanitaire" element={<AideHumanitaireDashboard />} />
             </Route>
           </Route>
         </Routes>

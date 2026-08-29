@@ -52,7 +52,7 @@ export default function ValidationGarant() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5 text-center">
-          <h1 className="text-lg font-bold text-slate-900">KFSTORE — Aide aux Enseignants</h1>
+          <h1 className="text-lg font-bold text-slate-900">KFSTORE — Aide Humanitaire</h1>
           <p className="text-sm text-slate-500">Validation d'une demande de crédit alimentaire</p>
         </div>
 
@@ -67,7 +67,7 @@ export default function ValidationGarant() {
             <div className="rounded-md border border-slate-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{GARANT_LABELS[detail.type_garant] ?? detail.type_garant}</p>
               <p className="mt-2 text-sm text-slate-600">
-                <span className="font-semibold text-slate-900">{detail.enseignant_nom}</span> ({detail.ecole_nom}, {detail.grade_echelon})
+                <span className="font-semibold text-slate-900">{detail.beneficiaire_nom}</span> ({detail.etablissement_nom}, {detail.poste})
                 sollicite un crédit alimentaire de <span className="font-semibold text-slate-900">{formatGNF(detail.montant_souhaite)}</span>.
               </p>
               <p className="mt-2 text-sm text-slate-600">Motif : {detail.motif}</p>

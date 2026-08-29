@@ -1,5 +1,5 @@
 import type {
-  BaremeCreditEnseignant,
+  BaremeCreditBeneficiaire,
   Boutique,
   Caisse,
   Client as ClientEntity,
@@ -9,9 +9,9 @@ import type {
   ComptabiliteConsolidee,
   ConversationMessage,
   DemandeCredit,
-  Ecole,
+  Etablissement,
   EcritureComptable,
-  Enseignant,
+  Beneficiaire,
   EtatStockValorise,
   MargeProduits,
   DashboardConsolide,
@@ -53,27 +53,27 @@ import type {
   Utilisateur,
   ValidationGarantCredit,
   ValidationGarantDetail,
-  VersementEcole,
+  VersementEtablissement,
   Ville,
   Commune,
-  SuiviEcole,
+  SuiviEtablissement,
 } from '../types'
 import { clearToken, getToken } from '../lib/auth'
 import type {
-  BaremeCreditEnseignantInput,
+  BaremeCreditBeneficiaireInput,
   BoutiqueInput,
   CaisseInput,
   ClientInput,
   CommandeClientInput,
   CommandeFournisseurInput,
   CorrectionReceptionInput,
-  DemandeCreditEnseignantInput,
+  DemandeCreditBeneficiaireInput,
   DepenseInput,
   DetteInput,
-  EcoleInput,
-  EcoleUpdateInput,
-  EnseignantInput,
-  EnseignantUpdateInput,
+  EtablissementInput,
+  EtablissementUpdateInput,
+  BeneficiaireInput,
+  BeneficiaireUpdateInput,
   FournisseurInput,
   LigneReceptionInput,
   LivraisonInput,
@@ -107,7 +107,7 @@ import type {
   UtilisateurInput,
   ValidationGarantDecisionInput,
   Verifier2FARequest,
-  VersementEcoleInput,
+  VersementEtablissementInput,
 } from '../types/write'
 
 // En dev, VITE_SERVER_BASE pointe vers l'API locale (http://localhost:8000). En prod, laissé
@@ -358,31 +358,32 @@ export const api = {
   refuserDemandeCredit: (id: string) => sendJson<DemandeCredit>('POST', `/dettes/demandes-credit/${id}/refuser`, undefined),
   validationsGarantDemande: (id: string) => getJson<ValidationGarantCredit[]>(`/dettes/demandes-credit/${id}/validations-garant`),
 
-  // --- Aide aux Enseignants ---------------------------------------------------------
-  ecoles: () => getJson<Ecole[]>('/ecoles'),
-  creerEcole: (payload: EcoleInput) => sendJson<Ecole>('POST', '/ecoles', payload),
-  modifierEcole: (id: string, payload: EcoleUpdateInput) => sendJson<Ecole>('PUT', `/ecoles/${id}`, payload),
-  supprimerEcole: (id: string) => sendJson<void>('DELETE', `/ecoles/${id}`),
+  // --- Aide Humanitaire ---------------------------------------------------------
+  etablissements: () => getJson<Etablissement[]>('/etablissements'),
+  creerEtablissement: (payload: EtablissementInput) => sendJson<Etablissement>('POST', '/etablissements', payload),
+  modifierEtablissement: (id: string, payload: EtablissementUpdateInput) => sendJson<Etablissement>('PUT', `/etablissements/${id}`, payload),
+  supprimerEtablissement: (id: string) => sendJson<void>('DELETE', `/etablissements/${id}`),
 
-  enseignants: (ecoleId?: string) => getJson<Enseignant[]>(`/enseignants${buildQuery({ ecole_id: ecoleId })}`),
-  enseignant: (id: string) => getJson<Enseignant>(`/enseignants/${id}`),
-  creerEnseignant: (payload: EnseignantInput) => sendJson<Enseignant>('POST', '/enseignants', payload),
-  modifierEnseignant: (id: string, payload: EnseignantUpdateInput) => sendJson<Enseignant>('PUT', `/enseignants/${id}`, payload),
-  uploaderEngagementEnseignant: (id: string, file: File) => sendFile<Enseignant>(`/enseignants/${id}/engagement`, file),
-  supprimerEngagementEnseignant: (id: string) => sendJson<Enseignant>('DELETE', `/enseignants/${id}/engagement`),
-  creerDemandeCreditEnseignant: (id: string, payload: DemandeCreditEnseignantInput) =>
-    sendJson<Enseignant>('POST', `/enseignants/${id}/demandes-credit`, payload),
+  beneficiaires: (etablissementId?: string) => getJson<Beneficiaire[]>(`/beneficiaires${buildQuery({ etablissement_id: etablissementId })}`),
+  beneficiaire: (id: string) => getJson<Beneficiaire>(`/beneficiaires/${id}`),
+  creerBeneficiaire: (payload: BeneficiaireInput) => sendJson<Beneficiaire>('POST', '/beneficiaires', payload),
+  modifierBeneficiaire: (id: string, payload: BeneficiaireUpdateInput) => sendJson<Beneficiaire>('PUT', `/beneficiaires/${id}`, payload),
+  uploaderEngagementBeneficiaire: (id: string, file: File) => sendFile<Beneficiaire>(`/beneficiaires/${id}/engagement`, file),
+  supprimerEngagementBeneficiaire: (id: string) => sendJson<Beneficiaire>('DELETE', `/beneficiaires/${id}/engagement`),
+  creerDemandeCreditBeneficiaire: (id: string, payload: DemandeCreditBeneficiaireInput) =>
+    sendJson<Beneficiaire>('POST', `/beneficiaires/${id}/demandes-credit`, payload),
+  telechargerCarteMembre: (id: string) => downloadFile(`/beneficiaires/${id}/carte-membre.pdf`, `carte-membre-${id}.pdf`),
 
-  baremeCreditEnseignants: (ecoleId?: string) =>
-    getJson<BaremeCreditEnseignant[]>(`/parametres/bareme-credit-enseignants${buildQuery({ ecole_id: ecoleId })}`),
-  creerBaremeCreditEnseignant: (payload: BaremeCreditEnseignantInput) =>
-    sendJson<BaremeCreditEnseignant>('POST', '/parametres/bareme-credit-enseignants', payload),
-  supprimerBaremeCreditEnseignant: (id: string) => sendJson<void>('DELETE', `/parametres/bareme-credit-enseignants/${id}`),
+  baremeCreditBeneficiaires: (etablissementId?: string) =>
+    getJson<BaremeCreditBeneficiaire[]>(`/parametres/bareme-credit-beneficiaires${buildQuery({ etablissement_id: etablissementId })}`),
+  creerBaremeCreditBeneficiaire: (payload: BaremeCreditBeneficiaireInput) =>
+    sendJson<BaremeCreditBeneficiaire>('POST', '/parametres/bareme-credit-beneficiaires', payload),
+  supprimerBaremeCreditBeneficiaire: (id: string) => sendJson<void>('DELETE', `/parametres/bareme-credit-beneficiaires/${id}`),
 
-  suiviAideEnseignants: () => getJson<SuiviEcole[]>('/aide-enseignants/dashboard'),
-  versementsEcoles: (ecoleId?: string) => getJson<VersementEcole[]>(`/aide-enseignants/versements${buildQuery({ ecole_id: ecoleId })}`),
-  creerVersementEcole: (payload: VersementEcoleInput) => sendJson<VersementEcole>('POST', '/aide-enseignants/versements', payload),
-  uploaderJustificatifVersement: (id: string, file: File) => sendFile<VersementEcole>(`/aide-enseignants/versements/${id}/justificatif`, file),
+  suiviAideHumanitaire: () => getJson<SuiviEtablissement[]>('/aide-humanitaire/dashboard'),
+  versementsEtablissements: (etablissementId?: string) => getJson<VersementEtablissement[]>(`/aide-humanitaire/versements${buildQuery({ etablissement_id: etablissementId })}`),
+  creerVersementEtablissement: (payload: VersementEtablissementInput) => sendJson<VersementEtablissement>('POST', '/aide-humanitaire/versements', payload),
+  uploaderJustificatifVersement: (id: string, file: File) => sendFile<VersementEtablissement>(`/aide-humanitaire/versements/${id}/justificatif`, file),
 
   // Public — aucune authentification (le jeton SMS EST l'authentification)
   consulterValidationGarant: (token: string) => getJson<ValidationGarantDetail>(`/validation-garant/${token}`),

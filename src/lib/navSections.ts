@@ -74,11 +74,11 @@ export const sections: NavSection[] = [
     items: [{ to: '/notifications-push', label: 'Notifications push', visible: (p) => p.utilisateurs }],
   },
   {
-    title: 'Aide aux Enseignants',
+    title: 'Aide Humanitaire',
     items: [
-      { to: '/ecoles', label: 'Écoles partenaires', visible: (p) => p.ecoleGestion },
-      { to: '/enseignants', label: 'Enseignants', visible: (p) => p.enseignantGestion },
-      { to: '/aide-enseignants', label: 'Suivi crédits enseignants', visible: (p) => p.enseignantGestion || p.ecoleGestion },
+      { to: '/etablissements', label: 'Établissements partenaires', visible: (p) => p.etablissementGestion },
+      { to: '/beneficiaires', label: 'Bénéficiaires', visible: (p) => p.beneficiaireGestion },
+      { to: '/aide-humanitaire', label: 'Suivi crédits aide humanitaire', visible: (p) => p.beneficiaireGestion || p.etablissementGestion },
     ],
   },
   {

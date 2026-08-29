@@ -6,8 +6,8 @@ import SearchableSelect from '../components/SearchableSelect'
 import Tabs from '../components/Tabs'
 import { formatGNF } from '../lib/format'
 import { usePermissions } from '../lib/permissions'
-import type { BaremeCreditEnseignant, Ecole, ParametreFiscal, ReferentielItem } from '../types'
-import type { BaremeCreditEnseignantInput } from '../types/write'
+import type { BaremeCreditBeneficiaire, Etablissement, ParametreFiscal, ReferentielItem } from '../types'
+import type { BaremeCreditBeneficiaireInput } from '../types/write'
 
 const CATEGORIE_LABELS: Record<string, string> = {
   secteurs: 'Secteurs',
@@ -20,6 +20,8 @@ const CATEGORIE_LABELS: Record<string, string> = {
   categories_produits: 'Catégories de produits',
   caisses_comptes: 'Caisses & comptes',
   livreurs: 'Livreurs',
+  types_etablissement: 'Types d’établissement',
+  postes_beneficiaires: 'Postes (Aide Humanitaire)',
 }
 
 const CATEGORIE_ORDER = [
@@ -33,6 +35,8 @@ const CATEGORIE_ORDER = [
   'categories_produits',
   'caisses_comptes',
   'livreurs',
+  'types_etablissement',
+  'postes_beneficiaires',
 ]
 
 export default function Parametres() {
@@ -44,20 +48,20 @@ export default function Parametres() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<ReferentielItem | null>(null)
-  const { referentiels: canGererReferentiels, securite: canGererFiscal, baremeCreditEnseignantGestion: canGererBareme } = usePermissions()
+  const { referentiels: canGererReferentiels, securite: canGererFiscal, baremeCreditBeneficiaireGestion: canGererBareme } = usePermissions()
 
   const [fiscal, setFiscal] = useState<ParametreFiscal | null>(null)
   const [fiscalTaux, setFiscalTaux] = useState('18')
   const [fiscalActif, setFiscalActif] = useState(true)
   const [savingFiscal, setSavingFiscal] = useState(false)
 
-  const [baremes, setBaremes] = useState<BaremeCreditEnseignant[]>([])
-  const [ecoles, setEcoles] = useState<Ecole[]>([])
+  const [baremes, setBaremes] = useState<BaremeCreditBeneficiaire[]>([])
+  const [etablissements, setEtablissements] = useState<Etablissement[]>([])
   const [creatingBareme, setCreatingBareme] = useState(false)
-  const [baremeForm, setBaremeForm] = useState<BaremeCreditEnseignantInput>({ ecole_id: null, grade_echelon: '', plafond: 0, date_debut: new Date().toISOString().slice(0, 10) })
+  const [baremeForm, setBaremeForm] = useState<BaremeCreditBeneficiaireInput>({ etablissement_id: null, poste: '', plafond: 0, date_debut: new Date().toISOString().slice(0, 10) })
   const [baremeError, setBaremeError] = useState<string | null>(null)
   const [savingBareme, setSavingBareme] = useState(false)
-  const [confirmDeleteBareme, setConfirmDeleteBareme] = useState<BaremeCreditEnseignant | null>(null)
+  const [confirmDeleteBareme, setConfirmDeleteBareme] = useState<BaremeCreditBeneficiaire | null>(null)
 
   function refresh() {
     api.referentiels().then(setReferentiels)
@@ -66,8 +70,8 @@ export default function Parametres() {
       setFiscalTaux(String(Math.round(p.taux * 100)))
       setFiscalActif(p.actif)
     })
-    api.baremeCreditEnseignants().then(setBaremes)
-    api.ecoles().then(setEcoles)
+    api.baremeCreditBeneficiaires().then(setBaremes)
+    api.etablissements().then(setEtablissements)
   }
 
   useEffect(refresh, [])
@@ -77,7 +81,7 @@ export default function Parametres() {
     setSavingBareme(true)
     setBaremeError(null)
     try {
-      await api.creerBaremeCreditEnseignant(baremeForm)
+      await api.creerBaremeCreditBeneficiaire(baremeForm)
       setCreatingBareme(false)
       refresh()
     } catch (err) {
@@ -87,8 +91,8 @@ export default function Parametres() {
     }
   }
 
-  async function handleDeleteBareme(b: BaremeCreditEnseignant) {
-    await api.supprimerBaremeCreditEnseignant(b.id)
+  async function handleDeleteBareme(b: BaremeCreditBeneficiaire) {
+    await api.supprimerBaremeCreditBeneficiaire(b.id)
     setConfirmDeleteBareme(null)
     refresh()
   }
@@ -104,9 +108,9 @@ export default function Parametres() {
     }
   }
 
-  const categories = [...CATEGORIE_ORDER.filter((c) => c in referentiels), 'fiscalite', 'bareme_enseignants']
+  const categories = [...CATEGORIE_ORDER.filter((c) => c in referentiels), 'fiscalite', 'bareme_beneficiaires']
   const items = referentiels[categorie] ?? []
-  const nomEcole = (id: string | null) => (id ? ecoles.find((e) => e.id === id)?.nom ?? id : 'Réseau (par défaut)')
+  const nomEtablissement = (id: string | null) => (id ? etablissements.find((e) => e.id === id)?.nom ?? id : 'Réseau (par défaut)')
 
   function openCreate() {
     setNom('')
@@ -155,7 +159,7 @@ export default function Parametres() {
           <h1 className="text-2xl font-bold text-slate-900">Paramètres</h1>
           <p className="text-sm text-slate-500">Référentiels : secteurs, zones, canaux, paiements, dépenses, caisses</p>
         </div>
-        {canGererReferentiels && categorie !== 'fiscalite' && categorie !== 'bareme_enseignants' && (
+        {canGererReferentiels && categorie !== 'fiscalite' && categorie !== 'bareme_beneficiaires' && (
           <button
             onClick={openCreate}
             className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
@@ -168,7 +172,7 @@ export default function Parametres() {
       <Tabs
         tabs={categories.map((c) => ({
           key: c,
-          label: CATEGORIE_LABELS[c] ?? (c === 'fiscalite' ? 'Fiscalité (TVA)' : c === 'bareme_enseignants' ? 'Barème crédit enseignants' : c),
+          label: CATEGORIE_LABELS[c] ?? (c === 'fiscalite' ? 'Fiscalité (TVA)' : c === 'bareme_beneficiaires' ? 'Barème crédit Aide Humanitaire' : c),
         }))}
         active={categorie}
         onChange={setCategorie}
@@ -229,17 +233,17 @@ export default function Parametres() {
         </div>
       )}
 
-      {categorie === 'bareme_enseignants' && (
+      {categorie === 'bareme_beneficiaires' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="max-w-2xl text-xs text-slate-400">
-              Plafond de crédit alimentaire accordé à un enseignant selon son grade/échelon. Une ligne sans école
-              (« Réseau ») sert de référence par défaut ; une ligne rattachée à une école la surcharge pour cette
-              école si sa période couvre la date du jour.
+              Plafond de crédit alimentaire accordé à un bénéficiaire selon son poste. Une ligne sans établissement
+              (« Réseau ») sert de référence par défaut ; une ligne rattachée à un établissement la surcharge pour cet
+              établissement si sa période couvre la date du jour.
             </p>
             {canGererBareme && (
               <button
-                onClick={() => { setBaremeForm({ ecole_id: null, grade_echelon: '', plafond: 0, date_debut: new Date().toISOString().slice(0, 10) }); setBaremeError(null); setCreatingBareme(true) }}
+                onClick={() => { setBaremeForm({ etablissement_id: null, poste: '', plafond: 0, date_debut: new Date().toISOString().slice(0, 10) }); setBaremeError(null); setCreatingBareme(true) }}
                 className="shrink-0 rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800"
               >
                 + Ajouter un barème
@@ -250,7 +254,7 @@ export default function Parametres() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Grade / échelon</th>
+                  <th className="px-4 py-3">Poste</th>
                   <th className="px-4 py-3">Portée</th>
                   <th className="px-4 py-3 text-right">Plafond</th>
                   <th className="px-4 py-3">Période</th>
@@ -260,8 +264,8 @@ export default function Parametres() {
               <tbody className="divide-y divide-slate-100">
                 {baremes.map((b) => (
                   <tr key={b.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-900">{b.grade_echelon}</td>
-                    <td className="px-4 py-3 text-slate-600">{nomEcole(b.ecole_id)}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{b.poste}</td>
+                    <td className="px-4 py-3 text-slate-600">{nomEtablissement(b.etablissement_id)}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-900">{formatGNF(b.plafond)}</td>
                     <td className="px-4 py-3 text-slate-600">
                       {b.date_debut} → {b.date_fin ?? 'indéfini'}
@@ -288,7 +292,7 @@ export default function Parametres() {
         </div>
       )}
 
-      {categorie !== 'fiscalite' && categorie !== 'bareme_enseignants' && (
+      {categorie !== 'fiscalite' && categorie !== 'bareme_beneficiaires' && (
       <div className="space-y-3">
         {items.map((item) => (
           <div key={item.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -368,27 +372,27 @@ export default function Parametres() {
       )}
 
       {creatingBareme && (
-        <Modal title="Ajouter un barème de crédit enseignant" onClose={() => setCreatingBareme(false)}>
+        <Modal title="Ajouter un barème de crédit Aide Humanitaire" onClose={() => setCreatingBareme(false)}>
           <form onSubmit={handleSubmitBareme} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Grade / échelon</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Poste</label>
               <SearchableSelect
-                value={baremeForm.grade_echelon}
-                onChange={(v) => setBaremeForm({ ...baremeForm, grade_echelon: v })}
-                options={(referentiels.grades_enseignants ?? []).map((g) => ({ value: g.nom, label: g.nom }))}
-                placeholder="Sélectionner un grade…"
+                value={baremeForm.poste}
+                onChange={(v) => setBaremeForm({ ...baremeForm, poste: v })}
+                options={(referentiels.postes_beneficiaires ?? []).map((p) => ({ value: p.nom, label: p.nom }))}
+                placeholder="Sélectionner un poste…"
                 required
               />
-              <p className="mt-1 text-xs text-slate-400">Géré dans l'onglet « grades_enseignants » ci-dessus.</p>
+              <p className="mt-1 text-xs text-slate-400">Géré dans l'onglet « postes_beneficiaires » ci-dessus.</p>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">École (facultatif — vide = réseau)</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Établissement (facultatif — vide = réseau)</label>
               <SearchableSelect
-                value={baremeForm.ecole_id ?? ''}
-                onChange={(v) => setBaremeForm({ ...baremeForm, ecole_id: v || null })}
-                options={ecoles.map((e) => ({ value: e.id, label: e.nom }))}
-                allowEmpty="Réseau (toutes les écoles)"
-                placeholder="Réseau (toutes les écoles)"
+                value={baremeForm.etablissement_id ?? ''}
+                onChange={(v) => setBaremeForm({ ...baremeForm, etablissement_id: v || null })}
+                options={etablissements.map((e) => ({ value: e.id, label: e.nom }))}
+                allowEmpty="Réseau (tous les établissements)"
+                placeholder="Réseau (tous les établissements)"
               />
             </div>
             <div>
@@ -439,7 +443,7 @@ export default function Parametres() {
       {confirmDeleteBareme && (
         <ConfirmDialog
           title="Supprimer le barème"
-          message={`Supprimer le barème "${confirmDeleteBareme.grade_echelon}" (${nomEcole(confirmDeleteBareme.ecole_id)}) ? Cette action est irréversible.`}
+          message={`Supprimer le barème "${confirmDeleteBareme.poste}" (${nomEtablissement(confirmDeleteBareme.etablissement_id)}) ? Cette action est irréversible.`}
           confirmLabel="Supprimer"
           onConfirm={() => handleDeleteBareme(confirmDeleteBareme)}
           onCancel={() => setConfirmDeleteBareme(null)}

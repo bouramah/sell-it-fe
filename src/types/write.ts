@@ -348,10 +348,11 @@ export interface UtilisateurConnecte {
   boutique_ids: string[]
 }
 
-// --- Aide aux Enseignants -----------------------------------------------------------
+// --- Aide Humanitaire -----------------------------------------------------------
 
-export interface EcoleInput {
+export interface EtablissementInput {
   nom: string
+  type_etablissement: string
   adresse?: string | null
   referent_nom: string
   referent_contact: string
@@ -359,8 +360,9 @@ export interface EcoleInput {
   comptabilite_contact: string
 }
 
-export interface EcoleUpdateInput {
+export interface EtablissementUpdateInput {
   nom?: string
+  type_etablissement?: string
   adresse?: string | null
   referent_nom?: string
   referent_contact?: string
@@ -369,39 +371,39 @@ export interface EcoleUpdateInput {
   statut?: string
 }
 
-export interface EnseignantInput {
+export interface BeneficiaireInput {
   client_id?: string | null
   nom?: string
   contact?: string
   boutique_ids?: string[]
-  ecole_id: string
-  grade_echelon: string
+  etablissement_id: string
+  poste: string
   salaire_reference: number
 }
 
-export interface EnseignantUpdateInput {
-  ecole_id?: string
-  grade_echelon?: string
+export interface BeneficiaireUpdateInput {
+  etablissement_id?: string
+  poste?: string
   salaire_reference?: number
   plafond_suspendu?: boolean
 }
 
-export interface BaremeCreditEnseignantInput {
-  ecole_id?: string | null
-  grade_echelon: string
+export interface BaremeCreditBeneficiaireInput {
+  etablissement_id?: string | null
+  poste: string
   plafond: number
   date_debut: string
   date_fin?: string | null
 }
 
-export interface DemandeCreditEnseignantInput {
+export interface DemandeCreditBeneficiaireInput {
   boutique_id: string
   montant_souhaite: number
   motif: string
 }
 
-export interface VersementEcoleInput {
-  ecole_id: string
+export interface VersementEtablissementInput {
+  etablissement_id: string
   montant: number
   date: string
   reference?: string | null

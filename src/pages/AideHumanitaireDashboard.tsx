@@ -5,26 +5,26 @@ import SearchableSelect from '../components/SearchableSelect'
 import StatCard from '../components/StatCard'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { usePermissions } from '../lib/permissions'
-import type { Ecole, SuiviEcole, VersementEcole } from '../types'
-import type { VersementEcoleInput } from '../types/write'
+import type { Etablissement, SuiviEtablissement, VersementEtablissement } from '../types'
+import type { VersementEtablissementInput } from '../types/write'
 
-const EMPTY_FORM: VersementEcoleInput = { ecole_id: '', montant: 0, date: new Date().toISOString().slice(0, 10), reference: '' }
+const EMPTY_FORM: VersementEtablissementInput = { etablissement_id: '', montant: 0, date: new Date().toISOString().slice(0, 10), reference: '' }
 
-export default function AideEnseignantsDashboard() {
-  const [suivi, setSuivi] = useState<SuiviEcole[]>([])
-  const [versements, setVersements] = useState<VersementEcole[]>([])
-  const [ecoles, setEcoles] = useState<Ecole[]>([])
-  const { enseignantGestion: canGerer } = usePermissions()
+export default function AideHumanitaireDashboard() {
+  const [suivi, setSuivi] = useState<SuiviEtablissement[]>([])
+  const [versements, setVersements] = useState<VersementEtablissement[]>([])
+  const [etablissements, setEtablissements] = useState<Etablissement[]>([])
+  const { beneficiaireGestion: canGerer } = usePermissions()
 
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState<VersementEcoleInput>(EMPTY_FORM)
+  const [form, setForm] = useState<VersementEtablissementInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   function refresh() {
-    api.suiviAideEnseignants().then(setSuivi)
-    api.versementsEcoles().then(setVersements)
-    api.ecoles().then(setEcoles)
+    api.suiviAideHumanitaire().then(setSuivi)
+    api.versementsEtablissements().then(setVersements)
+    api.etablissements().then(setEtablissements)
   }
 
   useEffect(refresh, [])
@@ -40,7 +40,7 @@ export default function AideEnseignantsDashboard() {
     setSaving(true)
     setError(null)
     try {
-      await api.creerVersementEcole(form)
+      await api.creerVersementEtablissement(form)
       setCreating(false)
       refresh()
     } catch (err) {
@@ -59,8 +59,8 @@ export default function AideEnseignantsDashboard() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Suivi crédits enseignants</h1>
-          <p className="text-sm text-slate-500">Aide aux Enseignants — crédits en cours et rapprochement des versements par école</p>
+          <h1 className="text-2xl font-bold text-slate-900">Suivi crédits Aide Humanitaire</h1>
+          <p className="text-sm text-slate-500">Crédits en cours et rapprochement des versements par établissement</p>
         </div>
         {canGerer && (
           <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
@@ -80,8 +80,8 @@ export default function AideEnseignantsDashboard() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3">École</th>
-              <th className="px-4 py-3 text-right">Enseignants</th>
+              <th className="px-4 py-3">Établissement</th>
+              <th className="px-4 py-3 text-right">Bénéficiaires</th>
               <th className="px-4 py-3 text-right">En cours</th>
               <th className="px-4 py-3 text-right">En retard</th>
               <th className="px-4 py-3 text-right">Versé</th>
@@ -90,9 +90,9 @@ export default function AideEnseignantsDashboard() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {suivi.map((s) => (
-              <tr key={s.ecole_id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">{s.ecole_nom}</td>
-                <td className="px-4 py-3 text-right text-slate-600">{s.nombre_enseignants}</td>
+              <tr key={s.etablissement_id} className="hover:bg-slate-50">
+                <td className="px-4 py-3 font-medium text-slate-900">{s.etablissement_nom}</td>
+                <td className="px-4 py-3 text-right text-slate-600">{s.nombre_beneficiaires}</td>
                 <td className="px-4 py-3 text-right text-slate-600">{formatGNF(s.credits_en_cours)}</td>
                 <td className={`px-4 py-3 text-right font-medium ${s.credits_en_retard > 0 ? 'text-red-600' : 'text-slate-600'}`}>
                   {formatGNF(s.credits_en_retard)}
@@ -106,7 +106,7 @@ export default function AideEnseignantsDashboard() {
             {suivi.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
-                  Aucune école partenaire.
+                  Aucun établissement partenaire.
                 </td>
               </tr>
             )}
@@ -121,7 +121,7 @@ export default function AideEnseignantsDashboard() {
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">École</th>
+                <th className="px-4 py-3">Établissement</th>
                 <th className="px-4 py-3 text-right">Montant</th>
                 <th className="px-4 py-3">Référence</th>
               </tr>
@@ -130,7 +130,7 @@ export default function AideEnseignantsDashboard() {
               {versements.map((v) => (
                 <tr key={v.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-slate-500">{formatShortDate(v.date)}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{v.ecole_nom}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900">{v.etablissement_nom}</td>
                   <td className="px-4 py-3 text-right text-slate-600">{formatGNF(v.montant)}</td>
                   <td className="px-4 py-3 text-slate-600">{v.reference ?? '—'}</td>
                 </tr>
@@ -148,14 +148,14 @@ export default function AideEnseignantsDashboard() {
       </div>
 
       {creating && (
-        <Modal title="Enregistrer un versement école" onClose={() => setCreating(false)}>
+        <Modal title="Enregistrer un versement établissement" onClose={() => setCreating(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">École</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Établissement</label>
               <SearchableSelect
-                value={form.ecole_id}
-                onChange={(v) => setForm({ ...form, ecole_id: v })}
-                options={ecoles.map((e) => ({ value: e.id, label: e.nom }))}
+                value={form.etablissement_id}
+                onChange={(v) => setForm({ ...form, etablissement_id: v })}
+                options={etablissements.map((e) => ({ value: e.id, label: e.nom }))}
                 required
               />
             </div>

@@ -10,45 +10,46 @@ import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
-import type { Ecole, Enseignant } from '../types'
-import type { DemandeCreditEnseignantInput, EnseignantInput } from '../types/write'
+import type { Beneficiaire, Etablissement } from '../types'
+import type { BeneficiaireInput, DemandeCreditBeneficiaireInput } from '../types/write'
 
-const EMPTY_FORM: EnseignantInput = { nom: '', contact: '', boutique_ids: [], ecole_id: '', grade_echelon: '', salaire_reference: 0 }
+const EMPTY_FORM: BeneficiaireInput = { nom: '', contact: '', boutique_ids: [], etablissement_id: '', poste: '', salaire_reference: 0 }
 
-export default function Enseignants() {
-  const [enseignants, setEnseignants] = useState<Enseignant[]>([])
-  const [ecoles, setEcoles] = useState<Ecole[]>([])
-  const [grades, setGrades] = useState<string[]>([])
-  const [ecoleFiltre, setEcoleFiltre] = useState('')
+export default function Beneficiaires() {
+  const [beneficiaires, setBeneficiaires] = useState<Beneficiaire[]>([])
+  const [etablissements, setEtablissements] = useState<Etablissement[]>([])
+  const [postes, setPostes] = useState<string[]>([])
+  const [etablissementFiltre, setEtablissementFiltre] = useState('')
   const { boutiques } = useBoutiques()
-  const { enseignantGestion: canGerer } = usePermissions()
+  const { beneficiaireGestion: canGerer } = usePermissions()
 
   const [creating, setCreating] = useState(false)
-  const [editing, setEditing] = useState<Enseignant | null>(null)
-  const [form, setForm] = useState<EnseignantInput>(EMPTY_FORM)
+  const [editing, setEditing] = useState<Beneficiaire | null>(null)
+  const [form, setForm] = useState<BeneficiaireInput>(EMPTY_FORM)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const [demandant, setDemandant] = useState<Enseignant | null>(null)
-  const [demandeForm, setDemandeForm] = useState<DemandeCreditEnseignantInput>({ boutique_id: '', montant_souhaite: 0, motif: '' })
+  const [demandant, setDemandant] = useState<Beneficiaire | null>(null)
+  const [demandeForm, setDemandeForm] = useState<DemandeCreditBeneficiaireInput>({ boutique_id: '', montant_souhaite: 0, motif: '' })
   const [demandeError, setDemandeError] = useState<string | null>(null)
   const [demandeSaving, setDemandeSaving] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [telechargeantId, setTelechargeantId] = useState<string | null>(null)
 
   function refresh() {
-    api.enseignants(ecoleFiltre || undefined).then(setEnseignants)
-    api.ecoles().then(setEcoles)
-    api.referentiels().then((r) => setGrades((r.grades_enseignants ?? []).map((g) => g.nom)))
+    api.beneficiaires(etablissementFiltre || undefined).then(setBeneficiaires)
+    api.etablissements().then(setEtablissements)
+    api.referentiels().then((r) => setPostes((r.postes_beneficiaires ?? []).map((p) => p.nom)))
   }
 
-  useEffect(refresh, [ecoleFiltre])
+  useEffect(refresh, [etablissementFiltre])
 
-  const nomEcole = useCallback((id: string) => ecoles.find((e) => e.id === id)?.nom ?? id, [ecoles])
-  const getFields = useCallback((e: Enseignant) => [e.client_nom, e.client_contact, nomEcole(e.ecole_id), e.grade_echelon], [nomEcole])
-  const { query, setQuery, filtered } = useSearch(enseignants, getFields)
+  const nomEtablissement = useCallback((id: string) => etablissements.find((e) => e.id === id)?.nom ?? id, [etablissements])
+  const getFields = useCallback((b: Beneficiaire) => [b.client_nom, b.client_contact, b.numero_membre, nomEtablissement(b.etablissement_id), b.poste], [nomEtablissement])
+  const { query, setQuery, filtered } = useSearch(beneficiaires, getFields)
   const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
@@ -57,27 +58,27 @@ export default function Enseignants() {
     setCreating(true)
   }
 
-  function openEdit(e: Enseignant) {
-    setForm({ client_id: e.client_id, ecole_id: e.ecole_id, grade_echelon: e.grade_echelon, salaire_reference: e.salaire_reference ?? 0 })
+  function openEdit(b: Beneficiaire) {
+    setForm({ client_id: b.client_id, etablissement_id: b.etablissement_id, poste: b.poste, salaire_reference: b.salaire_reference ?? 0 })
     setError(null)
-    setEditing(e)
+    setEditing(b)
   }
 
   async function handleSubmit(ev: FormEvent) {
     ev.preventDefault()
-    if (!form.ecole_id || !form.grade_echelon) {
-      setError('École et grade/échelon sont requis.')
+    if (!form.etablissement_id || !form.poste) {
+      setError('Établissement et poste sont requis.')
       return
     }
     setSaving(true)
     setError(null)
     try {
       if (editing) {
-        await api.modifierEnseignant(editing.id, {
-          ecole_id: form.ecole_id, grade_echelon: form.grade_echelon, salaire_reference: form.salaire_reference,
+        await api.modifierBeneficiaire(editing.id, {
+          etablissement_id: form.etablissement_id, poste: form.poste, salaire_reference: form.salaire_reference,
         })
       } else {
-        await api.creerEnseignant(form)
+        await api.creerBeneficiaire(form)
       }
       setCreating(false)
       setEditing(null)
@@ -89,8 +90,8 @@ export default function Enseignants() {
     }
   }
 
-  function openFilePicker(e: Enseignant) {
-    uploadTargetRef.current = e.id
+  function openFilePicker(b: Beneficiaire) {
+    uploadTargetRef.current = b.id
     fileInputRef.current?.click()
   }
 
@@ -101,25 +102,34 @@ export default function Enseignants() {
     if (!file || !targetId) return
     setUploadingId(targetId)
     try {
-      await api.uploaderEngagementEnseignant(targetId, file)
+      await api.uploaderEngagementBeneficiaire(targetId, file)
       refresh()
     } finally {
       setUploadingId(null)
     }
   }
 
-  async function handleRemoveEngagement(e: Enseignant) {
-    setUploadingId(e.id)
+  async function handleRemoveEngagement(b: Beneficiaire) {
+    setUploadingId(b.id)
     try {
-      await api.supprimerEngagementEnseignant(e.id)
+      await api.supprimerEngagementBeneficiaire(b.id)
       refresh()
     } finally {
       setUploadingId(null)
     }
   }
 
-  function openDemande(e: Enseignant) {
-    setDemandant(e)
+  async function handleTelechargerCarte(b: Beneficiaire) {
+    setTelechargeantId(b.id)
+    try {
+      await api.telechargerCarteMembre(b.id)
+    } finally {
+      setTelechargeantId(null)
+    }
+  }
+
+  function openDemande(b: Beneficiaire) {
+    setDemandant(b)
     setDemandeForm({ boutique_id: '', montant_souhaite: 0, motif: '' })
     setDemandeError(null)
   }
@@ -130,7 +140,7 @@ export default function Enseignants() {
     setDemandeSaving(true)
     setDemandeError(null)
     try {
-      await api.creerDemandeCreditEnseignant(demandant.id, demandeForm)
+      await api.creerDemandeCreditBeneficiaire(demandant.id, demandeForm)
       setDemandant(null)
       refresh()
     } catch (err) {
@@ -146,25 +156,25 @@ export default function Enseignants() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Enseignants bénéficiaires</h1>
-          <p className="text-sm text-slate-500">Aide aux Enseignants — fiches, engagement signé, plafond de crédit</p>
+          <h1 className="text-2xl font-bold text-slate-900">Bénéficiaires</h1>
+          <p className="text-sm text-slate-500">Aide Humanitaire — fiches, engagement signé, plafond de crédit</p>
         </div>
         {canGerer && (
           <button onClick={openCreate} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-            + Ajouter un enseignant
+            + Ajouter un bénéficiaire
           </button>
         )}
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un enseignant…" />
+        <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un bénéficiaire…" />
         <div className="w-56">
           <SearchableSelect
-            value={ecoleFiltre}
-            onChange={setEcoleFiltre}
-            options={ecoles.map((e) => ({ value: e.id, label: e.nom }))}
-            allowEmpty="Toutes les écoles"
-            placeholder="Toutes les écoles"
+            value={etablissementFiltre}
+            onChange={setEtablissementFiltre}
+            options={etablissements.map((e) => ({ value: e.id, label: e.nom }))}
+            allowEmpty="Tous les établissements"
+            placeholder="Tous les établissements"
           />
         </div>
       </div>
@@ -175,62 +185,71 @@ export default function Enseignants() {
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3">Enseignant</th>
-              <th className="px-4 py-3">École</th>
-              <th className="px-4 py-3">Grade / échelon</th>
+              <th className="px-4 py-3">Bénéficiaire</th>
+              <th className="px-4 py-3">N° membre</th>
+              <th className="px-4 py-3">Établissement</th>
+              <th className="px-4 py-3">Poste</th>
               <th className="px-4 py-3">Engagement</th>
               <th className="px-4 py-3 text-right">Plafond disponible</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginated.map((e) => (
-              <tr key={e.id} className="hover:bg-slate-50">
+            {paginated.map((b) => (
+              <tr key={b.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">
-                  {e.client_nom}
-                  <div className="text-xs font-normal text-slate-400">{e.client_contact}</div>
+                  {b.client_nom}
+                  <div className="text-xs font-normal text-slate-400">{b.client_contact}</div>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{nomEcole(e.ecole_id)}</td>
-                <td className="px-4 py-3 text-slate-600">{e.grade_echelon}</td>
+                <td className="px-4 py-3 text-slate-600">{b.numero_membre}</td>
+                <td className="px-4 py-3 text-slate-600">{nomEtablissement(b.etablissement_id)}</td>
+                <td className="px-4 py-3 text-slate-600">{b.poste}</td>
                 <td className="px-4 py-3">
-                  {e.engagement_signe_url ? (
+                  {b.engagement_signe_url ? (
                     <div className="flex items-center gap-2">
-                      <a href={`${SERVER_BASE}${e.engagement_signe_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
+                      <a href={`${SERVER_BASE}${b.engagement_signe_url}`} target="_blank" rel="noreferrer" className="font-medium text-teal-700 hover:underline">
                         Voir
                       </a>
                       {canGerer && (
-                        <button onClick={() => handleRemoveEngagement(e)} disabled={uploadingId === e.id} className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50">
+                        <button onClick={() => handleRemoveEngagement(b)} disabled={uploadingId === b.id} className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50">
                           Retirer
                         </button>
                       )}
                     </div>
                   ) : canGerer ? (
-                    <button onClick={() => openFilePicker(e)} disabled={uploadingId === e.id} className="font-medium text-teal-700 hover:underline disabled:opacity-50">
-                      {uploadingId === e.id ? 'Envoi…' : '+ Ajouter'}
+                    <button onClick={() => openFilePicker(b)} disabled={uploadingId === b.id} className="font-medium text-teal-700 hover:underline disabled:opacity-50">
+                      {uploadingId === b.id ? 'Envoi…' : '+ Ajouter'}
                     </button>
                   ) : (
                     <span className="text-slate-400">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {e.plafond_suspendu ? (
+                  {b.plafond_suspendu ? (
                     <Badge tone="danger">Suspendu</Badge>
                   ) : (
-                    <span className="font-medium text-slate-900">{formatGNF(e.plafond_disponible)}</span>
+                    <span className="font-medium text-slate-900">{formatGNF(b.plafond_disponible)}</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
                   {canGerer && (
-                    <div className="flex gap-3">
-                      <button onClick={() => openEdit(e)} className="font-medium text-teal-700 hover:underline">
+                    <div className="flex flex-wrap gap-3">
+                      <button onClick={() => openEdit(b)} className="font-medium text-teal-700 hover:underline">
                         Modifier
                       </button>
                       <button
-                        onClick={() => openDemande(e)}
-                        disabled={!e.credit_autorise || e.plafond_suspendu}
+                        onClick={() => openDemande(b)}
+                        disabled={!b.credit_autorise || b.plafond_suspendu}
                         className="font-medium text-teal-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-300 disabled:no-underline"
                       >
                         Demander un crédit
+                      </button>
+                      <button
+                        onClick={() => handleTelechargerCarte(b)}
+                        disabled={telechargeantId === b.id}
+                        className="font-medium text-teal-700 hover:underline disabled:opacity-50"
+                      >
+                        {telechargeantId === b.id ? 'Génération…' : 'Carte de membre'}
                       </button>
                     </div>
                   )}
@@ -239,8 +258,8 @@ export default function Enseignants() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-400">
-                  Aucun enseignant.
+                <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-400">
+                  Aucun bénéficiaire.
                 </td>
               </tr>
             )}
@@ -250,7 +269,7 @@ export default function Enseignants() {
       </div>
 
       {showModal && (
-        <Modal title={editing ? "Modifier l'enseignant" : 'Ajouter un enseignant'} onClose={() => { setCreating(false); setEditing(null) }}>
+        <Modal title={editing ? 'Modifier le bénéficiaire' : 'Ajouter un bénéficiaire'} onClose={() => { setCreating(false); setEditing(null) }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {!editing && (
               <>
@@ -276,21 +295,21 @@ export default function Enseignants() {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Boutique(s) fréquentée(s)</label>
                   <div className="flex flex-wrap gap-3">
-                    {boutiques.map((b) => (
-                      <label key={b.id} className="flex items-center gap-1.5 text-sm text-slate-700">
+                    {boutiques.map((bt) => (
+                      <label key={bt.id} className="flex items-center gap-1.5 text-sm text-slate-700">
                         <input
                           type="checkbox"
-                          checked={(form.boutique_ids ?? []).includes(b.id)}
+                          checked={(form.boutique_ids ?? []).includes(bt.id)}
                           onChange={() =>
                             setForm((f) => ({
                               ...f,
-                              boutique_ids: (f.boutique_ids ?? []).includes(b.id)
-                                ? (f.boutique_ids ?? []).filter((x) => x !== b.id)
-                                : [...(f.boutique_ids ?? []), b.id],
+                              boutique_ids: (f.boutique_ids ?? []).includes(bt.id)
+                                ? (f.boutique_ids ?? []).filter((x) => x !== bt.id)
+                                : [...(f.boutique_ids ?? []), bt.id],
                             }))
                           }
                         />
-                        {b.nom}
+                        {bt.nom}
                       </label>
                     ))}
                   </div>
@@ -298,25 +317,25 @@ export default function Enseignants() {
               </>
             )}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">École de rattachement</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Établissement de rattachement</label>
               <SearchableSelect
-                value={form.ecole_id}
-                onChange={(v) => setForm({ ...form, ecole_id: v })}
-                options={ecoles.map((e) => ({ value: e.id, label: e.nom }))}
+                value={form.etablissement_id}
+                onChange={(v) => setForm({ ...form, etablissement_id: v })}
+                options={etablissements.map((e) => ({ value: e.id, label: e.nom }))}
                 required
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Grade / échelon</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Poste</label>
               <SearchableSelect
-                value={form.grade_echelon}
-                onChange={(v) => setForm({ ...form, grade_echelon: v })}
-                options={grades.map((g) => ({ value: g, label: g }))}
-                placeholder="Sélectionner un grade…"
+                value={form.poste}
+                onChange={(v) => setForm({ ...form, poste: v })}
+                options={postes.map((p) => ({ value: p, label: p }))}
+                placeholder="Sélectionner un poste…"
                 required
               />
               <p className="mt-1 text-xs text-slate-400">
-                Géré depuis Paramètres → Référentiels → « grades_enseignants ».
+                Géré depuis Paramètres → Référentiels → « postes_beneficiaires ».
               </p>
             </div>
             <div>
@@ -380,8 +399,8 @@ export default function Enseignants() {
               />
             </div>
             <p className="text-xs text-slate-400">
-              Un lien de validation par SMS sera envoyé au garant référent et au garant comptabilité de l'école — le
-              crédit ne s'active qu'une fois les deux validations obtenues.
+              Un lien de validation par SMS sera envoyé au garant référent et au garant comptabilité de
+              l'établissement — le crédit ne s'active qu'une fois les deux validations obtenues.
             </p>
             {demandeError && <p className="text-sm text-red-600">{demandeError}</p>}
             <div className="flex justify-end gap-3 pt-2">

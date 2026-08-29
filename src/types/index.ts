@@ -401,31 +401,33 @@ export interface DemandeCredit {
   date_creation: string
 }
 
-// --- Aide aux Enseignants -----------------------------------------------------------
+// --- Aide Humanitaire -----------------------------------------------------------
 
-export type StatutEcole = 'active' | 'inactive'
+export type StatutEtablissement = 'active' | 'inactive'
 export type TypeGarant = 'referent' | 'comptabilite'
 export type StatutValidationGarant = 'en_attente' | 'validee' | 'refusee'
 
-export interface Ecole {
+export interface Etablissement {
   id: string
   nom: string
+  type_etablissement: string
   adresse: string | null
   referent_nom: string
   referent_contact: string
   comptabilite_nom: string
   comptabilite_contact: string
-  statut: StatutEcole
+  statut: StatutEtablissement
 }
 
-export interface Enseignant {
+export interface Beneficiaire {
   id: string
   client_id: string
   client_nom: string
   client_contact: string
-  ecole_id: string
-  ecole_nom: string
-  grade_echelon: string
+  etablissement_id: string
+  etablissement_nom: string
+  numero_membre: string
+  poste: string
   salaire_reference: number | null
   engagement_signe_url: string | null
   engagement_signe_date: string | null
@@ -434,11 +436,11 @@ export interface Enseignant {
   credit_autorise: boolean
 }
 
-export interface BaremeCreditEnseignant {
+export interface BaremeCreditBeneficiaire {
   id: string
-  ecole_id: string | null
-  ecole_nom: string | null
-  grade_echelon: string
+  etablissement_id: string | null
+  etablissement_nom: string | null
+  poste: string
   plafond: number
   date_debut: string
   date_fin: string | null
@@ -454,9 +456,9 @@ export interface ValidationGarantCredit {
 }
 
 export interface ValidationGarantDetail {
-  enseignant_nom: string
-  ecole_nom: string
-  grade_echelon: string
+  beneficiaire_nom: string
+  etablissement_nom: string
+  poste: string
   montant_souhaite: number
   motif: string
   salaire_reference: number | null
@@ -466,10 +468,10 @@ export interface ValidationGarantDetail {
   expire_le: string
 }
 
-export interface VersementEcole {
+export interface VersementEtablissement {
   id: string
-  ecole_id: string
-  ecole_nom: string
+  etablissement_id: string
+  etablissement_nom: string
   montant: number
   date: string
   reference: string | null
@@ -477,10 +479,10 @@ export interface VersementEcole {
   note: string | null
 }
 
-export interface SuiviEcole {
-  ecole_id: string
-  ecole_nom: string
-  nombre_enseignants: number
+export interface SuiviEtablissement {
+  etablissement_id: string
+  etablissement_nom: string
+  nombre_beneficiaires: number
   credits_en_cours: number
   credits_en_retard: number
   montant_verse: number

@@ -18,7 +18,7 @@ import {
   type Caisse,
   type Client,
   type DemandeCredit,
-  type Enseignant,
+  type Beneficiaire,
   type Fournisseur,
   type LigneDette,
   type ModePaiement,
@@ -55,8 +55,8 @@ export default function Dettes() {
   const { boutiques, nomBoutique } = useBoutiques()
   const { detteCreation: canCreerDette, remboursement: canRembourser } = usePermissions()
 
-  const [demandesEnseignants, setDemandesEnseignants] = useState<DemandeCredit[]>([])
-  const [enseignants, setEnseignants] = useState<Enseignant[]>([])
+  const [demandesBeneficiaires, setDemandesBeneficiaires] = useState<DemandeCredit[]>([])
+  const [beneficiaires, setBeneficiaires] = useState<Beneficiaire[]>([])
   const [expandedDemandeId, setExpandedDemandeId] = useState<string | null>(null)
   const [validationsByDemande, setValidationsByDemande] = useState<Record<string, ValidationGarantCredit[]>>({})
   const [loadingValidations, setLoadingValidations] = useState(false)
@@ -65,10 +65,10 @@ export default function Dettes() {
     api.dettes(tiers).then(setDettes)
   }
 
-  function refreshDemandesEnseignants() {
+  function refreshDemandesBeneficiaires() {
     api.demandesCredit().then((demandes) => {
-      const idsEnseignants = new Set(enseignants.map((e) => e.client_id))
-      setDemandesEnseignants(demandes.filter((d) => idsEnseignants.has(d.client_id)))
+      const idsBeneficiaires = new Set(beneficiaires.map((b) => b.client_id))
+      setDemandesBeneficiaires(demandes.filter((d) => idsBeneficiaires.has(d.client_id)))
     })
   }
 
@@ -78,11 +78,11 @@ export default function Dettes() {
     api.fournisseurs().then(setFournisseurs)
     api.caisses().then(setCaisses)
     api.utilisateurs().then(setUtilisateurs)
-    api.enseignants().then(setEnseignants)
+    api.beneficiaires().then(setBeneficiaires)
   }, [])
   useEffect(() => {
-    if (enseignants.length > 0) refreshDemandesEnseignants()
-  }, [enseignants])
+    if (beneficiaires.length > 0) refreshDemandesBeneficiaires()
+  }, [beneficiaires])
 
   async function toggleExpandDemande(id: string) {
     if (expandedDemandeId === id) {
@@ -298,17 +298,17 @@ export default function Dettes() {
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
-      {tiers === 'client' && demandesEnseignants.length > 0 && (
+      {tiers === 'client' && demandesBeneficiaires.length > 0 && (
         <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Demandes de crédit enseignants</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Demandes de crédit Aide Humanitaire</h2>
           <p className="mb-3 text-xs text-slate-400">
-            Validées par les garants (référent + comptabilité de l'école) via un lien SMS — le staff ne peut pas valider ces demandes ici.
+            Validées par les garants (référent + comptabilité de l'établissement) via un lien SMS — le staff ne peut pas valider ces demandes ici.
           </p>
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Enseignant</th>
+                  <th className="px-4 py-3">Bénéficiaire</th>
                   <th className="px-4 py-3 text-right">Montant souhaité</th>
                   <th className="px-4 py-3">Motif</th>
                   <th className="px-4 py-3">Date</th>
@@ -317,7 +317,7 @@ export default function Dettes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {demandesEnseignants.map((d) => (
+                {demandesBeneficiaires.map((d) => (
                   <Fragment key={d.id}>
                     <tr className="hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-900">{d.client_nom}</td>
