@@ -11,10 +11,10 @@ export default function Tabs({ tabs, active, onChange }: TabsProps) {
         <button
           key={tab.key}
           onClick={() => onChange(tab.key)}
-          className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+          className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-all ${
             active === tab.key
-              ? 'border-teal-700 bg-teal-700 text-white'
-              : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+              ? 'border-teal-700 bg-teal-700 text-white shadow-sm'
+              : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:bg-slate-50'
           }`}
         >
           {tab.label}

@@ -96,10 +96,10 @@ export default function SearchableSelect({
         }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition-colors focus:border-teal-600 focus:ring-1 focus:ring-teal-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
       />
       {open && (
-        <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg ring-1 ring-black/5">
           {filtered.length === 0 && <div className="px-3 py-2 text-sm text-slate-400">Aucun résultat</div>}
           {filtered.map((o, i) => (
             <button
@@ -109,7 +109,7 @@ export default function SearchableSelect({
                 e.preventDefault()
                 select(o)
               }}
-              className={`block w-full px-3 py-2 text-left text-sm ${
+              className={`block w-full px-3 py-2 text-left text-sm transition-colors ${
                 i === highlight ? 'bg-teal-50 text-teal-800' : 'text-slate-700 hover:bg-slate-50'
               } ${o.value === value ? 'font-medium' : ''}`}
             >

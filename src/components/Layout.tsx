@@ -18,20 +18,22 @@ export default function Layout() {
     navigate('/login')
   }
 
+  const initiales = user ? `${user.prenom[0] ?? ''}${user.nom[0] ?? ''}`.toUpperCase() : '—'
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex">
-        <aside className="w-64 shrink-0 border-r border-slate-200 bg-white sticky top-0 h-screen overflow-y-auto p-4">
-          <div className="mb-6 px-2">
+        <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white sticky top-0 h-screen shadow-[1px_0_4px_rgba(15,23,42,0.03)]">
+          <div className="border-b border-slate-100 px-5 py-5">
             <img src="/logo.jpeg" alt="KFSTORE" className="h-8 w-auto" />
           </div>
-          <nav className="space-y-5">
+          <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
             {sections.map((section) => {
               const items = section.items.filter((item) => !item.visible || item.visible(permissions))
               if (items.length === 0) return null
               return (
                 <div key={section.title}>
-                  <div className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  <div className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                     {section.title}
                   </div>
                   <div className="space-y-0.5">
@@ -41,10 +43,10 @@ export default function Layout() {
                         to={item.to}
                         end={item.end}
                         className={({ isActive }) =>
-                          `block rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                          `block rounded-lg border-l-[3px] px-3 py-1.5 text-sm font-medium transition-colors ${
                             isActive
-                              ? 'bg-teal-50 text-teal-800'
-                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                              ? 'border-teal-600 bg-teal-50 pl-[9px] text-teal-800'
+                              : 'border-transparent pl-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                           }`
                         }
                       >
@@ -56,17 +58,36 @@ export default function Layout() {
               )
             })}
           </nav>
-          <div className="mt-6 border-t border-slate-100 pt-4 px-2">
-            <div className="text-sm font-semibold text-slate-900">
-              {user ? `${user.prenom} ${user.nom}` : '—'}
+          <div className="border-t border-slate-100 p-3">
+            <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-semibold text-teal-800">
+                {initiales}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-slate-900">
+                  {user ? `${user.prenom} ${user.nom}` : '—'}
+                </div>
+                <div className="truncate text-xs text-slate-500">{user ? nomRole(user.role) : ''}</div>
+              </div>
+              <button
+                onClick={() => setConfirmLogout(true)}
+                title="Déconnexion"
+                className="shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <path
+                    fillRule="evenodd"
+                    d="M3 4.25A2.25 2.25 0 0 1 5.25 2h5.5A2.25 2.25 0 0 1 13 4.25v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 0-.75-.75h-5.5a.75.75 0 0 0-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 0 0 .75-.75v-2a.75.75 0 0 1 1.5 0v2A2.25 2.25 0 0 1 10.75 18h-5.5A2.25 2.25 0 0 1 3 15.75V4.25Z"
+                    clipRule="evenodd"
+                  />
+                  <path
+                    fillRule="evenodd"
+                    d="M6 10a.75.75 0 0 1 .75-.75h9.19l-2.72-2.72a.75.75 0 1 1 1.06-1.06l4 4a.75.75 0 0 1 0 1.06l-4 4a.75.75 0 1 1-1.06-1.06l2.72-2.72H6.75A.75.75 0 0 1 6 10Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
             </div>
-            <div className="text-xs text-slate-500">{user ? nomRole(user.role) : ''}</div>
-            <button
-              onClick={() => setConfirmLogout(true)}
-              className="mt-2 text-xs font-medium text-slate-500 hover:text-red-600"
-            >
-              Déconnexion
-            </button>
           </div>
         </aside>
         <main className="flex-1 p-8">

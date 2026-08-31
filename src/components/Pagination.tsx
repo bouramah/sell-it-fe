@@ -22,7 +22,7 @@ export default function Pagination({ page, pageCount, onChange, totalItems, page
           type="button"
           onClick={() => onChange(page - 1)}
           disabled={page === 1}
-          className="rounded-md border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+          className="rounded-md border border-slate-300 px-3 py-1 text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40 disabled:hover:border-slate-300 disabled:hover:bg-transparent"
         >
           Précédent
         </button>
@@ -33,7 +33,7 @@ export default function Pagination({ page, pageCount, onChange, totalItems, page
           type="button"
           onClick={() => onChange(page + 1)}
           disabled={page === pageCount}
-          className="rounded-md border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent"
+          className="rounded-md border border-slate-300 px-3 py-1 text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40 disabled:hover:border-slate-300 disabled:hover:bg-transparent"
         >
           Suivant
         </button>
