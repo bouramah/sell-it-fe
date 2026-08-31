@@ -82,6 +82,7 @@ export interface Permissions {
   etablissementGestion: boolean
   beneficiaireGestion: boolean
   baremeCreditBeneficiaireGestion: boolean
+  secoursSms: boolean
 }
 
 export function usePermissions(): Permissions {
@@ -120,5 +121,6 @@ export function usePermissions(): Permissions {
     etablissementGestion: has(MODULE_ACTIONS.ETABLISSEMENT_GESTION),
     beneficiaireGestion: has(MODULE_ACTIONS.BENEFICIAIRE_GESTION),
     baremeCreditBeneficiaireGestion: has(MODULE_ACTIONS.BAREME_CREDIT_BENEFICIAIRE_GESTION),
+    secoursSms: has(MODULE_ACTIONS.SECOURS_SMS_GESTION),
   }
 }

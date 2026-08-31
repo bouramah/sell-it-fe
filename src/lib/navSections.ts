@@ -68,7 +68,13 @@ export const sections: NavSection[] = [
       { to: '/reporting', label: 'Reporting intelligent' },
     ],
   },
-  { title: 'Sécurité', items: [{ to: '/securite', label: 'Sécurité & audit', visible: (p) => p.securite }] },
+  {
+    title: 'Sécurité',
+    items: [
+      { to: '/securite', label: 'Sécurité & audit', visible: (p) => p.securite },
+      { to: '/codes-sms', label: 'Codes SMS (secours)', visible: (p) => p.secoursSms },
+    ],
+  },
   {
     title: 'Communication',
     items: [{ to: '/notifications-push', label: 'Notifications push', visible: (p) => p.utilisateurs }],

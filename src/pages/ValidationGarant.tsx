@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api/client'
+import Spinner from '../components/Spinner'
 import { formatGNF } from '../lib/format'
 import type { ValidationGarantDetail } from '../types'
 
@@ -56,7 +57,7 @@ export default function ValidationGarant() {
           <p className="text-sm text-slate-500">Validation d'une demande de crédit alimentaire</p>
         </div>
 
-        {loading && <p className="text-center text-sm text-slate-400">Chargement…</p>}
+        {loading && <Spinner size="lg" className="py-4" label="Chargement…" />}
 
         {!loading && error && !detail && (
           <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>

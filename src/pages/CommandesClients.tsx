@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -95,11 +96,15 @@ export default function CommandesClients() {
 
   const [viewing, setViewing] = useState<{ commande: CommandeClient; articles: ArticleCommande[] } | null>(null)
   const [viewLoading, setViewLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   function refresh() {
-    api.commandesClients().then(setCommandes)
-    api.clients().then(setClients)
-    api.produits().then(setProduits)
+    setLoading(true)
+    Promise.all([
+      api.commandesClients().then(setCommandes),
+      api.clients().then(setClients),
+      api.produits().then(setProduits),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -280,85 +285,89 @@ export default function CommandesClients() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Commande</th>
-              <th className="px-4 py-3">Client</th>
-              <th className="px-4 py-3">Boutique</th>
-              <th className="px-4 py-3">Canal</th>
-              <th className="px-4 py-3">Paiement</th>
-              <th className="px-4 py-3 text-right">Montant</th>
-              <th className="px-4 py-3">Statut</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {paginated.map((c) => (
-              <tr key={c.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">#{c.id}</td>
-                <td className="px-4 py-3 text-slate-600">{c.client_nom}</td>
-                <td className="px-4 py-3 text-slate-600">{nomBoutique(c.boutique_id)}</td>
-                <td className="px-4 py-3 text-slate-600">{CANAL_LABELS[c.canal]}</td>
-                <td className="px-4 py-3 text-slate-600">{MODE_PAIEMENT_LABELS[c.mode_paiement]}</td>
-                <td className="px-4 py-3 text-right text-slate-900">{formatGNF(c.montant)}</td>
-                <td className="px-4 py-3">
-                  {canGererCommande && (
-                    <div className="w-40">
-                      <SearchableSelect
-                        value={c.statut}
-                        onChange={(v) => handleStatutChange(c, v as StatutCommandeClient)}
-                        options={STATUTS.map((s) => ({ value: s, label: STATUT_COMMANDE_CLIENT_LABELS[s] }))}
-                      />
-                    </div>
-                  )}
-                  <div className="mt-1">
-                    <Badge tone={STATUT_TONE[c.statut]}>{STATUT_COMMANDE_CLIENT_LABELS[c.statut]}</Badge>
-                  </div>
-                  {c.remise_statut === 'en_attente' && (
-                    <div className="mt-1">
-                      <Badge tone="warning">Remise en attente</Badge>
-                    </div>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-col items-start gap-1">
-                    <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
-                      Voir
-                    </button>
-                    {c.statut === 'en_attente' && canGererCommande && (
-                      <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
-                        Modifier
-                      </button>
-                    )}
-                    {c.remise_statut === 'en_attente' && remiseValidation && (
-                      <button
-                        onClick={() => handleValiderRemise(c)}
-                        disabled={validatingId === c.id}
-                        className="font-medium text-amber-700 hover:underline disabled:opacity-50"
-                      >
-                        {validatingId === c.id ? 'Validation…' : 'Valider la remise'}
-                      </button>
-                    )}
-                    <button onClick={() => api.telechargerFacture(c.id)} className="font-medium text-slate-500 hover:underline">
-                      Facture
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
+      {loading && commandes.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
-                  Aucune commande.
-                </td>
+                <th className="px-4 py-3">Commande</th>
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Boutique</th>
+                <th className="px-4 py-3">Canal</th>
+                <th className="px-4 py-3">Paiement</th>
+                <th className="px-4 py-3 text-right">Montant</th>
+                <th className="px-4 py-3">Statut</th>
+                <th className="px-4 py-3"></th>
               </tr>
-            )}
-          </tbody>
-        </table>
-        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginated.map((c) => (
+                <tr key={c.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">#{c.id}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.client_nom}</td>
+                  <td className="px-4 py-3 text-slate-600">{nomBoutique(c.boutique_id)}</td>
+                  <td className="px-4 py-3 text-slate-600">{CANAL_LABELS[c.canal]}</td>
+                  <td className="px-4 py-3 text-slate-600">{MODE_PAIEMENT_LABELS[c.mode_paiement]}</td>
+                  <td className="px-4 py-3 text-right text-slate-900">{formatGNF(c.montant)}</td>
+                  <td className="px-4 py-3">
+                    {canGererCommande && (
+                      <div className="w-40">
+                        <SearchableSelect
+                          value={c.statut}
+                          onChange={(v) => handleStatutChange(c, v as StatutCommandeClient)}
+                          options={STATUTS.map((s) => ({ value: s, label: STATUT_COMMANDE_CLIENT_LABELS[s] }))}
+                        />
+                      </div>
+                    )}
+                    <div className="mt-1">
+                      <Badge tone={STATUT_TONE[c.statut]}>{STATUT_COMMANDE_CLIENT_LABELS[c.statut]}</Badge>
+                    </div>
+                    {c.remise_statut === 'en_attente' && (
+                      <div className="mt-1">
+                        <Badge tone="warning">Remise en attente</Badge>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col items-start gap-1">
+                      <button onClick={() => openView(c)} className="font-medium text-teal-700 hover:underline">
+                        Voir
+                      </button>
+                      {c.statut === 'en_attente' && canGererCommande && (
+                        <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
+                          Modifier
+                        </button>
+                      )}
+                      {c.remise_statut === 'en_attente' && remiseValidation && (
+                        <button
+                          onClick={() => handleValiderRemise(c)}
+                          disabled={validatingId === c.id}
+                          className="font-medium text-amber-700 hover:underline disabled:opacity-50"
+                        >
+                          {validatingId === c.id ? 'Validation…' : 'Valider la remise'}
+                        </button>
+                      )}
+                      <button onClick={() => api.telechargerFacture(c.id)} className="font-medium text-slate-500 hover:underline">
+                        Facture
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
+                    Aucune commande.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
+        </div>
+      )}
 
       {creating && (
         <Modal title={editingId ? `Modifier la commande #${editingId}` : 'Nouvelle commande client'} onClose={() => { setCreating(false); setEditingId(null) }}>

@@ -6,6 +6,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
@@ -17,6 +18,7 @@ const EMPTY_FORM: EtablissementInput = { nom: '', type_etablissement: '', adress
 export default function Etablissements() {
   const [etablissements, setEtablissements] = useState<Etablissement[]>([])
   const [types, setTypes] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Etablissement | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<EtablissementInput>(EMPTY_FORM)
@@ -26,8 +28,11 @@ export default function Etablissements() {
   const { etablissementGestion: canGerer } = usePermissions()
 
   function refresh() {
-    api.etablissements().then(setEtablissements)
-    api.referentiels().then((r) => setTypes((r.types_etablissement ?? []).map((t) => t.nom)))
+    setLoading(true)
+    Promise.all([
+      api.etablissements().then(setEtablissements),
+      api.referentiels().then((r) => setTypes((r.types_etablissement ?? []).map((t) => t.nom))),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -95,6 +100,9 @@ export default function Etablissements() {
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un établissement…" />
 
+      {loading && etablissements.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -151,6 +159,7 @@ export default function Etablissements() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
 
       {showModal && (
         <Modal title={editing ? "Modifier l'établissement" : 'Ajouter un établissement'} onClose={() => { setCreating(false); setEditing(null) }}>

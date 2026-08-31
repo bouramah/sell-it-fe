@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
+import { SpinnerBloc } from '../components/Spinner'
 import StatCard from '../components/StatCard'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { usePermissions } from '../lib/permissions'
@@ -14,6 +15,7 @@ export default function AideHumanitaireDashboard() {
   const [suivi, setSuivi] = useState<SuiviEtablissement[]>([])
   const [versements, setVersements] = useState<VersementEtablissement[]>([])
   const [etablissements, setEtablissements] = useState<Etablissement[]>([])
+  const [loading, setLoading] = useState(true)
   const { beneficiaireGestion: canGerer } = usePermissions()
 
   const [creating, setCreating] = useState(false)
@@ -24,9 +26,12 @@ export default function AideHumanitaireDashboard() {
   const [saving, setSaving] = useState(false)
 
   function refresh() {
-    api.suiviAideHumanitaire().then(setSuivi)
-    api.versementsEtablissements().then(setVersements)
-    api.etablissements().then(setEtablissements)
+    setLoading(true)
+    Promise.all([
+      api.suiviAideHumanitaire().then(setSuivi),
+      api.versementsEtablissements().then(setVersements),
+      api.etablissements().then(setEtablissements),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -94,77 +99,85 @@ export default function AideHumanitaireDashboard() {
         <StatCard label="Solde dû cumulé" value={formatGNF(totalEcart)} />
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Établissement</th>
-              <th className="px-4 py-3 text-right">Bénéficiaires</th>
-              <th className="px-4 py-3 text-right">En cours</th>
-              <th className="px-4 py-3 text-right">En retard</th>
-              <th className="px-4 py-3 text-right">Versé</th>
-              <th className="px-4 py-3 text-right">Solde dû</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {suivi.map((s) => (
-              <tr key={s.etablissement_id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">{s.etablissement_nom}</td>
-                <td className="px-4 py-3 text-right text-slate-600">{s.nombre_beneficiaires}</td>
-                <td className="px-4 py-3 text-right text-slate-600">{formatGNF(s.credits_en_cours)}</td>
-                <td className={`px-4 py-3 text-right font-medium ${s.credits_en_retard > 0 ? 'text-red-600' : 'text-slate-600'}`}>
-                  {formatGNF(s.credits_en_retard)}
-                </td>
-                <td className="px-4 py-3 text-right text-slate-600">{formatGNF(s.montant_verse)}</td>
-                <td className="px-4 py-3 text-right font-medium text-slate-900">{formatGNF(s.ecart)}</td>
-              </tr>
-            ))}
-            {suivi.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
-                  Aucun établissement partenaire.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Versements reçus</h2>
+      {loading && suivi.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Établissement</th>
-                <th className="px-4 py-3 text-right">Montant</th>
-                <th className="px-4 py-3">Référence</th>
-                <th className="px-4 py-3">Bénéficiaires réglés</th>
+                <th className="px-4 py-3 text-right">Bénéficiaires</th>
+                <th className="px-4 py-3 text-right">En cours</th>
+                <th className="px-4 py-3 text-right">En retard</th>
+                <th className="px-4 py-3 text-right">Versé</th>
+                <th className="px-4 py-3 text-right">Solde dû</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {versements.map((v) => (
-                <tr key={v.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-slate-500">{formatShortDate(v.date)}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{v.etablissement_nom}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{formatGNF(v.montant)}</td>
-                  <td className="px-4 py-3 text-slate-600">{v.reference || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {v.beneficiaires_regles.length > 0 ? v.beneficiaires_regles.join(', ') : <span className="text-slate-400">Non détaillé</span>}
+              {suivi.map((s) => (
+                <tr key={s.etablissement_id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">{s.etablissement_nom}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{s.nombre_beneficiaires}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{formatGNF(s.credits_en_cours)}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${s.credits_en_retard > 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                    {formatGNF(s.credits_en_retard)}
                   </td>
+                  <td className="px-4 py-3 text-right text-slate-600">{formatGNF(s.montant_verse)}</td>
+                  <td className="px-4 py-3 text-right font-medium text-slate-900">{formatGNF(s.ecart)}</td>
                 </tr>
               ))}
-              {versements.length === 0 && (
+              {suivi.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
-                    Aucun versement enregistré.
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                    Aucun établissement partenaire.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+      )}
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Versements reçus</h2>
+        {loading && versements.length === 0 ? (
+          <SpinnerBloc />
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Établissement</th>
+                  <th className="px-4 py-3 text-right">Montant</th>
+                  <th className="px-4 py-3">Référence</th>
+                  <th className="px-4 py-3">Bénéficiaires réglés</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {versements.map((v) => (
+                  <tr key={v.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-slate-500">{formatShortDate(v.date)}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{v.etablissement_nom}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatGNF(v.montant)}</td>
+                    <td className="px-4 py-3 text-slate-600">{v.reference || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {v.beneficiaires_regles.length > 0 ? v.beneficiaires_regles.join(', ') : <span className="text-slate-400">Non détaillé</span>}
+                    </td>
+                  </tr>
+                ))}
+                {versements.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                      Aucun versement enregistré.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {creating && (

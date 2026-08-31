@@ -38,4 +38,5 @@ export const MODULE_ACTIONS = {
   ETABLISSEMENT_GESTION: 'Gérer les établissements partenaires et leurs garants',
   BENEFICIAIRE_GESTION: 'Gérer les bénéficiaires (aide humanitaire)',
   BAREME_CREDIT_BENEFICIAIRE_GESTION: 'Paramétrer le barème de plafond de crédit aide humanitaire',
+  SECOURS_SMS_GESTION: "Secours en cas d'échec d'envoi SMS (codes en clair, validation garant manuelle)",
 } as const

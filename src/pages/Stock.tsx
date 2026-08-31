@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import Tabs from '../components/Tabs'
 import { formatDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
@@ -76,13 +77,19 @@ export default function Stock() {
   const [operateurManuel, setOperateurManuel] = useState(false)
   const [mvtError, setMvtError] = useState<string | null>(null)
   const [savingMvt, setSavingMvt] = useState(false)
+  const [loadingEtat, setLoadingEtat] = useState(true)
+  const [loadingHistorique, setLoadingHistorique] = useState(true)
 
   function refreshEtat() {
-    api.stock(boutiqueId || undefined).then(setLignes)
+    setLoadingEtat(true)
+    api.stock(boutiqueId || undefined).then(setLignes).finally(() => setLoadingEtat(false))
   }
   function refreshHistorique() {
-    api.mouvementsStock(boutiqueId || undefined).then(setMouvements)
-    api.inventaire(boutiqueId || undefined).then(setEcarts)
+    setLoadingHistorique(true)
+    Promise.all([
+      api.mouvementsStock(boutiqueId || undefined).then(setMouvements),
+      api.inventaire(boutiqueId || undefined).then(setEcarts),
+    ]).finally(() => setLoadingHistorique(false))
   }
 
   useEffect(refreshEtat, [boutiqueId])
@@ -200,6 +207,9 @@ export default function Stock() {
       {vue === 'etat' ? (
         <div className="space-y-3">
         <SearchInput value={ligneQuery} onChange={setLigneQuery} placeholder="Rechercher un produit…" />
+        {loadingEtat && lignes.length === 0 ? (
+          <SpinnerBloc />
+        ) : (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -229,6 +239,7 @@ export default function Stock() {
           </table>
           <Pagination page={lignePage} pageCount={lignePageCount} onChange={setLignePage} totalItems={ligneTotalItems} pageSize={lignePageSize} />
         </div>
+        )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -242,6 +253,9 @@ export default function Stock() {
             <div className="mb-3">
               <SearchInput value={mvtQuery} onChange={setMvtQuery} placeholder="Rechercher un mouvement…" />
             </div>
+            {loadingHistorique && mouvements.length === 0 ? (
+              <SpinnerBloc />
+            ) : (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -275,6 +289,7 @@ export default function Stock() {
               </table>
               <Pagination page={mvtPage} pageCount={mvtPageCount} onChange={setMvtPage} totalItems={mvtTotalItems} pageSize={mvtPageSize} />
             </div>
+            )}
           </section>
 
           <section>
@@ -284,6 +299,9 @@ export default function Stock() {
             <div className="mb-3">
               <SearchInput value={ecartQuery} onChange={setEcartQuery} placeholder="Rechercher un produit…" />
             </div>
+            {loadingHistorique && ecarts.length === 0 ? (
+              <SpinnerBloc />
+            ) : (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -315,6 +333,7 @@ export default function Stock() {
               </table>
               <Pagination page={ecartPage} pageCount={ecartPageCount} onChange={setEcartPage} totalItems={ecartTotalItems} pageSize={ecartPageSize} />
             </div>
+            )}
           </section>
         </div>
       )}

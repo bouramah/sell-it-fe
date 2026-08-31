@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -62,11 +63,15 @@ export default function PaiementsFournisseurs() {
   const [payerCaisseId, setPayerCaisseId] = useState('')
   const [payerError, setPayerError] = useState<string | null>(null)
   const [payerSaving, setPayerSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   function refresh() {
-    api.paiementsFournisseurs(boutiqueId || undefined).then(setPaiements)
-    api.commandesFournisseurs().then(setCommandes)
-    api.caisses().then(setCaisses)
+    setLoading(true)
+    Promise.all([
+      api.paiementsFournisseurs(boutiqueId || undefined).then(setPaiements),
+      api.commandesFournisseurs().then(setCommandes),
+      api.caisses().then(setCaisses),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [boutiqueId])
@@ -231,6 +236,9 @@ export default function PaiementsFournisseurs() {
 
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
 
+      {loading && paiements.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -305,6 +313,7 @@ export default function PaiementsFournisseurs() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
       <p className="text-xs text-slate-400">
         Un paiement « en attente » apparaît automatiquement dès qu'une commande fournisseur est intégralement
         réceptionnée, ou lors de l'encaissement d'un remboursement de dette fournisseur. Vous pouvez aussi en

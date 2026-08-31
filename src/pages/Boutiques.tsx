@@ -8,6 +8,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
@@ -39,6 +40,7 @@ const EMPTY_FORM: BoutiqueInput = {
 
 export function BoutiquesListe() {
   const [boutiques, setBoutiques] = useState<Boutique[]>([])
+  const [loading, setLoading] = useState(true)
   const [villeFiltre, setVilleFiltre] = useState('')
   const [statutFiltre, setStatutFiltre] = useState('')
   const [editing, setEditing] = useState<Boutique | null>(null)
@@ -54,7 +56,8 @@ export function BoutiquesListe() {
   const { reseau: canGererReseau } = usePermissions()
 
   function refresh() {
-    api.boutiques().then(setBoutiques)
+    setLoading(true)
+    api.boutiques().then(setBoutiques).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -192,6 +195,9 @@ export function BoutiquesListe() {
         </div>
       </div>
 
+      {loading && boutiques.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -251,6 +257,7 @@ export function BoutiquesListe() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
 
       {showModal && (
         <Modal
@@ -410,7 +417,7 @@ export function BoutiqueFiche() {
     if (id) api.boutique(id).then(setBoutique)
   }, [id])
 
-  if (!boutique) return <div className="text-slate-400">Chargement…</div>
+  if (!boutique) return <SpinnerBloc />
 
   return (
     <div className="space-y-6">

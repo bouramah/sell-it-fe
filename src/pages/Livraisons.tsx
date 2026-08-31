@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
@@ -51,10 +52,13 @@ export default function Livraisons() {
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetRef = useRef<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   function refresh() {
-    api.livraisons().then(setLivraisons)
-    api.commandesClients().then(setCommandes)
+    setLoading(true)
+    Promise.all([api.livraisons().then(setLivraisons), api.commandesClients().then(setCommandes)]).finally(() =>
+      setLoading(false)
+    )
   }
 
   useEffect(refresh, [])
@@ -170,6 +174,9 @@ export default function Livraisons() {
 
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
 
+      {loading && livraisons.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -256,6 +263,7 @@ export default function Livraisons() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
 
       {creating && (
         <Modal title="Affecter une livraison" onClose={() => setCreating(false)}>

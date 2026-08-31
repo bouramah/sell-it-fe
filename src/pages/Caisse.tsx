@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF, formatTime } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -36,6 +37,7 @@ export default function Caisse() {
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const [libellesRef, setLibellesRef] = useState<ReferentielItem[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
+  const [loading, setLoading] = useState(true)
   const { nomBoutique, boutiques } = useBoutiques()
   const { caisseGestion: canGererCaisse } = usePermissions()
 
@@ -57,8 +59,11 @@ export default function Caisse() {
   const [operateurMvtManuel, setOperateurMvtManuel] = useState(false)
 
   function refresh() {
-    api.caisses(boutiqueId || undefined).then(setCaisses)
-    api.mouvementsCaisse(boutiqueId || undefined).then(setMouvements)
+    setLoading(true)
+    Promise.all([
+      api.caisses(boutiqueId || undefined).then(setCaisses),
+      api.mouvementsCaisse(boutiqueId || undefined).then(setMouvements),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [boutiqueId])
@@ -180,6 +185,9 @@ export default function Caisse() {
         />
       </div>
 
+      {loading && caisses.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {caisses.map((c) => (
           <div key={c.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -206,6 +214,7 @@ export default function Caisse() {
         ))}
         {caisses.length === 0 && <p className="text-sm text-slate-400">Aucune caisse ouverte pour le moment.</p>}
       </div>
+      )}
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">
@@ -214,6 +223,9 @@ export default function Caisse() {
         <div className="mb-3">
           <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un mouvement…" />
         </div>
+        {loading && mouvements.length === 0 ? (
+          <SpinnerBloc />
+        ) : (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -251,6 +263,7 @@ export default function Caisse() {
           </table>
           <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
         </div>
+        )}
       </section>
 
       {creatingCaisse && (

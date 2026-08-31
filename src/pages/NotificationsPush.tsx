@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import SearchableSelect from '../components/SearchableSelect'
+import { SpinnerBloc } from '../components/Spinner'
 import type { Boutique, Utilisateur } from '../types'
 
 type Cible = 'utilisateur' | 'boutique'
@@ -16,10 +17,12 @@ export default function NotificationsPush() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ destinataires: number; notifies: number } | null>(null)
   const [sending, setSending] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.utilisateurs().then(setUtilisateurs)
-    api.boutiques().then(setBoutiques)
+    Promise.all([api.utilisateurs().then(setUtilisateurs), api.boutiques().then(setBoutiques)]).finally(() =>
+      setLoading(false)
+    )
   }, [])
 
   async function handleSubmit(e: FormEvent) {
@@ -62,6 +65,9 @@ export default function NotificationsPush() {
         </p>
       </div>
 
+      {loading && utilisateurs.length === 0 && boutiques.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Destinataire</label>
@@ -156,6 +162,7 @@ export default function NotificationsPush() {
           </button>
         </div>
       </form>
+      )}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF, formatGNFCompact } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -51,10 +52,14 @@ export default function Clients() {
   const [saving, setSaving] = useState(false)
   const [geoResolved, setGeoResolved] = useState<GeoResolved | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Client | null>(null)
+  const [loading, setLoading] = useState(true)
 
   function refresh() {
-    api.clients(boutiqueId || undefined).then(setClients)
-    api.topClients(boutiqueId || undefined, 8).then(setTopClients).catch(() => {})
+    setLoading(true)
+    Promise.all([
+      api.clients(boutiqueId || undefined).then(setClients),
+      api.topClients(boutiqueId || undefined, 8).then(setTopClients).catch(() => {}),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [boutiqueId])
@@ -159,74 +164,82 @@ export default function Clients() {
         </div>
       </div>
 
-      {topClients.length > 0 && (
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">Top clients — par chiffre d'affaires</h2>
-          <p className="mb-4 text-xs text-slate-400">Commandes non annulées, cumulées depuis toujours</p>
-          <BarChartHorizontal
-            data={topClients.map((c) => ({ label: c.client_nom, sublabel: `${c.nombre_commandes} commande${c.nombre_commandes > 1 ? 's' : ''}`, value: c.chiffre_affaires }))}
-            valueFormatter={formatGNFCompact}
-          />
-        </section>
+      {loading && topClients.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
+        topClients.length > 0 && (
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-600">Top clients — par chiffre d'affaires</h2>
+            <p className="mb-4 text-xs text-slate-400">Commandes non annulées, cumulées depuis toujours</p>
+            <BarChartHorizontal
+              data={topClients.map((c) => ({ label: c.client_nom, sublabel: `${c.nombre_commandes} commande${c.nombre_commandes > 1 ? 's' : ''}`, value: c.chiffre_affaires }))}
+              valueFormatter={formatGNFCompact}
+            />
+          </section>
+        )
       )}
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Client</th>
-              <th className="px-4 py-3">Contact</th>
-              <th className="px-4 py-3">Boutique fréquentée</th>
-              <th className="px-4 py-3">Localisation</th>
-              <th className="px-4 py-3">Segment</th>
-              <th className="px-4 py-3">Crédit autorisé</th>
-              <th className="px-4 py-3 text-right">Solde dette</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {paginated.map((c) => (
-              <tr key={c.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">{c.nom}</td>
-                <td className="px-4 py-3 text-slate-600">{c.contact}</td>
-                <td className="px-4 py-3 text-slate-600">{c.boutique_ids.map((id) => nomBoutique(id)).join(', ')}</td>
-                <td className="px-4 py-3 text-slate-600">
-                  {c.quartier || c.commune || c.ville
-                    ? [c.quartier, c.commune, c.ville].filter(Boolean).join(', ')
-                    : <span className="text-slate-400">—</span>}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge tone={SEGMENT_TONE[c.segment]}>{SEGMENT_LABELS[c.segment]}</Badge>
-                </td>
-                <td className="px-4 py-3">
-                  <Badge tone={c.credit_autorise ? 'success' : 'default'}>{c.credit_autorise ? 'Oui' : 'Non'}</Badge>
-                </td>
-                <td className="px-4 py-3 text-right text-slate-900">{formatGNF(c.solde_dette)}</td>
-                <td className="px-4 py-3">
-                  {canGererClient && (
-                    <div className="flex gap-3">
-                      <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
-                        Modifier
-                      </button>
-                      <button onClick={() => setConfirmDelete(c)} className="font-medium text-red-600 hover:underline">
-                        Suppr.
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
+      {loading && clients.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
-                  Aucun client.
-                </td>
+                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Contact</th>
+                <th className="px-4 py-3">Boutique fréquentée</th>
+                <th className="px-4 py-3">Localisation</th>
+                <th className="px-4 py-3">Segment</th>
+                <th className="px-4 py-3">Crédit autorisé</th>
+                <th className="px-4 py-3 text-right">Solde dette</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginated.map((c) => (
+                <tr key={c.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">{c.nom}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.contact}</td>
+                  <td className="px-4 py-3 text-slate-600">{c.boutique_ids.map((id) => nomBoutique(id)).join(', ')}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {c.quartier || c.commune || c.ville
+                      ? [c.quartier, c.commune, c.ville].filter(Boolean).join(', ')
+                      : <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge tone={SEGMENT_TONE[c.segment]}>{SEGMENT_LABELS[c.segment]}</Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge tone={c.credit_autorise ? 'success' : 'default'}>{c.credit_autorise ? 'Oui' : 'Non'}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right text-slate-900">{formatGNF(c.solde_dette)}</td>
+                  <td className="px-4 py-3">
+                    {canGererClient && (
+                      <div className="flex gap-3">
+                        <button onClick={() => openEdit(c)} className="font-medium text-teal-700 hover:underline">
+                          Modifier
+                        </button>
+                        <button onClick={() => setConfirmDelete(c)} className="font-medium text-red-600 hover:underline">
+                          Suppr.
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-400">
+                    Aucun client.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
+        </div>
+      )}
 
       {showModal && (
         <Modal title={editing ? 'Modifier le client' : 'Ajouter un client'} onClose={() => { setCreating(false); setEditing(null) }}>

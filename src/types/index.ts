@@ -453,6 +453,8 @@ export interface ValidationGarantCredit {
   statut: StatutValidationGarant
   date_reponse: string | null
   motif_refus: string | null
+  validee_manuellement: boolean
+  validee_par: string | null
 }
 
 export interface ValidationGarantDetail {
@@ -635,6 +637,17 @@ export interface JournalAuditEntry {
 export interface JournalAuditPage {
   items: JournalAuditEntry[]
   total: number
+}
+
+export interface CodeSms {
+  id: string
+  contact: string
+  code_clair: string | null
+  objectif: string
+  objectif_libelle: string
+  created_at: string
+  expires_at: string
+  statut: 'actif' | 'utilise' | 'expire'
 }
 
 export interface JournalAuditFiltres {

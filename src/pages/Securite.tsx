@@ -4,6 +4,7 @@ import Badge from '../components/Badge'
 import Pagination from '../components/Pagination'
 import SearchInput from '../components/SearchInput'
 import SearchableSelect from '../components/SearchableSelect'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import type { JournalAuditEntry, ParametreApplication, ParametreSecurite, Utilisateur } from '../types'
@@ -190,6 +191,10 @@ export default function Securite() {
           </label>
         </div>
 
+        {loading && audit.length === 0 ? (
+          <SpinnerBloc />
+        ) : (
+        <>
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -226,6 +231,8 @@ export default function Securite() {
           </table>
         </div>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={total} pageSize={TAILLE} />
+        </>
+        )}
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

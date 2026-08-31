@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -38,6 +39,7 @@ function imageSrc(url: string | null | undefined): string | null {
 
 export function ProduitsListe() {
   const [produits, setProduits] = useState<Produit[]>([])
+  const [loading, setLoading] = useState(true)
   const [secteurFiltre, setSecteurFiltre] = useState('')
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Produit | null>(null)
@@ -50,7 +52,8 @@ export function ProduitsListe() {
   const { produitGestion: canGererProduit } = usePermissions()
 
   function refresh() {
-    api.produits().then(setProduits)
+    setLoading(true)
+    api.produits().then(setProduits).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -146,52 +149,58 @@ export function ProduitsListe() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {paginated.map((p) => (
-          <Link
-            key={p.id}
-            to={`/produits/${p.id}`}
-            className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-teal-300"
-          >
-            <div className="mb-3 flex h-24 items-center justify-center overflow-hidden rounded-md bg-slate-100">
-              {imageSrc(p.images[0]?.url) ? (
-                <img src={imageSrc(p.images[0]?.url)!} alt={p.nom} className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-xs text-slate-400">photo produit</span>
-              )}
-            </div>
-            <div className="text-sm font-medium text-slate-900">{p.nom}</div>
-            <div className="text-xs text-slate-500">
-              <Badge>{nomSecteur(p.secteur)}</Badge>
-            </div>
-            <div className="mt-2 text-sm font-semibold text-slate-900">{formatGNF(p.prix_detail)} <span className="font-normal text-slate-400">détail</span></div>
-            {canGererProduit && (
-              <div className="mt-2 flex gap-3 text-xs">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    openEdit(p)
-                  }}
-                  className="font-medium text-teal-700 hover:underline"
-                >
-                  Modifier
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setConfirmDelete(p)
-                  }}
-                  className="font-medium text-red-600 hover:underline"
-                >
-                  Suppr.
-                </button>
-              </div>
-            )}
-          </Link>
-        ))}
-        {filtered.length === 0 && <p className="text-sm text-slate-400">Aucun produit ne correspond à la recherche.</p>}
-      </div>
-      <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
+      {loading && produits.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {paginated.map((p) => (
+              <Link
+                key={p.id}
+                to={`/produits/${p.id}`}
+                className="block rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-teal-300"
+              >
+                <div className="mb-3 flex h-24 items-center justify-center overflow-hidden rounded-md bg-slate-100">
+                  {imageSrc(p.images[0]?.url) ? (
+                    <img src={imageSrc(p.images[0]?.url)!} alt={p.nom} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-slate-400">photo produit</span>
+                  )}
+                </div>
+                <div className="text-sm font-medium text-slate-900">{p.nom}</div>
+                <div className="text-xs text-slate-500">
+                  <Badge>{nomSecteur(p.secteur)}</Badge>
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900">{formatGNF(p.prix_detail)} <span className="font-normal text-slate-400">détail</span></div>
+                {canGererProduit && (
+                  <div className="mt-2 flex gap-3 text-xs">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        openEdit(p)
+                      }}
+                      className="font-medium text-teal-700 hover:underline"
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setConfirmDelete(p)
+                      }}
+                      className="font-medium text-red-600 hover:underline"
+                    >
+                      Suppr.
+                    </button>
+                  </div>
+                )}
+              </Link>
+            ))}
+            {filtered.length === 0 && <p className="text-sm text-slate-400">Aucun produit ne correspond à la recherche.</p>}
+          </div>
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
+        </>
+      )}
 
       {showModal && (
         <Modal
@@ -570,7 +579,7 @@ export function ProduitFiche() {
     }
   }
 
-  if (!produit) return <div className="text-slate-400">Chargement…</div>
+  if (!produit) return <SpinnerBloc />
 
   return (
     <div className="space-y-6">

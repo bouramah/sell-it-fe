@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { SpinnerBloc } from '../components/Spinner'
 import type { ReportingIntelligent } from '../types'
 
 export default function Reporting() {
@@ -9,7 +10,7 @@ export default function Reporting() {
     api.reporting().then(setData)
   }, [])
 
-  if (!data) return <div className="text-slate-400">Chargement…</div>
+  if (!data) return <SpinnerBloc />
 
   return (
     <div className="space-y-6">

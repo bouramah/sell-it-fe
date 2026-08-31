@@ -3,6 +3,7 @@ import type {
   Boutique,
   Caisse,
   Client as ClientEntity,
+  CodeSms,
   CommandeClient,
   CommandeClientDetail,
   CommandeFournisseurDetail,
@@ -390,6 +391,11 @@ export const api = {
   consulterValidationGarant: (token: string) => getJson<ValidationGarantDetail>(`/validation-garant/${token}`),
   repondreValidationGarant: (token: string, payload: ValidationGarantDecisionInput) =>
     sendJson<ValidationGarantDetail>('POST', `/validation-garant/${token}`, payload),
+  // Réservé administrateur — secours quand le garant n'a jamais reçu son lien SMS.
+  repondreValidationGarantAdmin: (validationId: string, payload: ValidationGarantDecisionInput) =>
+    sendJson<ValidationGarantDetail>('POST', `/validation-garant/admin/${validationId}/decision`, payload),
+
+  codesSms: () => getJson<CodeSms[]>('/codes-sms'),
 
   transferts: () => getJson<TransfertStock[]>('/transferts'),
   creerTransfert: (payload: TransfertInput) => sendJson<TransfertStock>('POST', '/transferts', payload),

@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -31,6 +32,7 @@ function emptyForm(auteur: string): DepenseInput {
 export default function Depenses() {
   const { user } = useAuth()
   const [depenses, setDepenses] = useState<Depense[]>([])
+  const [loading, setLoading] = useState(true)
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
   const { depenseCreation: canCreerDepense, depenseValidation: canValiderDepense } = usePermissions()
@@ -49,8 +51,8 @@ export default function Depenses() {
   const uploadTargetRef = useRef<string | null>(null)
 
   function refresh() {
-    api.depenses().then(setDepenses)
-    api.caisses().then(setCaisses)
+    setLoading(true)
+    Promise.all([api.depenses().then(setDepenses), api.caisses().then(setCaisses)]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -173,6 +175,9 @@ export default function Depenses() {
 
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
 
+      {loading && depenses.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -253,6 +258,7 @@ export default function Depenses() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
 
       {creating && (
         <Modal title="Enregistrer une dépense" onClose={() => setCreating(false)}>

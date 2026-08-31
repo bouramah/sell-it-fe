@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import StatCard from '../components/StatCard'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
@@ -52,6 +53,7 @@ export default function Comptabilite() {
   const [stock, setStock] = useState<EtatStockValorise | null>(null)
   const [denied, setDenied] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [loading, setLoading] = useState(true)
   const { boutiques, nomBoutique } = useBoutiques()
 
   const [produits, setProduits] = useState<Produit[]>([])
@@ -64,7 +66,7 @@ export default function Comptabilite() {
   const [margeLoading, setMargeLoading] = useState(false)
 
   useEffect(() => {
-    api.comptabilite().then(setData).catch(() => setDenied(true))
+    api.comptabilite().then(setData).catch(() => setDenied(true)).finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
@@ -112,8 +114,6 @@ export default function Comptabilite() {
       </div>
     )
   }
-  if (!data) return <div className="text-slate-400">Chargement…</div>
-
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
@@ -130,6 +130,10 @@ export default function Comptabilite() {
         </button>
       </div>
 
+      {loading && !data ? (
+        <SpinnerBloc />
+      ) : !data ? null : (
+      <>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="CA consolidé — cumulé" value={formatGNF(data.ca_consolide)} />
         <StatCard label="Marge nette consolidée" value={formatGNF(data.marge_nette_consolidee)} />
@@ -403,6 +407,8 @@ export default function Comptabilite() {
             </>
           )}
         </section>
+      )}
+      </>
       )}
     </div>
   )

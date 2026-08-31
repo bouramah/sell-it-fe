@@ -5,6 +5,7 @@ import DonutChart from '../components/charts/DonutChart'
 import LineAreaChart from '../components/charts/LineAreaChart'
 import GuineaMap from '../components/GuineaMap'
 import SearchableSelect from '../components/SearchableSelect'
+import { SpinnerBloc } from '../components/Spinner'
 import StatCard from '../components/StatCard'
 import { formatGNF, formatGNFCompact } from '../lib/format'
 import { PRESET_LABELS, periodFromPreset, type PeriodPreset } from '../lib/dashboardPeriod'
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardConsolide | null>(null)
   const [kpis, setKpis] = useState<DashboardKpis | null>(null)
   const [denied, setDenied] = useState(false)
+  const [loading, setLoading] = useState(true)
   const { nomSecteur } = useSecteurs()
   const { boutiques } = useBoutiques()
 
@@ -49,7 +51,11 @@ export default function Dashboard() {
   useEffect(() => {
     // Le dashboard (même KPIs de boutique) est réservé à gérant/responsable achats/administrateur
     // (CDC 3.3 : vendeur/caissier n'y ont pas accès du tout).
-    api.dashboardKpis(period.debut, period.fin, boutiqueId || undefined).then(setKpis).catch(() => setDenied(true))
+    api
+      .dashboardKpis(period.debut, period.fin, boutiqueId || undefined)
+      .then(setKpis)
+      .catch(() => setDenied(true))
+      .finally(() => setLoading(false))
   }, [period.debut, period.fin, boutiqueId])
 
   if (denied) {
@@ -59,8 +65,6 @@ export default function Dashboard() {
       </div>
     )
   }
-  if (!kpis) return <div className="text-slate-400">Chargement…</div>
-
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between">
@@ -71,8 +75,9 @@ export default function Dashboard() {
           </p>
         </div>
         <button
-          onClick={() => exportDashboardCsv(kpis, PRESET_LABELS[preset])}
-          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          onClick={() => kpis && exportDashboardCsv(kpis, PRESET_LABELS[preset])}
+          disabled={!kpis}
+          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
         >
           Exporter (Excel)
         </button>
@@ -118,6 +123,10 @@ export default function Dashboard() {
         )}
       </div>
 
+      {loading && !kpis ? (
+        <SpinnerBloc />
+      ) : !kpis ? null : (
+      <>
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Ventes — période sélectionnée</h2>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -246,6 +255,8 @@ export default function Dashboard() {
             </ul>
           </section>
         </div>
+      )}
+      </>
       )}
     </div>
   )

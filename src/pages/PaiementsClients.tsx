@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF, formatShortDate } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -60,11 +61,15 @@ export default function PaiementsClients() {
   const [encaisserCaisseId, setEncaisserCaisseId] = useState('')
   const [encaisserError, setEncaisserError] = useState<string | null>(null)
   const [encaisserSaving, setEncaisserSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   function refresh() {
-    api.paiementsClients(boutiqueId || undefined).then(setPaiements)
-    api.commandesClients().then(setCommandes)
-    api.caisses().then(setCaisses)
+    setLoading(true)
+    Promise.all([
+      api.paiementsClients(boutiqueId || undefined).then(setPaiements),
+      api.commandesClients().then(setCommandes),
+      api.caisses().then(setCaisses),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [boutiqueId])
@@ -196,6 +201,9 @@ export default function PaiementsClients() {
         </div>
       </div>
 
+      {loading && paiements.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -246,6 +254,7 @@ export default function PaiementsClients() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
       <p className="text-xs text-slate-400">
         Un paiement apparaît automatiquement à la création d'une commande client payée immédiatement (hors crédit
         client), ou lors de l'encaissement d'un remboursement de dette. Vous pouvez aussi en enregistrer un

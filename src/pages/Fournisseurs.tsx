@@ -8,6 +8,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNFCompact } from '../lib/format'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
@@ -21,6 +22,7 @@ const EMPTY_FORM: FournisseurInput = { nom: '', secteur: '', conditions_paiement
 export default function Fournisseurs() {
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const [topFournisseurs, setTopFournisseurs] = useState<TopFournisseur[]>([])
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<Fournisseur | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<FournisseurInput>(EMPTY_FORM)
@@ -31,8 +33,11 @@ export default function Fournisseurs() {
   const { fournisseurGestion: canGererFournisseur } = usePermissions()
 
   function refresh() {
-    api.fournisseurs().then(setFournisseurs)
-    api.topFournisseurs(undefined, 8).then(setTopFournisseurs).catch(() => {})
+    setLoading(true)
+    Promise.all([
+      api.fournisseurs().then(setFournisseurs),
+      api.topFournisseurs(undefined, 8).then(setTopFournisseurs).catch(() => {}),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -108,6 +113,9 @@ export default function Fournisseurs() {
         </section>
       )}
 
+      {loading && fournisseurs.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -153,6 +161,7 @@ export default function Fournisseurs() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
 
       {showModal && (
         <Modal title={editing ? 'Modifier le fournisseur' : 'Ajouter un fournisseur'} onClose={() => { setCreating(false); setEditing(null) }}>

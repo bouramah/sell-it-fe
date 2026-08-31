@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { SpinnerBloc } from '../components/Spinner'
 import { usePermissions } from '../lib/permissions'
 import type { Commune, QuartierGeo, Region, SecteurGeo, Ville } from '../types'
 
@@ -38,9 +39,10 @@ export default function Geographie() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ niveau: Niveau; item: ColonneItem } | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.regions().then(setRegions)
+    api.regions().then(setRegions).finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
@@ -160,51 +162,55 @@ export default function Geographie() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-        {colonnes.map((col) => (
-          <div key={col.niveau} className="rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{col.label}</span>
-              {canGerer && col.enabled && (
-                <button onClick={() => openAjout(col.niveau)} className="text-xs font-medium text-teal-700 hover:underline">
-                  + Ajouter
-                </button>
-              )}
+      {loading && regions.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+          {colonnes.map((col) => (
+            <div key={col.niveau} className="rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{col.label}</span>
+                {canGerer && col.enabled && (
+                  <button onClick={() => openAjout(col.niveau)} className="text-xs font-medium text-teal-700 hover:underline">
+                    + Ajouter
+                  </button>
+                )}
+              </div>
+              <div className="max-h-96 overflow-y-auto p-2">
+                {!col.enabled && col.niveau !== 'region' && (
+                  <p className="px-2 py-3 text-xs text-slate-400">
+                    Sélectionnez {NIVEAUX.find((n) => n.key === col.niveau)?.parentLabel} d'abord.
+                  </p>
+                )}
+                {col.enabled &&
+                  col.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-sm ${
+                        col.selectedId === item.id ? 'bg-teal-50 text-teal-800' : 'text-slate-700 hover:bg-slate-50'
+                      } ${col.niveau !== 'secteur' ? 'cursor-pointer' : ''}`}
+                      onClick={() => col.niveau !== 'secteur' && col.onSelect(item.id)}
+                    >
+                      <span>{item.nom}</span>
+                      {canGerer && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setConfirmDelete({ niveau: col.niveau, item })
+                          }}
+                          className="hidden text-xs font-medium text-red-600 hover:underline group-hover:inline"
+                        >
+                          Suppr.
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                {col.enabled && col.items.length === 0 && <p className="px-2 py-3 text-xs text-slate-400">Aucun élément.</p>}
+              </div>
             </div>
-            <div className="max-h-96 overflow-y-auto p-2">
-              {!col.enabled && col.niveau !== 'region' && (
-                <p className="px-2 py-3 text-xs text-slate-400">
-                  Sélectionnez {NIVEAUX.find((n) => n.key === col.niveau)?.parentLabel} d'abord.
-                </p>
-              )}
-              {col.enabled &&
-                col.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`group flex items-center justify-between rounded-md px-2 py-1.5 text-sm ${
-                      col.selectedId === item.id ? 'bg-teal-50 text-teal-800' : 'text-slate-700 hover:bg-slate-50'
-                    } ${col.niveau !== 'secteur' ? 'cursor-pointer' : ''}`}
-                    onClick={() => col.niveau !== 'secteur' && col.onSelect(item.id)}
-                  >
-                    <span>{item.nom}</span>
-                    {canGerer && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setConfirmDelete({ niveau: col.niveau, item })
-                        }}
-                        className="hidden text-xs font-medium text-red-600 hover:underline group-hover:inline"
-                      >
-                        Suppr.
-                      </button>
-                    )}
-                  </div>
-                ))}
-              {col.enabled && col.items.length === 0 && <p className="px-2 py-3 text-xs text-slate-400">Aucun élément.</p>}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {ajoutNiveau && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">

@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import StatCard from '../components/StatCard'
 import Tabs from '../components/Tabs'
 import { formatDate, formatGNF, formatShortDate } from '../lib/format'
@@ -47,22 +48,27 @@ function todayIso() {
 export default function Dettes() {
   const [tiers, setTiers] = useState<TiersType>('client')
   const [dettes, setDettes] = useState<LigneDette[]>([])
+  const [loading, setLoading] = useState(true)
   const [clients, setClients] = useState<Client[]>([])
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([])
   const [caisses, setCaisses] = useState<Caisse[]>([])
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([])
   const [boutiqueId, setBoutiqueId] = useState('')
   const { boutiques, nomBoutique } = useBoutiques()
-  const { detteCreation: canCreerDette, remboursement: canRembourser } = usePermissions()
+  const { detteCreation: canCreerDette, remboursement: canRembourser, secoursSms: canValiderManuel } = usePermissions()
 
   const [demandesBeneficiaires, setDemandesBeneficiaires] = useState<DemandeCredit[]>([])
   const [beneficiaires, setBeneficiaires] = useState<Beneficiaire[]>([])
   const [expandedDemandeId, setExpandedDemandeId] = useState<string | null>(null)
   const [validationsByDemande, setValidationsByDemande] = useState<Record<string, ValidationGarantCredit[]>>({})
   const [loadingValidations, setLoadingValidations] = useState(false)
+  const [refusantValidationId, setRefusantValidationId] = useState<string | null>(null)
+  const [motifRefusAdmin, setMotifRefusAdmin] = useState('')
+  const [traitantValidationId, setTraitantValidationId] = useState<string | null>(null)
 
   function refresh() {
-    api.dettes(tiers).then(setDettes)
+    setLoading(true)
+    api.dettes(tiers).then(setDettes).finally(() => setLoading(false))
   }
 
   function refreshDemandesBeneficiaires() {
@@ -98,6 +104,40 @@ export default function Dettes() {
       } finally {
         setLoadingValidations(false)
       }
+    }
+  }
+
+  async function rafraichirValidations(demandeId: string) {
+    const validations = await api.validationsGarantDemande(demandeId)
+    setValidationsByDemande((prev) => ({ ...prev, [demandeId]: validations }))
+  }
+
+  async function handleValiderManuel(demandeId: string, validationId: string) {
+    setTraitantValidationId(validationId)
+    try {
+      await api.repondreValidationGarantAdmin(validationId, { approuve: true })
+      await rafraichirValidations(demandeId)
+      refreshDemandesBeneficiaires()
+    } finally {
+      setTraitantValidationId(null)
+    }
+  }
+
+  function openRefuserManuel(validationId: string) {
+    setRefusantValidationId(validationId)
+    setMotifRefusAdmin('')
+  }
+
+  async function handleRefuserManuel(demandeId: string, validationId: string) {
+    if (!motifRefusAdmin.trim()) return
+    setTraitantValidationId(validationId)
+    try {
+      await api.repondreValidationGarantAdmin(validationId, { approuve: false, motif_refus: motifRefusAdmin.trim() })
+      await rafraichirValidations(demandeId)
+      refreshDemandesBeneficiaires()
+      setRefusantValidationId(null)
+    } finally {
+      setTraitantValidationId(null)
     }
   }
 
@@ -235,6 +275,9 @@ export default function Dettes() {
         <StatCard label={tiers === 'client' ? 'Comptes concernés' : 'Fournisseurs concernés'} value={String(new Set(filtered.map((d) => d.tiers_nom)).size)} />
       </div>
 
+      {loading && dettes.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -297,12 +340,14 @@ export default function Dettes() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
 
       {tiers === 'client' && demandesBeneficiaires.length > 0 && (
         <div>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Demandes de crédit Aide Humanitaire</h2>
           <p className="mb-3 text-xs text-slate-400">
-            Validées par les garants (référent + comptabilité de l'établissement) via un lien SMS — le staff ne peut pas valider ces demandes ici.
+            Validées par les garants (référent + comptabilité de l'établissement) via un lien SMS
+            {canValiderManuel ? " — un administrateur peut trancher manuellement si le SMS n'est jamais arrivé." : '.'}
           </p>
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <table className="w-full text-left text-sm">
@@ -344,7 +389,7 @@ export default function Dettes() {
                           ) : (
                             <div className="flex flex-wrap gap-4">
                               {(validationsByDemande[d.id] ?? []).map((v) => (
-                                <div key={v.id} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs">
+                                <div key={v.id} className="w-56 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs">
                                   <p className="font-semibold text-slate-700">{GARANT_LABELS[v.type_garant] ?? v.type_garant}</p>
                                   <p className="text-slate-600">{v.nom_garant}</p>
                                   <p className="mt-1">
@@ -354,6 +399,56 @@ export default function Dettes() {
                                   </p>
                                   {v.date_reponse && <p className="mt-1 text-slate-400">{formatDate(v.date_reponse)}</p>}
                                   {v.motif_refus && <p className="mt-1 text-red-600">Motif : {v.motif_refus}</p>}
+                                  {v.validee_manuellement && (
+                                    <p className="mt-1 rounded bg-amber-50 px-1.5 py-1 text-amber-700">
+                                      Validé manuellement par {v.validee_par ?? 'un administrateur'} (SMS indisponible)
+                                    </p>
+                                  )}
+                                  {v.statut === 'en_attente' && canValiderManuel && (
+                                    refusantValidationId === v.id ? (
+                                      <div className="mt-2 space-y-1">
+                                        <input
+                                          value={motifRefusAdmin}
+                                          onChange={(e) => setMotifRefusAdmin(e.target.value)}
+                                          placeholder="Motif du refus"
+                                          autoFocus
+                                          className="w-full rounded border border-slate-300 px-1.5 py-1 text-xs"
+                                        />
+                                        <div className="flex gap-2">
+                                          <button
+                                            onClick={() => setRefusantValidationId(null)}
+                                            className="text-xs font-medium text-slate-500 hover:underline"
+                                          >
+                                            Annuler
+                                          </button>
+                                          <button
+                                            onClick={() => handleRefuserManuel(d.id, v.id)}
+                                            disabled={!motifRefusAdmin.trim() || traitantValidationId === v.id}
+                                            className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                                          >
+                                            Confirmer le refus
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="mt-2 flex gap-3">
+                                        <button
+                                          onClick={() => handleValiderManuel(d.id, v.id)}
+                                          disabled={traitantValidationId === v.id}
+                                          className="text-xs font-medium text-teal-700 hover:underline disabled:opacity-50"
+                                        >
+                                          Valider (secours)
+                                        </button>
+                                        <button
+                                          onClick={() => openRefuserManuel(v.id)}
+                                          disabled={traitantValidationId === v.id}
+                                          className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                                        >
+                                          Refuser (secours)
+                                        </button>
+                                      </div>
+                                    )
+                                  )}
                                 </div>
                               ))}
                             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
+import { SpinnerBloc } from '../components/Spinner'
 import type { ConversationMessage } from '../types'
 
 const CONFIG_LABELS: Record<string, string> = {
@@ -15,10 +16,11 @@ export default function Chatbot() {
   const [conversation, setConversation] = useState<ConversationMessage[]>([])
   const [saisie, setSaisie] = useState('')
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
+  const [configLoading, setConfigLoading] = useState(true)
   const finRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    api.chatbotConfig().then(setConfig)
+    api.chatbotConfig().then(setConfig).finally(() => setConfigLoading(false))
   }, [])
 
   useEffect(() => {
@@ -100,22 +102,26 @@ export default function Chatbot() {
 
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">Configuration</h2>
-          <ul className="space-y-3">
-            {Object.entries(config).map(([key, value]) => (
-              <li key={key} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
-                <span className="text-slate-700">{CONFIG_LABELS[key] ?? key}</span>
-                <span
-                  className={`inline-block h-5 w-9 rounded-full transition-colors ${value ? 'bg-teal-700' : 'bg-slate-300'}`}
-                >
+          {configLoading && Object.keys(config).length === 0 ? (
+            <SpinnerBloc />
+          ) : (
+            <ul className="space-y-3">
+              {Object.entries(config).map(([key, value]) => (
+                <li key={key} className="flex items-center justify-between border-b border-slate-100 pb-2 text-sm">
+                  <span className="text-slate-700">{CONFIG_LABELS[key] ?? key}</span>
                   <span
-                    className={`block h-4 w-4 translate-y-0.5 rounded-full bg-white transition-transform ${
-                      value ? 'translate-x-4' : 'translate-x-0.5'
-                    }`}
-                  />
-                </span>
-              </li>
-            ))}
-          </ul>
+                    className={`inline-block h-5 w-9 rounded-full transition-colors ${value ? 'bg-teal-700' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`block h-4 w-4 translate-y-0.5 rounded-full bg-white transition-transform ${
+                        value ? 'translate-x-4' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="mt-4 text-xs text-slate-400">
             "Chatbot actif" se pilote depuis Sécurité → Paramètres application. Les autres indicateurs reflètent la
             feuille de route, pas encore tous implémentés.

@@ -27,6 +27,7 @@ import Chatbot from './pages/Chatbot'
 import Previsions from './pages/Previsions'
 import Reporting from './pages/Reporting'
 import Securite from './pages/Securite'
+import CodesSms from './pages/CodesSms'
 import Parametres from './pages/Parametres'
 import Geographie from './pages/Geographie'
 import NotificationsPush from './pages/NotificationsPush'
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="previsions" element={<Previsions />} />
               <Route path="reporting" element={<Reporting />} />
               <Route path="securite" element={<Securite />} />
+              <Route path="codes-sms" element={<CodesSms />} />
               <Route path="parametres" element={<Parametres />} />
               <Route path="geographie" element={<Geographie />} />
               <Route path="notifications-push" element={<NotificationsPush />} />

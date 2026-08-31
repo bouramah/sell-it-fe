@@ -5,6 +5,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF } from '../lib/format'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
@@ -20,6 +21,7 @@ export default function Beneficiaires() {
   const [etablissements, setEtablissements] = useState<Etablissement[]>([])
   const [postes, setPostes] = useState<string[]>([])
   const [etablissementFiltre, setEtablissementFiltre] = useState('')
+  const [loading, setLoading] = useState(true)
   const { boutiques } = useBoutiques()
   const { beneficiaireGestion: canGerer } = usePermissions()
 
@@ -40,9 +42,12 @@ export default function Beneficiaires() {
   const [telechargeantId, setTelechargeantId] = useState<string | null>(null)
 
   function refresh() {
-    api.beneficiaires(etablissementFiltre || undefined).then(setBeneficiaires)
-    api.etablissements().then(setEtablissements)
-    api.referentiels().then((r) => setPostes((r.postes_beneficiaires ?? []).map((p) => p.nom)))
+    setLoading(true)
+    Promise.all([
+      api.beneficiaires(etablissementFiltre || undefined).then(setBeneficiaires),
+      api.etablissements().then(setEtablissements),
+      api.referentiels().then((r) => setPostes((r.postes_beneficiaires ?? []).map((p) => p.nom))),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [etablissementFiltre])
@@ -181,6 +186,9 @@ export default function Beneficiaires() {
 
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleFileSelected} />
 
+      {loading && beneficiaires.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -267,6 +275,7 @@ export default function Beneficiaires() {
         </table>
         <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
+      )}
 
       {showModal && (
         <Modal title={editing ? 'Modifier le bénéficiaire' : 'Ajouter un bénéficiaire'} onClose={() => { setCreating(false); setEditing(null) }}>

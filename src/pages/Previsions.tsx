@@ -4,6 +4,7 @@ import { api } from '../api/client'
 import Badge from '../components/Badge'
 import Pagination from '../components/Pagination'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { useBoutiques } from '../lib/useBoutiques'
 import { usePagination } from '../lib/usePagination'
 import { useSearch } from '../lib/useSearch'
@@ -14,6 +15,7 @@ const CONFIANCE_LABEL = { faible: 'Faible — historique court', moyenne: 'Moyen
 
 export default function Previsions() {
   const [suggestions, setSuggestions] = useState<SuggestionAvecProduit[]>([])
+  const [loading, setLoading] = useState(true)
   const { nomBoutique } = useBoutiques()
   const navigate = useNavigate()
 
@@ -24,7 +26,7 @@ export default function Previsions() {
   }
 
   useEffect(() => {
-    api.previsions().then(setSuggestions)
+    api.previsions().then(setSuggestions).finally(() => setLoading(false))
   }, [])
 
   const getFields = useCallback((s: SuggestionAvecProduit) => [s.produit_nom, nomBoutique(s.boutique_id)], [nomBoutique])
@@ -48,41 +50,45 @@ export default function Previsions() {
 
       <SearchInput value={query} onChange={setQuery} placeholder="Rechercher un produit…" />
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3">Produit</th>
-              <th className="px-4 py-3">Boutique</th>
-              <th className="px-4 py-3 text-right">Stock actuel</th>
-              <th className="px-4 py-3 text-right">Ventes prévues (14j)</th>
-              <th className="px-4 py-3 text-right">Quantité suggérée</th>
-              <th className="px-4 py-3">Confiance</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {paginated.map((s) => (
-              <tr key={`${s.produit_id}-${s.boutique_id}`} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-900">{s.produit_nom}</td>
-                <td className="px-4 py-3 text-slate-600">{nomBoutique(s.boutique_id)}</td>
-                <td className="px-4 py-3 text-right text-slate-600">{s.stock_actuel}</td>
-                <td className="px-4 py-3 text-right text-slate-600">{s.ventes_prevues_14j}</td>
-                <td className="px-4 py-3 text-right font-medium text-slate-900">{s.quantite_suggeree} unités</td>
-                <td className="px-4 py-3">
-                  <Badge tone={CONFIANCE_TONE[s.confiance]}>{CONFIANCE_LABEL[s.confiance]}</Badge>
-                </td>
-                <td className="px-4 py-3">
-                  <button onClick={() => creerCommande(s)} className="text-sm font-medium text-teal-700 hover:underline">
-                    Créer commande fournisseur
-                  </button>
-                </td>
+      {loading && suggestions.length === 0 ? (
+        <SpinnerBloc />
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Produit</th>
+                <th className="px-4 py-3">Boutique</th>
+                <th className="px-4 py-3 text-right">Stock actuel</th>
+                <th className="px-4 py-3 text-right">Ventes prévues (14j)</th>
+                <th className="px-4 py-3 text-right">Quantité suggérée</th>
+                <th className="px-4 py-3">Confiance</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginated.map((s) => (
+                <tr key={`${s.produit_id}-${s.boutique_id}`} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-900">{s.produit_nom}</td>
+                  <td className="px-4 py-3 text-slate-600">{nomBoutique(s.boutique_id)}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{s.stock_actuel}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{s.ventes_prevues_14j}</td>
+                  <td className="px-4 py-3 text-right font-medium text-slate-900">{s.quantite_suggeree} unités</td>
+                  <td className="px-4 py-3">
+                    <Badge tone={CONFIANCE_TONE[s.confiance]}>{CONFIANCE_LABEL[s.confiance]}</Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => creerCommande(s)} className="text-sm font-medium text-teal-700 hover:underline">
+                      Créer commande fournisseur
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
+        </div>
+      )}
     </div>
   )
 }

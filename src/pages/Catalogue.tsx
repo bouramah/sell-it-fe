@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF } from '../lib/format'
 import { useSecteurs } from '../lib/useSecteurs'
 import type { ProduitRecommande } from '../types'
@@ -40,9 +41,10 @@ export default function Catalogue() {
   const [resultats, setResultats] = useState<ProduitRecommande[]>([])
   const [tendances, setTendances] = useState<ProduitRecommande[]>([])
   const [chercheEffectuee, setChercheEffectuee] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.iaTendances().then(setTendances)
+    api.iaTendances().then(setTendances).finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
@@ -90,12 +92,16 @@ export default function Catalogue() {
 
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">Tendances du réseau (30 derniers jours)</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {tendances.map((p) => (
-            <CarteProduit key={p.id} p={p} />
-          ))}
-          {tendances.length === 0 && <p className="text-sm text-slate-400">Pas encore assez de ventes pour dégager une tendance.</p>}
-        </div>
+        {loading && tendances.length === 0 ? (
+          <SpinnerBloc />
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {tendances.map((p) => (
+              <CarteProduit key={p.id} p={p} />
+            ))}
+            {tendances.length === 0 && <p className="text-sm text-slate-400">Pas encore assez de ventes pour dégager une tendance.</p>}
+          </div>
+        )}
       </div>
 
       <p className="text-xs text-slate-400">

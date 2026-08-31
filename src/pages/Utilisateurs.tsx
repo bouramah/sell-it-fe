@@ -7,6 +7,7 @@ import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
 import SearchInput from '../components/SearchInput'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatDate } from '../lib/format'
 import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
@@ -77,15 +78,20 @@ export default function Utilisateurs() {
   const [roleError, setRoleError] = useState<string | null>(null)
   const [roleSaving, setRoleSaving] = useState(false)
   const [confirmDeleteRole, setConfirmDeleteRole] = useState<RoleInfo | null>(null)
+  const [loadingUsers, setLoadingUsers] = useState(true)
+  const [loadingPermissions, setLoadingPermissions] = useState(true)
 
   function refresh() {
-    api.utilisateurs(boutiqueId || undefined).then(setUtilisateurs)
+    setLoadingUsers(true)
+    api.utilisateurs(boutiqueId || undefined).then(setUtilisateurs).finally(() => setLoadingUsers(false))
   }
 
   useEffect(refresh, [boutiqueId])
   useEffect(() => {
-    api.permissions().then(setPermissions)
-    api.boutiques().then(setBoutiques)
+    Promise.all([
+      api.permissions().then(setPermissions),
+      api.boutiques().then(setBoutiques),
+    ]).finally(() => setLoadingPermissions(false))
   }, [])
 
   function rattachement(u: Utilisateur): string {
@@ -178,10 +184,10 @@ export default function Utilisateurs() {
   async function handleResetPassword(u: Utilisateur) {
     setConfirmResetPassword(null)
     try {
-      await api.reinitialiserMotDePasseAdmin(u.id)
-      window.alert(`Nouveau mot de passe envoyé par SMS à ${u.prenom} ${u.nom}.`)
+      const { message } = await api.reinitialiserMotDePasseAdmin(u.id)
+      window.alert(message)
     } catch {
-      window.alert("Échec de l'envoi du SMS — le mot de passe n'a pas été modifié.")
+      window.alert("Échec de la réinitialisation du mot de passe.")
     }
   }
 
@@ -259,6 +265,9 @@ export default function Utilisateurs() {
             />
           </div>
         </div>
+        {loadingUsers && utilisateurs.length === 0 ? (
+          <SpinnerBloc />
+        ) : (
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -318,6 +327,7 @@ export default function Utilisateurs() {
           </table>
           <Pagination page={page} pageCount={pageCount} onChange={setPage} totalItems={totalItems} pageSize={pageSize} />
         </div>
+        )}
       </section>
 
       {canGererUtilisateurs && (
@@ -388,6 +398,9 @@ export default function Utilisateurs() {
         <div className="mb-3">
           <SearchInput value={permQuery} onChange={setPermQuery} placeholder="Rechercher un module/action…" />
         </div>
+        {loadingPermissions && permissions.length === 0 ? (
+          <SpinnerBloc />
+        ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-teal-800 text-xs uppercase tracking-wide text-white">
@@ -429,6 +442,7 @@ export default function Utilisateurs() {
             </tbody>
           </table>
         </div>
+        )}
       </section>
       )}
 

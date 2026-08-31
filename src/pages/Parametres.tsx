@@ -3,6 +3,7 @@ import { api } from '../api/client'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import SearchableSelect from '../components/SearchableSelect'
+import { SpinnerBloc } from '../components/Spinner'
 import { formatGNF } from '../lib/format'
 import { usePermissions } from '../lib/permissions'
 import type { BaremeCreditBeneficiaire, Etablissement, ParametreFiscal, ReferentielItem } from '../types'
@@ -61,16 +62,20 @@ export default function Parametres() {
   const [baremeError, setBaremeError] = useState<string | null>(null)
   const [savingBareme, setSavingBareme] = useState(false)
   const [confirmDeleteBareme, setConfirmDeleteBareme] = useState<BaremeCreditBeneficiaire | null>(null)
+  const [loading, setLoading] = useState(true)
 
   function refresh() {
-    api.referentiels().then(setReferentiels)
-    api.parametreFiscal().then((p) => {
-      setFiscal(p)
-      setFiscalTaux(String(Math.round(p.taux * 100)))
-      setFiscalActif(p.actif)
-    })
-    api.baremeCreditBeneficiaires().then(setBaremes)
-    api.etablissements().then(setEtablissements)
+    setLoading(true)
+    Promise.all([
+      api.referentiels().then(setReferentiels),
+      api.parametreFiscal().then((p) => {
+        setFiscal(p)
+        setFiscalTaux(String(Math.round(p.taux * 100)))
+        setFiscalActif(p.actif)
+      }),
+      api.baremeCreditBeneficiaires().then(setBaremes),
+      api.etablissements().then(setEtablissements),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(refresh, [])
@@ -200,6 +205,10 @@ export default function Parametres() {
         </nav>
 
         <div className="min-w-0 flex-1 space-y-6">
+      {loading && Object.keys(referentiels).length === 0 ? (
+        <SpinnerBloc />
+      ) : (
+      <>
       {categorie === 'secteurs' && (
         <p className="text-xs text-slate-400">
           Les secteurs déterminent la classification des produits, boutiques et fournisseurs dans toute l'application.
@@ -336,6 +345,8 @@ export default function Parametres() {
         ))}
         {items.length === 0 && <p className="text-sm text-slate-400">Aucun élément dans ce référentiel.</p>}
       </div>
+      )}
+      </>
       )}
         </div>
       </div>
