@@ -35,6 +35,7 @@ import Etablissements from './pages/Etablissements'
 import Beneficiaires from './pages/Beneficiaires'
 import AideHumanitaireDashboard from './pages/AideHumanitaireDashboard'
 import ValidationGarant from './pages/ValidationGarant'
+import Legal from './pages/Legal'
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/validation-garant/:token" element={<ValidationGarant />} />
+          <Route path="/legal" element={<Legal />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Layout />}>
               <Route index element={<Home />} />
