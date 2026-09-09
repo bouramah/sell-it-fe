@@ -296,6 +296,24 @@ export default function Login() {
               </>
             )}
           </div>
+
+          <div className="mt-4 rounded-xl bg-slate-900 p-4 text-xs leading-relaxed text-slate-300">
+            <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-amber-400">
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0">
+                <path
+                  fillRule="evenodd"
+                  d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM10 8a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 8Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              ACCÈS STRICTEMENT RÉSERVÉ
+            </p>
+            <p>
+              Cette plateforme est exclusivement réservée au personnel autorisé de KFSTORE — GROUPE SKF SARL. Tout
+              accès non autorisé ou tentative d'intrusion fera l'objet de poursuites conformément à la réglementation
+              en vigueur.
+            </p>
+          </div>
         </div>
       </div>
     </div>
