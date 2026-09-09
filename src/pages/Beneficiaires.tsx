@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { api, SERVER_BASE } from '../api/client'
 import Badge from '../components/Badge'
+import GeoPicker from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
@@ -14,7 +15,7 @@ import { useSearch } from '../lib/useSearch'
 import type { Beneficiaire, Etablissement } from '../types'
 import type { BeneficiaireInput, DemandeCreditBeneficiaireInput } from '../types/write'
 
-const EMPTY_FORM: BeneficiaireInput = { nom: '', contact: '', boutique_ids: [], etablissement_id: '', poste: '', salaire_reference: 0 }
+const EMPTY_FORM: BeneficiaireInput = { nom: '', contact: '', secteur_geo_id: null, boutique_ids: [], etablissement_id: '', poste: '', salaire_reference: 0 }
 
 export default function Beneficiaires() {
   const [beneficiaires, setBeneficiaires] = useState<Beneficiaire[]>([])
@@ -208,6 +209,11 @@ export default function Beneficiaires() {
                 <td className="px-4 py-3 font-medium text-slate-900">
                   {b.client_nom}
                   <div className="text-xs font-normal text-slate-400">{b.client_contact}</div>
+                  {b.secteur_incoherent && (
+                    <div className="mt-1" title="Le secteur du bénéficiaire ne correspond à aucun des garants de l'établissement">
+                      <Badge tone="warning">Secteur incohérent</Badge>
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{b.numero_membre}</td>
                 <td className="px-4 py-3 text-slate-600">{nomEtablissement(b.etablissement_id)}</td>
@@ -323,6 +329,12 @@ export default function Beneficiaires() {
                     ))}
                   </div>
                 </div>
+                <GeoPicker
+                  value={form.secteur_geo_id ?? null}
+                  onChange={(id) => setForm({ ...form, secteur_geo_id: id })}
+                  label="Localisation"
+                  required
+                />
               </>
             )}
             <div>

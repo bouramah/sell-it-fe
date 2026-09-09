@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
 import Badge from '../components/Badge'
 import ConfirmDialog from '../components/ConfirmDialog'
+import GeoPicker from '../components/GeoPicker'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import SearchableSelect from '../components/SearchableSelect'
@@ -13,7 +14,11 @@ import { useSearch } from '../lib/useSearch'
 import type { Etablissement } from '../types'
 import type { EtablissementInput } from '../types/write'
 
-const EMPTY_FORM: EtablissementInput = { nom: '', type_etablissement: '', adresse: '', referent_nom: '', referent_contact: '', comptabilite_nom: '', comptabilite_contact: '' }
+const EMPTY_FORM: EtablissementInput = {
+  nom: '', type_etablissement: '', adresse: '',
+  referent_nom: '', referent_contact: '', referent_secteur_geo_id: null,
+  comptabilite_nom: '', comptabilite_contact: '', comptabilite_secteur_geo_id: null,
+}
 
 export default function Etablissements() {
   const [etablissements, setEtablissements] = useState<Etablissement[]>([])
@@ -49,8 +54,9 @@ export default function Etablissements() {
 
   function openEdit(e: Etablissement) {
     setForm({
-      nom: e.nom, type_etablissement: e.type_etablissement, adresse: e.adresse ?? '', referent_nom: e.referent_nom, referent_contact: e.referent_contact,
-      comptabilite_nom: e.comptabilite_nom, comptabilite_contact: e.comptabilite_contact,
+      nom: e.nom, type_etablissement: e.type_etablissement, adresse: e.adresse ?? '',
+      referent_nom: e.referent_nom, referent_contact: e.referent_contact, referent_secteur_geo_id: e.referent_secteur_geo_id,
+      comptabilite_nom: e.comptabilite_nom, comptabilite_contact: e.comptabilite_contact, comptabilite_secteur_geo_id: e.comptabilite_secteur_geo_id,
     })
     setError(null)
     setEditing(e)
@@ -217,6 +223,14 @@ export default function Etablissements() {
                   />
                 </div>
               </div>
+              <div className="mt-3">
+                <GeoPicker
+                  value={form.referent_secteur_geo_id ?? null}
+                  onChange={(id) => setForm({ ...form, referent_secteur_geo_id: id })}
+                  label="Secteur du référent"
+                  required
+                />
+              </div>
             </div>
             <div className="rounded-md border border-slate-200 p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Garant comptabilité / RH (établissement)</p>
@@ -240,6 +254,14 @@ export default function Etablissements() {
                     required
                   />
                 </div>
+              </div>
+              <div className="mt-3">
+                <GeoPicker
+                  value={form.comptabilite_secteur_geo_id ?? null}
+                  onChange={(id) => setForm({ ...form, comptabilite_secteur_geo_id: id })}
+                  label="Secteur de la comptabilité"
+                  required
+                />
               </div>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}

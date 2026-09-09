@@ -283,7 +283,8 @@ export default function Clients() {
                 setForm({ ...form, secteur_geo_id: id })
                 setGeoResolved(resolved ?? null)
               }}
-              label="Localisation (facultatif)"
+              label="Localisation"
+              required
             />
             <div className="grid grid-cols-2 gap-3">
               <div>

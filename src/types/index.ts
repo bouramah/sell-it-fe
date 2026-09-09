@@ -414,8 +414,10 @@ export interface Etablissement {
   adresse: string | null
   referent_nom: string
   referent_contact: string
+  referent_secteur_geo_id: string | null
   comptabilite_nom: string
   comptabilite_contact: string
+  comptabilite_secteur_geo_id: string | null
   statut: StatutEtablissement
 }
 
@@ -434,6 +436,7 @@ export interface Beneficiaire {
   plafond_suspendu: boolean
   plafond_disponible: number
   credit_autorise: boolean
+  secteur_incoherent: boolean
 }
 
 export interface BaremeCreditBeneficiaire {

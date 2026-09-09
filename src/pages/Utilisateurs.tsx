@@ -547,7 +547,8 @@ export default function Utilisateurs() {
             <GeoPicker
               value={form.secteur_geo_id ?? null}
               onChange={(id) => setForm({ ...form, secteur_geo_id: id })}
-              label="Localisation (facultatif)"
+              label={form.role === 'livreur' ? 'Localisation' : 'Localisation (facultatif)'}
+              required={form.role === 'livreur'}
             />
 
             {error && <p className="text-sm text-red-600">{error}</p>}

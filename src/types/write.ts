@@ -356,8 +356,10 @@ export interface EtablissementInput {
   adresse?: string | null
   referent_nom: string
   referent_contact: string
+  referent_secteur_geo_id?: string | null
   comptabilite_nom: string
   comptabilite_contact: string
+  comptabilite_secteur_geo_id?: string | null
 }
 
 export interface EtablissementUpdateInput {
@@ -366,8 +368,10 @@ export interface EtablissementUpdateInput {
   adresse?: string | null
   referent_nom?: string
   referent_contact?: string
+  referent_secteur_geo_id?: string | null
   comptabilite_nom?: string
   comptabilite_contact?: string
+  comptabilite_secteur_geo_id?: string | null
   statut?: string
 }
 
@@ -375,6 +379,7 @@ export interface BeneficiaireInput {
   client_id?: string | null
   nom?: string
   contact?: string
+  secteur_geo_id?: string | null
   boutique_ids?: string[]
   etablissement_id: string
   poste: string
