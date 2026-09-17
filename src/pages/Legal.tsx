@@ -1,4 +1,4 @@
-const DATE_MAJ = '31 août 2026'
+const DATE_MAJ = '13 septembre 2026'
 
 export default function Legal() {
   return (
@@ -6,12 +6,8 @@ export default function Legal() {
     <div className="mx-auto max-w-3xl px-6 py-12 text-sm leading-relaxed text-slate-700">
       <img src="/logo-transparent.png" alt="KFSTORE" className="mb-8 h-10" />
 
-      <p className="mb-10 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-        Document provisoire — à faire relire par GROUPE SKF SARL (et un juriste si possible) avant toute
-        soumission App Store / Play Store. Dernière mise à jour : {DATE_MAJ}.
-      </p>
-
       <h1 className="mb-2 text-2xl font-bold text-slate-900">Conditions d'utilisation & Politique de confidentialité</h1>
+      <p className="mb-10 text-xs text-slate-400">Dernière mise à jour : {DATE_MAJ}.</p>
       <p className="mb-10 text-slate-500">
         Applicable aux applications <strong>KFSTORE</strong> (clients) et <strong>KFSTORE Agent</strong> (personnel
         interne), ainsi qu'au back-office web, édités par <strong>GROUPE SKF SARL</strong>.
@@ -76,7 +72,7 @@ export default function Legal() {
         <h3 className="mb-2 mt-6 font-semibold text-slate-900">2.2 Données collectées</h3>
         <ul className="mb-4 list-disc space-y-1 pl-5">
           <li>Identité et contact : nom, prénom, numéro de téléphone.</li>
-          <li>Données de compte : mot de passe (stocké de façon chiffrée, jamais en clair), historique de connexion.</li>
+          <li>Données de compte : mot de passe (stocké sous forme hachée, jamais en clair), historique de connexion.</li>
           <li>Données commerciales : commandes, achats, moyens de paiement utilisés, historique de crédit et de remboursement.</li>
           <li>Données de localisation approximative : boutique(s) fréquentée(s), adresse de livraison renseignée.</li>
           <li>Données techniques : jeton de notification push (si les notifications sont activées), journal d'audit des actions sensibles (personnel interne uniquement).</li>
