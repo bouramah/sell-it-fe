@@ -75,7 +75,7 @@ export interface ProduitCreateInput {
   seuil_semi_gros: number
   seuil_gros: number
   unite: string
-  code_barres: string
+  code_barres: string | null
   date_peremption: string | null
 }
 
@@ -88,7 +88,7 @@ export interface ProduitUpdateInput {
   seuil_semi_gros?: number
   seuil_gros?: number
   unite?: string
-  code_barres?: string
+  code_barres?: string | null
   date_peremption?: string | null
 }
 

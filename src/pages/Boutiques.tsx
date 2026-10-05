@@ -305,7 +305,10 @@ export function BoutiquesListe() {
                 <label className="mb-1 block text-sm font-medium text-slate-700">Responsable</label>
                 <SearchableSelect
                   value={form.responsable}
-                  onChange={(v) => setForm({ ...form, responsable: v })}
+                  onChange={(v) => {
+                    const u = responsables.find((r) => `${r.prenom} ${r.nom}` === v)
+                    setForm({ ...form, responsable: v, telephone: u ? u.contact : form.telephone })
+                  }}
                   options={responsables.map((u) => ({
                     value: `${u.prenom} ${u.nom}`,
                     label: `${u.prenom} ${u.nom} — ${nomRole(u.role)} — ${u.contact}`,

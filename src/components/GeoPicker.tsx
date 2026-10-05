@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/client'
+import { usePermissions } from '../lib/permissions'
 import SearchableSelect from './SearchableSelect'
 import type { Commune, QuartierGeo, Region, SecteurGeo, Ville } from '../types'
+
+const NOUVEAU_QUARTIER = '__nouveau__'
 
 export interface GeoResolved {
   secteurGeoId: string
@@ -23,6 +26,7 @@ interface GeoPickerProps {
  * pouvoir filtrer localement ET reconstituer la chaîne de parenté quand une valeur initiale
  * est fournie (édition) — l'API n'expose pas de "get by id" unique pour remonter la chaîne. */
 export default function GeoPicker({ value, onChange, label = 'Localisation', required }: GeoPickerProps) {
+  const permissions = usePermissions()
   const [regions, setRegions] = useState<Region[]>([])
   const [villes, setVilles] = useState<Ville[]>([])
   const [communes, setCommunes] = useState<Commune[]>([])
@@ -34,6 +38,10 @@ export default function GeoPicker({ value, onChange, label = 'Localisation', req
   const [villeId, setVilleId] = useState('')
   const [communeId, setCommuneId] = useState('')
   const [quartierId, setQuartierId] = useState('')
+
+  const [nouveauQuartierNom, setNouveauQuartierNom] = useState('')
+  const [creationEnCours, setCreationEnCours] = useState(false)
+  const [erreurCreation, setErreurCreation] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([api.regions(), api.villes(), api.communes(), api.quartiersGeo(), api.secteursGeo()]).then(
@@ -70,6 +78,24 @@ export default function GeoPicker({ value, onChange, label = 'Localisation', req
   const communesFiltrees = useMemo(() => communes.filter((c) => c.ville_id === villeId), [communes, villeId])
   const quartiersFiltres = useMemo(() => quartiers.filter((q) => q.commune_id === communeId), [quartiers, communeId])
   const secteursFiltres = useMemo(() => secteurs.filter((s) => s.quartier_id === quartierId), [secteurs, quartierId])
+
+  async function creerQuartier() {
+    const nom = nouveauQuartierNom.trim()
+    if (!nom || !communeId) return
+    setCreationEnCours(true)
+    setErreurCreation(null)
+    try {
+      const nouveau = await api.creerQuartierGeo({ nom, commune_id: communeId })
+      setQuartiers((qs) => [...qs, nouveau])
+      setQuartierId(nouveau.id)
+      setNouveauQuartierNom('')
+      onChange(null)
+    } catch (e) {
+      setErreurCreation(e instanceof Error && e.message ? e.message : "Échec de la création du quartier.")
+    } finally {
+      setCreationEnCours(false)
+    }
+  }
 
   function selectionnerSecteur(secteurId: string) {
     if (!secteurId) {
@@ -130,12 +156,16 @@ export default function GeoPicker({ value, onChange, label = 'Localisation', req
           disabled={!villeId}
         />
         <SearchableSelect
-          value={quartierId}
+          value={quartierId === NOUVEAU_QUARTIER ? NOUVEAU_QUARTIER : quartierId}
           onChange={(v) => {
+            setErreurCreation(null)
             setQuartierId(v)
-            onChange(null)
+            if (v !== NOUVEAU_QUARTIER) onChange(null)
           }}
-          options={quartiersFiltres.map((q) => ({ value: q.id, label: q.nom }))}
+          options={[
+            ...quartiersFiltres.map((q) => ({ value: q.id, label: q.nom })),
+            ...(permissions.referentiels ? [{ value: NOUVEAU_QUARTIER, label: '+ Autre (nouveau quartier)' }] : []),
+          ]}
           placeholder="Quartier…"
           required={required}
           disabled={!communeId}
@@ -149,6 +179,25 @@ export default function GeoPicker({ value, onChange, label = 'Localisation', req
           disabled={!quartierId}
         />
       </div>
+      {quartierId === NOUVEAU_QUARTIER && (
+        <div className="mt-2 flex items-center gap-2">
+          <input
+            value={nouveauQuartierNom}
+            onChange={(e) => setNouveauQuartierNom(e.target.value)}
+            placeholder="Nom du nouveau quartier"
+            className="flex-1 rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          />
+          <button
+            type="button"
+            onClick={creerQuartier}
+            disabled={creationEnCours || !nouveauQuartierNom.trim()}
+            className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+          >
+            {creationEnCours ? 'Création…' : 'Créer'}
+          </button>
+        </div>
+      )}
+      {erreurCreation && <p className="mt-1 text-xs text-red-600">{erreurCreation}</p>}
       <p className="mt-1 text-xs text-slate-400">
         Référentiel géré dans Configuration → Découpage géographique.
       </p>

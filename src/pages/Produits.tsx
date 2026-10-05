@@ -95,11 +95,14 @@ export function ProduitsListe() {
     setSaving(true)
     setError(null)
     try {
+      // Un code-barres vide est envoyé comme absent (null), pas comme chaîne vide — sinon deux
+      // produits sans code-barres entreraient en conflit sur la contrainte d'unicité.
+      const code_barres_normalise = form.code_barres?.trim() || null
       if (editing) {
-        const { nom, secteur, categorie, seuil_semi_gros, seuil_gros, unite, code_barres, date_peremption } = form
-        await api.modifierProduit(editing.id, { nom, secteur, categorie, seuil_semi_gros, seuil_gros, unite, code_barres, date_peremption })
+        const { nom, secteur, categorie, seuil_semi_gros, seuil_gros, unite, date_peremption } = form
+        await api.modifierProduit(editing.id, { nom, secteur, categorie, seuil_semi_gros, seuil_gros, unite, code_barres: code_barres_normalise, date_peremption })
       } else {
-        await api.creerProduit(form)
+        await api.creerProduit({ ...form, code_barres: code_barres_normalise })
       }
       setCreating(false)
       setEditing(null)
@@ -330,12 +333,13 @@ export function ProduitsListe() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Code-barres</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Code-barres <span className="text-slate-400">(optionnel)</span>
+                </label>
                 <input
-                  value={form.code_barres}
+                  value={form.code_barres ?? ''}
                   onChange={(e) => setForm({ ...form, code_barres: e.target.value })}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  required
                 />
               </div>
               <div>
@@ -704,7 +708,7 @@ export function ProduitFiche() {
             <Field label="Prix semi-gros" value={`${formatGNF(produit.prix_semi_gros)} (dès ${produit.seuil_semi_gros})`} />
             <Field label="Prix gros" value={`${formatGNF(produit.prix_gros)} (dès ${produit.seuil_gros})`} />
             <Field label="Unité" value={produit.unite} />
-            <Field label="Code-barres" value={produit.code_barres} />
+            <Field label="Code-barres" value={produit.code_barres ?? '—'} />
             <Field label="Date de péremption" value={produit.date_peremption ? formatShortDate(produit.date_peremption) : '—'} />
           </dl>
         </section>

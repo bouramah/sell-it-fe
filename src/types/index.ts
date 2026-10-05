@@ -188,7 +188,7 @@ export interface Produit {
   seuil_semi_gros: number
   seuil_gros: number
   unite: string
-  code_barres: string
+  code_barres: string | null
   date_peremption: string | null
   images: ProduitImage[]
 }
