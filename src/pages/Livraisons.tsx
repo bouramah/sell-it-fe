@@ -11,7 +11,7 @@ import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_LIVRAISON_LABELS, type CommandeClient, type Livraison, type ReferentielItem, type StatutLivraison, type Utilisateur } from '../types'
-import type { LivraisonInput } from '../types/write'
+import type { LivraisonInput, LivraisonUpdateInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutLivraison, 'default' | 'success' | 'warning' | 'danger'> = {
   preparee: 'default',
@@ -43,6 +43,7 @@ export default function Livraisons() {
   const [livreursComptes, setLivreursComptes] = useState<Utilisateur[]>([])
 
   const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<LivraisonInput>(EMPTY_FORM)
   const [livreurMode, setLivreurMode] = useState<LivreurMode>('referentiel')
   const [quartier, setQuartier] = useState('')
@@ -80,10 +81,24 @@ export default function Livraisons() {
   const commandesLivrablesFiltrees = boutiqueId ? commandesLivrables.filter((c) => c.boutique_id === boutiqueId) : commandesLivrables
 
   function openCreate() {
+    setEditingId(null)
     setForm(EMPTY_FORM)
     setLivreurMode(livreursComptes.length > 0 ? 'compte' : 'referentiel')
     setQuartier('')
     setDetails('')
+    setError(null)
+    setCreating(true)
+  }
+
+  function openEdit(l: Livraison) {
+    setEditingId(l.id)
+    setForm({ commande_id: l.commande_id, livreur: l.livreur, livreur_user_id: l.livreur_user_id, boutique_id: l.boutique_id, adresse: l.adresse, creneau: l.creneau })
+    setLivreurMode(l.livreur_user_id ? 'compte' : livreursRef.some((r) => r.nom === l.livreur) ? 'referentiel' : 'manuel')
+    // adresse = "quartier — détails" (composé ainsi à la création) — on retente de les séparer
+    // pour pré-remplir, sans garantie si le quartier choisi contenait lui-même un " — ".
+    const [q, ...rest] = l.adresse.split(' — ')
+    setQuartier(q ?? '')
+    setDetails(rest.join(' — '))
     setError(null)
     setCreating(true)
   }
@@ -103,11 +118,17 @@ export default function Livraisons() {
     setError(null)
     try {
       const adresse = details ? `${quartier} — ${details}` : quartier
-      await api.creerLivraison({ ...form, adresse })
+      if (editingId) {
+        const payload: LivraisonUpdateInput = { livreur: form.livreur, livreur_user_id: form.livreur_user_id, adresse, creneau: form.creneau }
+        await api.modifierLivraison(editingId, payload)
+      } else {
+        await api.creerLivraison({ ...form, adresse })
+      }
       setCreating(false)
+      setEditingId(null)
       refresh()
     } catch {
-      setError("Échec de l'affectation de la livraison.")
+      setError(editingId ? "Échec de la modification de l'affectation." : "Échec de l'affectation de la livraison.")
     } finally {
       setSaving(false)
     }
@@ -196,7 +217,14 @@ export default function Livraisons() {
             {paginated.map((l) => (
               <tr key={l.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-900">#{l.commande_id}</td>
-                <td className="px-4 py-3 text-slate-600">{l.livreur || <span className="text-slate-400">Non affecté</span>}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {l.livreur || <span className="text-slate-400">Non affecté</span>}
+                  {canGererLivraison && l.statut !== 'livree' && (
+                    <button onClick={() => openEdit(l)} className="ml-2 text-xs font-medium text-teal-700 hover:underline">
+                      Modifier
+                    </button>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-slate-600">{nomBoutique(l.boutique_id)}</td>
                 <td className="px-4 py-3 text-slate-600">{l.adresse}</td>
                 <td className="px-4 py-3 text-slate-500">{l.creneau}</td>
@@ -268,7 +296,7 @@ export default function Livraisons() {
       )}
 
       {creating && (
-        <Modal title="Affecter une livraison" onClose={() => setCreating(false)}>
+        <Modal title={editingId ? `Modifier l'affectation — #${form.commande_id}` : 'Affecter une livraison'} onClose={() => { setCreating(false); setEditingId(null) }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Commande client</label>
@@ -277,6 +305,7 @@ export default function Livraisons() {
                 onChange={selectCommande}
                 options={commandesLivrablesFiltrees.map((c) => ({ value: c.id, label: `#${c.id} — ${c.client_nom}` }))}
                 required
+                disabled={!!editingId}
               />
             </div>
             <div>
@@ -286,6 +315,7 @@ export default function Livraisons() {
                 onChange={(v) => setForm({ ...form, boutique_id: v })}
                 options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                 required
+                disabled={!!editingId}
               />
             </div>
             <div>
@@ -373,11 +403,11 @@ export default function Livraisons() {
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => { setCreating(false); setEditingId(null) }} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
-                {saving ? 'Affectation…' : 'Affecter'}
+                {saving ? 'Enregistrement…' : editingId ? 'Enregistrer les modifications' : 'Affecter'}
               </button>
             </div>
           </form>

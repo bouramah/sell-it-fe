@@ -264,6 +264,13 @@ export interface LivraisonInput {
   creneau: string
 }
 
+export interface LivraisonUpdateInput {
+  livreur: string
+  livreur_user_id?: string | null
+  adresse: string
+  creneau: string
+}
+
 export interface DepenseInput {
   boutique_id: string
   caisse_id: string
@@ -303,6 +310,11 @@ export interface LigneTransfertInput {
 export interface TransfertInput {
   boutique_source_id: string
   boutique_destination_id: string
+  demandeur: string
+  lignes: LigneTransfertInput[]
+}
+
+export interface TransfertUpdateInput {
   demandeur: string
   lignes: LigneTransfertInput[]
 }

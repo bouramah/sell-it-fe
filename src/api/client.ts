@@ -78,6 +78,7 @@ import type {
   FournisseurInput,
   LigneReceptionInput,
   LivraisonInput,
+  LivraisonUpdateInput,
   LoginRequest,
   MouvementCaisseInput,
   MouvementStockInput,
@@ -104,6 +105,7 @@ import type {
   CommuneInput,
   TokenResponse,
   TransfertInput,
+  TransfertUpdateInput,
   UtilisateurConnecte,
   UtilisateurInput,
   ValidationGarantDecisionInput,
@@ -338,6 +340,7 @@ export const api = {
 
   livraisons: () => getJson<Livraison[]>('/livraisons'),
   creerLivraison: (payload: LivraisonInput) => sendJson<Livraison>('POST', '/livraisons', payload),
+  modifierLivraison: (id: string, payload: LivraisonUpdateInput) => sendJson<Livraison>('PUT', `/livraisons/${id}`, payload),
   modifierStatutLivraison: (id: string, statut: string) => sendJson<Livraison>('PUT', `/livraisons/${id}/statut`, { statut }),
   uploaderPreuveLivraison: (id: string, file: File) => sendFile<Livraison>(`/livraisons/${id}/preuve`, file),
   supprimerPreuveLivraison: (id: string) => sendJson<Livraison>('DELETE', `/livraisons/${id}/preuve`),
@@ -399,6 +402,7 @@ export const api = {
 
   transferts: () => getJson<TransfertStock[]>('/transferts'),
   creerTransfert: (payload: TransfertInput) => sendJson<TransfertStock>('POST', '/transferts', payload),
+  modifierTransfert: (id: string, payload: TransfertUpdateInput) => sendJson<TransfertStock>('PUT', `/transferts/${id}`, payload),
   modifierStatutTransfert: (id: string, statut: string, lignes?: LigneReceptionInput[]) =>
     sendJson<TransfertStock>('PUT', `/transferts/${id}/statut`, { statut, lignes }),
 

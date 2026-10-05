@@ -11,7 +11,7 @@ import { usePagination } from '../lib/usePagination'
 import { usePermissions } from '../lib/permissions'
 import { useSearch } from '../lib/useSearch'
 import { STATUT_TRANSFERT_LABELS, type Produit, type StatutTransfert, type TransfertStock, type Utilisateur } from '../types'
-import type { LigneReceptionInput, TransfertInput } from '../types/write'
+import type { LigneReceptionInput, TransfertInput, TransfertUpdateInput } from '../types/write'
 
 const STATUT_TONE: Record<StatutTransfert, 'default' | 'warning' | 'success'> = {
   demande: 'default',
@@ -53,6 +53,7 @@ export default function Transferts() {
   ]
 
   const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [lignes, setLignes] = useState<LigneFormTransfert[]>([nouvelleLigne()])
   const [demandeurManuel, setDemandeurManuel] = useState(false)
@@ -82,9 +83,19 @@ export default function Transferts() {
   const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   function openCreate() {
+    setEditingId(null)
     setForm(EMPTY_FORM)
     setLignes([nouvelleLigne()])
     setDemandeurManuel(false)
+    setError(null)
+    setCreating(true)
+  }
+
+  function openEdit(t: TransfertStock) {
+    setEditingId(t.id)
+    setForm({ boutique_source_id: t.boutique_source_id, boutique_destination_id: t.boutique_destination_id, demandeur: t.demandeur })
+    setLignes(t.lignes.map((l) => ({ key: ++ligneKeySeq, produit_id: l.produit_id, quantite: l.quantite })))
+    setDemandeurManuel(!utilisateurs.some((u) => `${u.prenom} ${u.nom}` === t.demandeur))
     setError(null)
     setCreating(true)
   }
@@ -114,15 +125,24 @@ export default function Transferts() {
     setSaving(true)
     setError(null)
     try {
-      const payload: TransfertInput = {
-        ...form,
-        lignes: lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite })),
+      if (editingId) {
+        const payload: TransfertUpdateInput = {
+          demandeur: form.demandeur,
+          lignes: lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite })),
+        }
+        await api.modifierTransfert(editingId, payload)
+      } else {
+        const payload: TransfertInput = {
+          ...form,
+          lignes: lignes.map((l) => ({ produit_id: l.produit_id, quantite: l.quantite })),
+        }
+        await api.creerTransfert(payload)
       }
-      await api.creerTransfert(payload)
       setCreating(false)
+      setEditingId(null)
       refresh()
     } catch {
-      setError('Échec de la création du transfert.')
+      setError(editingId ? 'Échec de la modification du transfert.' : 'Échec de la création du transfert.')
     } finally {
       setSaving(false)
     }
@@ -205,6 +225,7 @@ export default function Transferts() {
               <th className="px-4 py-3">Boutique destination</th>
               <th className="px-4 py-3">Demandeur</th>
               <th className="px-4 py-3">Statut</th>
+              {canDemander && <th className="px-4 py-3" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -234,11 +255,20 @@ export default function Transferts() {
                     <Badge tone={STATUT_TONE[t.statut]}>{STATUT_TRANSFERT_LABELS[t.statut]}</Badge>
                   )}
                 </td>
+                {canDemander && (
+                  <td className="px-4 py-3 text-right">
+                    {t.statut !== 'recu' && (
+                      <button onClick={() => openEdit(t)} className="text-xs font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-400">
+                <td colSpan={canDemander ? 6 : 5} className="px-4 py-6 text-center text-sm text-slate-400">
                   Aucun transfert.
                 </td>
               </tr>
@@ -250,7 +280,7 @@ export default function Transferts() {
       )}
 
       {creating && (
-        <Modal title="Nouveau transfert de stock" onClose={() => setCreating(false)}>
+        <Modal title={editingId ? `Modifier le transfert #${editingId}` : 'Nouveau transfert de stock'} onClose={() => { setCreating(false); setEditingId(null) }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -260,6 +290,7 @@ export default function Transferts() {
                   onChange={(v) => setForm({ ...form, boutique_source_id: v })}
                   options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                   required
+                  disabled={!!editingId}
                 />
               </div>
               <div>
@@ -269,6 +300,7 @@ export default function Transferts() {
                   onChange={(v) => setForm({ ...form, boutique_destination_id: v })}
                   options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                   required
+                  disabled={!!editingId}
                 />
               </div>
             </div>
@@ -348,11 +380,11 @@ export default function Transferts() {
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setCreating(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => { setCreating(false); setEditingId(null) }} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
                 Annuler
               </button>
               <button type="submit" disabled={saving} className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60">
-                {saving ? 'Création…' : 'Créer le transfert'}
+                {saving ? 'Enregistrement…' : editingId ? 'Enregistrer les modifications' : 'Créer le transfert'}
               </button>
             </div>
           </form>
