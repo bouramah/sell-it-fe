@@ -216,30 +216,32 @@ export default function Dashboard() {
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-600">
               Comparatif par boutique — aujourd'hui
             </h2>
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-slate-400">
-                <tr>
-                  <th className="pb-2 font-medium">Boutique</th>
-                  <th className="pb-2 font-medium">Secteur</th>
-                  <th className="pb-2 text-right font-medium">CA jour</th>
-                  <th className="pb-2 text-right font-medium">Stock alerte</th>
-                  <th className="pb-2 text-right font-medium">Dettes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {data.comparatif_boutiques.map((b) => (
-                  <tr key={b.boutique_id}>
-                    <td className="py-2 font-medium text-slate-900">{b.nom}</td>
-                    <td className="py-2 text-slate-500">{b.secteurs.map((s) => nomSecteur(s)).join(', ')}</td>
-                    <td className="py-2 text-right text-slate-900">{formatGNF(b.ca_jour)}</td>
-                    <td className={`py-2 text-right font-medium ${b.stock_en_alerte > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                      {b.stock_en_alerte}
-                    </td>
-                    <td className="py-2 text-right text-slate-900">{formatGNF(b.dettes_en_cours)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="pb-2 font-medium">Boutique</th>
+                    <th className="pb-2 font-medium">Secteur</th>
+                    <th className="pb-2 text-right font-medium">CA jour</th>
+                    <th className="pb-2 text-right font-medium">Stock alerte</th>
+                    <th className="pb-2 text-right font-medium">Dettes</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.comparatif_boutiques.map((b) => (
+                    <tr key={b.boutique_id}>
+                      <td className="py-2 font-medium text-slate-900">{b.nom}</td>
+                      <td className="py-2 text-slate-500">{b.secteurs.map((s) => nomSecteur(s)).join(', ')}</td>
+                      <td className="py-2 text-right text-slate-900">{formatGNF(b.ca_jour)}</td>
+                      <td className={`py-2 text-right font-medium ${b.stock_en_alerte > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                        {b.stock_en_alerte}
+                      </td>
+                      <td className="py-2 text-right text-slate-900">{formatGNF(b.dettes_en_cours)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

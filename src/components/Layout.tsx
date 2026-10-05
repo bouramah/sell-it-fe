@@ -19,15 +19,36 @@ export default function Layout() {
   }
 
   const initiales = user ? `${user.prenom[0] ?? ''}${user.nom[0] ?? ''}`.toUpperCase() : '—'
+  const [navOpen, setNavOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex">
-        <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white sticky top-0 h-screen shadow-[1px_0_4px_rgba(15,23,42,0.03)]">
-          <div className="border-b border-slate-100 px-5 py-5">
+        {navOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-slate-900/40 md:hidden"
+            onClick={() => setNavOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white shadow-[1px_0_4px_rgba(15,23,42,0.03)] transition-transform duration-200 md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 ${
+            navOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-5">
             <img src="/logo.jpeg" alt="KFSTORE" className="h-8 w-auto" />
+            <button
+              onClick={() => setNavOpen(false)}
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-900 md:hidden"
+              aria-label="Fermer le menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+              </svg>
+            </button>
           </div>
-          <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5">
+          <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-5" onClick={() => setNavOpen(false)}>
             {sections.map((section) => {
               const items = section.items.filter((item) => !item.visible || item.visible(permissions))
               if (items.length === 0) return null
@@ -90,8 +111,22 @@ export default function Layout() {
             </div>
           </div>
         </aside>
-        <main className="flex-1 p-8">
-          <Outlet />
+        <main className="min-w-0 flex-1">
+          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+            <button
+              onClick={() => setNavOpen(true)}
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              aria-label="Ouvrir le menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path fillRule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75Zm0 5A.75.75 0 0 1 2.75 9h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 9.75Zm0 5a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <img src="/logo.jpeg" alt="KFSTORE" className="h-6 w-auto" />
+          </div>
+          <div className="p-4 sm:p-6 md:p-8">
+            <Outlet />
+          </div>
         </main>
       </div>
 
