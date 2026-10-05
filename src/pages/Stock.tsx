@@ -68,6 +68,7 @@ export default function Stock() {
   const { stockEcriture: canGererStock } = usePermissions()
 
   const [creatingLigne, setCreatingLigne] = useState(false)
+  const [editingLigne, setEditingLigne] = useState(false)
   const [ligneForm, setLigneForm] = useState<StockLigneInput>(EMPTY_LIGNE_FORM)
   const [ligneError, setLigneError] = useState<string | null>(null)
   const [savingLigne, setSavingLigne] = useState(false)
@@ -124,6 +125,17 @@ export default function Stock() {
 
   function openCreateLigne() {
     setLigneForm(EMPTY_LIGNE_FORM)
+    setEditingLigne(false)
+    setLigneError(null)
+    setCreatingLigne(true)
+  }
+
+  function openEditLigne(l: LigneStock) {
+    setLigneForm({
+      boutique_id: l.boutique_id, produit_id: l.produit_id,
+      quantite_disponible: l.quantite_disponible, quantite_reservee: l.quantite_reservee, seuil_alerte: l.seuil_alerte,
+    })
+    setEditingLigne(true)
     setLigneError(null)
     setCreatingLigne(true)
   }
@@ -133,11 +145,16 @@ export default function Stock() {
     setSavingLigne(true)
     setLigneError(null)
     try {
-      await api.creerLigneStock(ligneForm)
+      if (editingLigne) {
+        const { boutique_id, produit_id, ...patch } = ligneForm
+        await api.modifierLigneStock(boutique_id, produit_id, patch)
+      } else {
+        await api.creerLigneStock(ligneForm)
+      }
       setCreatingLigne(false)
       refreshEtat()
     } catch {
-      setLigneError('Échec — ce produit est peut-être déjà en stock dans cette boutique.')
+      setLigneError(editingLigne ? 'Échec de la mise à jour.' : 'Échec — ce produit est peut-être déjà en stock dans cette boutique.')
     } finally {
       setSavingLigne(false)
     }
@@ -226,6 +243,7 @@ export default function Stock() {
                 <th className="px-4 py-3 text-right">Réservé</th>
                 <th className="px-4 py-3 text-right">Seuil d'alerte</th>
                 <th className="px-4 py-3">Statut</th>
+                {canGererStock && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -239,6 +257,13 @@ export default function Stock() {
                   <td className="px-4 py-3">
                     <Badge tone={STATUT_STOCK_TONE[l.statut]}>{STATUT_STOCK_LABELS[l.statut]}</Badge>
                   </td>
+                  {canGererStock && (
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => openEditLigne(l)} className="text-xs font-medium text-teal-700 hover:underline">
+                        Modifier
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -345,7 +370,7 @@ export default function Stock() {
       )}
 
       {creatingLigne && (
-        <Modal title="Ajouter un produit en stock" onClose={() => setCreatingLigne(false)}>
+        <Modal title={editingLigne ? 'Modifier le stock' : 'Ajouter un produit en stock'} onClose={() => setCreatingLigne(false)}>
           <form onSubmit={handleSubmitLigne} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Boutique</label>
@@ -354,6 +379,7 @@ export default function Stock() {
                 onChange={(v) => setLigneForm({ ...ligneForm, boutique_id: v })}
                 options={boutiques.map((b) => ({ value: b.id, label: b.nom }))}
                 required
+                disabled={editingLigne}
               />
             </div>
             <div>
@@ -363,6 +389,7 @@ export default function Stock() {
                 onChange={(v) => setLigneForm({ ...ligneForm, produit_id: v })}
                 options={produitsLigneFiltres.map((p) => ({ value: p.id, label: p.nom }))}
                 required
+                disabled={editingLigne}
               />
             </div>
             <div className="grid grid-cols-3 gap-3">

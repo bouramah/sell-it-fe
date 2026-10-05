@@ -558,11 +558,16 @@ export function ProduitFiche() {
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !id) return
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0 || !id) return
     setUploading(true)
     try {
-      const updated = await api.ajouterImageProduit(id, file)
+      // Envoi séquentiel — chaque appel renvoie le produit à jour avec sa nouvelle image ajoutée
+      // à la liste, donc on enchaîne plutôt qu'en parallèle pour ne pas perdre d'ajouts.
+      let updated = produit!
+      for (const file of files) {
+        updated = await api.ajouterImageProduit(id, file)
+      }
       setProduit(updated)
       setCurrent(updated.images.length - 1)
     } finally {
@@ -665,20 +670,24 @@ export function ProduitFiche() {
             )}
           </div>
           {images.length > 1 && (
-            <div className="mb-3 flex justify-center gap-1.5">
+            <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
               {images.map((img, i) => (
                 <button
                   key={img.id}
                   onClick={() => setCurrent(i)}
-                  className={`h-1.5 w-1.5 rounded-full ${i === current ? 'bg-teal-700' : 'bg-slate-300'}`}
+                  className={`h-12 w-12 shrink-0 overflow-hidden rounded-md border-2 ${
+                    i === current ? 'border-teal-600' : 'border-transparent'
+                  }`}
                   aria-label={`Voir l'image ${i + 1}`}
-                />
+                >
+                  {imageSrc(img.url) && <img src={imageSrc(img.url)!} alt="" className="h-full w-full object-cover" />}
+                </button>
               ))}
             </div>
           )}
           {canGererProduit && (
           <>
-          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="hidden" id="produit-image-input" />
+          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFileChange} className="hidden" id="produit-image-input" />
           <div className="flex gap-2">
             <label
               htmlFor="produit-image-input"
