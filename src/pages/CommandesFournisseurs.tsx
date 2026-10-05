@@ -130,6 +130,13 @@ export default function CommandesFournisseurs() {
 
   const nomFournisseur = useCallback((id: string) => fournisseurs.find((f) => f.id === id)?.nom ?? id, [fournisseurs])
   const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
+
+  // Tant qu'aucune boutique destinataire n'est choisie, liste complète ; une fois connue, on ne
+  // propose que les produits des secteurs qu'elle exploite.
+  const boutiqueDestination = boutiques.find((b) => b.id === form.boutique_id)
+  const produitsFiltres = boutiqueDestination
+    ? produits.filter((p) => boutiqueDestination.secteurs.includes(p.secteur))
+    : produits
   const preFiltrees = boutiqueId ? commandes.filter((c) => c.boutique_id === boutiqueId) : commandes
   const getFields = useCallback(
     (c: LigneCommandeFournisseur) => [c.id, nomFournisseur(c.fournisseur_id)],
@@ -468,7 +475,7 @@ export default function CommandesFournisseurs() {
                       <SearchableSelect
                         value={l.produit_id}
                         onChange={(v) => selectProduitForLigne(l.key, v)}
-                        options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                        options={produitsFiltres.map((p) => ({ value: p.id, label: p.nom }))}
                         placeholder="Produit…"
                         required
                       />

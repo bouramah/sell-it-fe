@@ -116,6 +116,12 @@ export default function Stock() {
   const { query: ecartQuery, setQuery: setEcartQuery, filtered: filteredEcarts } = useSearch(ecarts, getEcartFields)
   const { page: ecartPage, setPage: setEcartPage, pageCount: ecartPageCount, paginated: paginatedEcarts, totalItems: ecartTotalItems, pageSize: ecartPageSize } = usePagination(filteredEcarts)
 
+  // Une fois la boutique choisie, on ne propose que les produits des secteurs qu'elle exploite.
+  const boutiqueLigne = boutiques.find((b) => b.id === ligneForm.boutique_id)
+  const produitsLigneFiltres = boutiqueLigne ? produits.filter((p) => boutiqueLigne.secteurs.includes(p.secteur)) : produits
+  const boutiqueMvt = boutiques.find((b) => b.id === mvtForm.boutique_id)
+  const produitsMvtFiltres = boutiqueMvt ? produits.filter((p) => boutiqueMvt.secteurs.includes(p.secteur)) : produits
+
   function openCreateLigne() {
     setLigneForm(EMPTY_LIGNE_FORM)
     setLigneError(null)
@@ -355,7 +361,7 @@ export default function Stock() {
               <SearchableSelect
                 value={ligneForm.produit_id}
                 onChange={(v) => setLigneForm({ ...ligneForm, produit_id: v })}
-                options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                options={produitsLigneFiltres.map((p) => ({ value: p.id, label: p.nom }))}
                 required
               />
             </div>
@@ -399,7 +405,7 @@ export default function Stock() {
               <SearchableSelect
                 value={mvtForm.produit_id}
                 onChange={(v) => setMvtForm({ ...mvtForm, produit_id: v })}
-                options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                options={produitsMvtFiltres.map((p) => ({ value: p.id, label: p.nom }))}
                 required
               />
             </div>

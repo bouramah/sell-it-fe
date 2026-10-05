@@ -79,6 +79,15 @@ export default function Caisse() {
   const { query, setQuery, filtered } = useSearch(mouvements, getFields)
   const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
+  // L'opérateur proposé doit être rattaché à la boutique concernée, pas n'importe qui du réseau.
+  const utilisateursCaisseFiltres = caisseForm.boutique_id
+    ? utilisateurs.filter((u) => u.boutique_ids.includes(caisseForm.boutique_id))
+    : utilisateurs
+  const mvtCaisseSelectionnee = caisses.find((c) => c.id === mvtForm.caisse_id)
+  const utilisateursMvtFiltres = mvtCaisseSelectionnee
+    ? utilisateurs.filter((u) => u.boutique_ids.includes(mvtCaisseSelectionnee.boutique_id))
+    : utilisateurs
+
   function openCreateCaisse() {
     setCaisseForm(EMPTY_CAISSE_FORM)
     setCaisseError(null)
@@ -318,7 +327,7 @@ export default function Caisse() {
                 <SearchableSelect
                   value={caisseForm.operateur}
                   onChange={(v) => setCaisseForm({ ...caisseForm, operateur: v })}
-                  options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
+                  options={utilisateursCaisseFiltres.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
                   allowEmpty="Non renseigné"
                   placeholder="Non renseigné"
                 />
@@ -412,7 +421,7 @@ export default function Caisse() {
                 <SearchableSelect
                   value={mvtForm.operateur}
                   onChange={(v) => setMvtForm({ ...mvtForm, operateur: v })}
-                  options={utilisateurs.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
+                  options={utilisateursMvtFiltres.map((u) => ({ value: `${u.prenom} ${u.nom}`, label: `${u.prenom} ${u.nom} — ${u.contact}` }))}
                   allowEmpty="Non renseigné"
                   placeholder="Non renseigné"
                 />

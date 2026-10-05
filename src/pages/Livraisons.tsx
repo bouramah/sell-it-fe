@@ -76,6 +76,8 @@ export default function Livraisons() {
   const { page, setPage, pageCount, paginated, totalItems, pageSize } = usePagination(filtered)
 
   const commandesLivrables = commandes.filter((c) => c.statut !== 'annulee' && c.statut !== 'livree')
+  // Si l'opérateur a filtré la liste sur une boutique précise, on ne propose que ses commandes.
+  const commandesLivrablesFiltrees = boutiqueId ? commandesLivrables.filter((c) => c.boutique_id === boutiqueId) : commandesLivrables
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -273,7 +275,7 @@ export default function Livraisons() {
               <SearchableSelect
                 value={form.commande_id}
                 onChange={selectCommande}
-                options={commandesLivrables.map((c) => ({ value: c.id, label: `#${c.id} — ${c.client_nom}` }))}
+                options={commandesLivrablesFiltrees.map((c) => ({ value: c.id, label: `#${c.id} — ${c.client_nom}` }))}
                 required
               />
             </div>

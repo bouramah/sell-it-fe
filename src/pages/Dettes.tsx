@@ -150,6 +150,10 @@ export default function Dettes() {
 
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<DetteInput>({ tiers_type: tiers, tiers_nom: '', boutique_id: '', montant_initial: 0, echeance: todayIso() })
+  // Un client peut être rattaché à plusieurs boutiques — on filtre une fois la boutique du
+  // formulaire choisie. Les fournisseurs, eux, ne sont pas rattachés à une boutique dans le
+  // modèle (ils peuvent livrer n'importe laquelle), donc pas de filtrage à appliquer sur eux.
+  const clientsFiltres = form.boutique_id ? clients.filter((c) => c.boutique_ids.includes(form.boutique_id)) : clients
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -484,7 +488,7 @@ export default function Dettes() {
               <SearchableSelect
                 value={form.tiers_nom}
                 onChange={(v) => setForm({ ...form, tiers_nom: v })}
-                options={(form.tiers_type === 'client' ? clients.map((c) => ({ nom: c.nom, contact: c.contact })) : fournisseurs.map((f) => ({ nom: f.nom, contact: f.contact }))).map(
+                options={(form.tiers_type === 'client' ? clientsFiltres.map((c) => ({ nom: c.nom, contact: c.contact })) : fournisseurs.map((f) => ({ nom: f.nom, contact: f.contact }))).map(
                   ({ nom, contact }) => ({ value: nom, label: `${nom} — ${contact}` })
                 )}
                 required

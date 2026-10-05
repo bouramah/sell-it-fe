@@ -120,6 +120,12 @@ export default function CommandesClients() {
 
   const nomProduit = useCallback((id: string) => produits.find((p) => p.id === id)?.nom ?? id, [produits])
 
+  // Tant qu'aucune boutique n'est choisie, on laisse les listes complètes (l'ordre des champs
+  // permet de sélectionner le client avant la boutique) ; une fois la boutique connue, on filtre
+  // pour ne proposer que ce qui la concerne réellement.
+  const clientsFiltres = form.boutique_id ? clients.filter((c) => c.boutique_ids.includes(form.boutique_id)) : clients
+  const produitsFiltres = form.boutique_id ? produits.filter((p) => stockForm.some((s) => s.produit_id === p.id)) : produits
+
   function openCreate() {
     setEditingId(null)
     setForm(EMPTY_FORM)
@@ -377,7 +383,7 @@ export default function CommandesClients() {
               <SearchableSelect
                 value={form.client_nom}
                 onChange={(v) => setForm({ ...form, client_nom: v })}
-                options={clients.map((c) => ({ value: c.nom, label: `${c.nom} — ${c.contact}` }))}
+                options={clientsFiltres.map((c) => ({ value: c.nom, label: `${c.nom} — ${c.contact}` }))}
                 required
               />
             </div>
@@ -429,7 +435,7 @@ export default function CommandesClients() {
                         <SearchableSelect
                           value={l.produit_id}
                           onChange={(v) => selectProduitForLigne(l.key, v)}
-                          options={produits.map((p) => ({ value: p.id, label: p.nom }))}
+                          options={produitsFiltres.map((p) => ({ value: p.id, label: p.nom }))}
                           placeholder="Produit…"
                           required
                         />
