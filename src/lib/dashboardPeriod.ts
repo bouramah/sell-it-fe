@@ -1,10 +1,11 @@
-export type PeriodPreset = 'heure' | '24h' | '7j' | '31j' | 'personnalise'
+export type PeriodPreset = 'heure' | '24h' | '7j' | '31j' | 'annee' | 'personnalise'
 
 export const PRESET_LABELS: Record<PeriodPreset, string> = {
   heure: 'Dernière heure',
   '24h': '24 dernières heures',
   '7j': '7 derniers jours',
   '31j': '31 derniers jours',
+  annee: 'Année',
   personnalise: 'Personnalisé',
 }
 
@@ -13,7 +14,7 @@ function toLocalIso(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-export function periodFromPreset(preset: PeriodPreset, customDebut?: string, customFin?: string): { debut: string; fin: string } {
+export function periodFromPreset(preset: PeriodPreset, customDebut?: string, customFin?: string, annee?: number): { debut: string; fin: string } {
   const now = new Date()
 
   if (preset === 'personnalise') {
@@ -22,7 +23,12 @@ export function periodFromPreset(preset: PeriodPreset, customDebut?: string, cus
     return { debut: toLocalIso(debut), fin: toLocalIso(fin) }
   }
 
-  const hours: Record<Exclude<PeriodPreset, 'personnalise'>, number> = {
+  if (preset === 'annee') {
+    const y = annee ?? now.getFullYear()
+    return { debut: toLocalIso(new Date(y, 0, 1, 0, 0, 0)), fin: toLocalIso(new Date(y, 11, 31, 23, 59, 59)) }
+  }
+
+  const hours: Record<Exclude<PeriodPreset, 'personnalise' | 'annee'>, number> = {
     heure: 1,
     '24h': 24,
     '7j': 24 * 7,

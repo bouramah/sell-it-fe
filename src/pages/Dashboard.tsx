@@ -14,7 +14,7 @@ import { useBoutiques } from '../lib/useBoutiques'
 import { useSecteurs } from '../lib/useSecteurs'
 import { CANAL_LABELS, MODE_PAIEMENT_LABELS, type DashboardConsolide, type DashboardKpis } from '../types'
 
-const PRESETS: PeriodPreset[] = ['heure', '24h', '7j', '31j', 'personnalise']
+const PRESETS: PeriodPreset[] = ['heure', '24h', '7j', '31j', 'annee', 'personnalise']
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -38,9 +38,10 @@ export default function Dashboard() {
   const [preset, setPreset] = useState<PeriodPreset>('24h')
   const [customDebut, setCustomDebut] = useState(todayIso())
   const [customFin, setCustomFin] = useState(todayIso())
+  const [annee, setAnnee] = useState(new Date().getFullYear())
   const [boutiqueId, setBoutiqueId] = useState('')
 
-  const period = useMemo(() => periodFromPreset(preset, customDebut, customFin), [preset, customDebut, customFin])
+  const period = useMemo(() => periodFromPreset(preset, customDebut, customFin, annee), [preset, customDebut, customFin, annee])
 
   useEffect(() => {
     // Vue consolidée réseau — réservée au siège (responsable achats / administrateur) ; les autres
@@ -104,6 +105,15 @@ export default function Dashboard() {
             placeholder="Toutes les boutiques"
           />
         </div>
+        {preset === 'annee' && (
+          <div className="w-28">
+            <SearchableSelect
+              value={String(annee)}
+              onChange={(v) => setAnnee(Number(v))}
+              options={Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 4 + i).map((y) => ({ value: String(y), label: String(y) }))}
+            />
+          </div>
+        )}
         {preset === 'personnalise' && (
           <div className="flex items-center gap-2">
             <input
